@@ -2,7 +2,7 @@ import sys
 import time
 import getopt
 import requests
-import urllib.request
+import sqlite3
 import pymysql
 from lxml import etree
  
@@ -12,25 +12,23 @@ class avmo:
         #初始化
         self.config()
         try:
-            opts, args = getopt.getopt(sys.argv[1:], "hirs:e:t:", ['help','insert','retry','start','end','table'])
+            opts, args = getopt.getopt(sys.argv[1:], "his:e:q:", ['help','insert','start','end','sqlite'])
         except:
             self.usage()
             sys.exit()
         self.flag_insert = False
-        self.flag_retry = False
+        self.flag_retry = True
         self.start_id = '0000'
         self.stop_id = 'zzzz'
         for op, value in opts:
             if op == '-i' or op == '-insert':
                 self.flag_insert = True
-            elif op == '-r' or op == '-retry':
-                self.flag_retry = True
             elif op == '-s' or op == '-start':
                 self.start_id = value
             elif op == '-e' or op == '-end':
                 self.stop_id = value
-            elif op == '-t' or op == '-table':
-                self.main_table = value
+            elif op == '-q' or op == '-sqlite':
+                self.sqlite_file = value
             elif op == '-h' or op == '-help':
                 self.usage()
                 sys.exit()
@@ -52,7 +50,6 @@ class avmo:
         if self.flag_insert:
             #关闭数据库
             self.CONN.close()
-            self.CUR.close()
  
     #默认配置
     def config(self):
@@ -92,7 +89,9 @@ class avmo:
         self.retry_threshold = 5
         #超时时间
         self.timeout = 10
- 
+        
+        #sqlite数据库
+        self.sqlite_file = ''
         #主表
         self.main_table = 'av_list'
         #重试表
@@ -112,32 +111,73 @@ class avmo:
         #如果正式插入那么链接数据库
         if self.flag_insert:
             try:
-                #链接数据库
-                self.CONN = pymysql.connect(
-                    host = '127.0.0.1',
-                    port = 3306,
-                    user = 'root',
-                    passwd = 'root',
-                    db = 'avmopw',
-                    charset = 'utf8'
-                )
-                self.CUR = self.CONN.cursor()
+                if self.sqlite_file=='':
+                    #链接mysql
+                    self.CONN = pymysql.connect(
+                        host = '127.0.0.1',
+                        port = 3306,
+                        user = 'root',
+                        passwd = 'root',
+                        db = 'avmopw',
+                        charset = 'utf8'
+                    )
+                    self.CUR = self.CONN.cursor()
+                else:
+                    #链接sqlite
+                    self.CONN = sqlite3.connect(self.sqlite_file)
+                    self.CUR = self.CONN.cursor()
             except:
-                self.CONN = None
-                self.CUR = None
-                print('connect mysql fail.')
+                print('connect database fail.')
                 self.usage()
                 sys.exit()
+            if self.sqlite_file!='':
+                try:
+                    self.CUR.execute('select count(1) from ' + self.main_table)
+                except:
+                    self.CUR.execute('''
+                        CREATE TABLE "av_list" (
+                        "id"  INTEGER,
+                        "linkid"  TEXT(10) NOT NULL,
+                        "title"  TEXT(500),
+                        "av_id"  TEXT(50),
+                        "release_date"  TEXT(20),
+                        "len"  TEXT(20),
+                        "director"  TEXT(100),
+                        "studio"  TEXT(100),
+                        "label"  TEXT(100),
+                        "series"  TEXT(200),
+                        "genre"  TEXT(200),
+                        "stars"  TEXT(300),
+                        "director_url"  TEXT(10),
+                        "studio_url"  TEXT(10),
+                        "label_url"  TEXT(10),
+                        "series_url"  TEXT(10),
+                        "bigimage"  TEXT(200),
+                        "image_len"  INTEGER,
+                        PRIMARY KEY ("linkid")
+                        );
+                    '''.replace("av_list",self.main_table))
+                try:
+                    self.CUR.execute('select count(1) from ' + self.retry_table)
+                except:
+                    self.CUR.execute('''
+                    CREATE TABLE "av_error_linkid" (
+                    "id"  INTEGER PRIMARY KEY AUTOINCREMENT,
+                    "linkid"  TEXT(4) NOT NULL,
+                    "status_code"  INTEGER,
+                    "datetime"  TEXT(50)
+                    );
+                    '''.replace("av_error_linkid",self.retry_table))
     #写出命令行格式
     def usage(self):
-        print(sys.argv[0] + ' -i -r -s 0000 -e zzzz')
+        print(sys.argv[0] + ' -i -s 0000 -e zzzz -q avmo.db')
         print(sys.argv[0] + ' -s 1000 -e 2000')
         print('-h(-help):Show usage')
         print('-i(-insert):Insert database')
-        print('-r(-retry):Retry error link')
         print('-s(-start):Start linkid')
         print('-e(-end):End linkid')
- 
+        print('-q(-sqlite):use sqlite')
+        
     #测试单个页面
     def test_page(self,linkid):
         url = self.movie_url+linkid
@@ -148,7 +188,7 @@ class avmo:
  
     #插入重试表
     def insert_retry(self,data):
-        if self.flag_retry:
+        if self.flag_insert:
             self.CUR.execute("INSERT INTO {0} (linkid,status_code,datetime)VALUE('{1[0]}',{1[1]} ,now());".format(self.retry_table,data))
             self.CONN.commit()
     
@@ -162,6 +202,7 @@ class avmo:
                 if res.status_code!=200:
                     self.insert_retry((item,res.status_code))
                     print(url,res.status_code)
+                    continue
             except:
                 print(url,'requests.get error')
                 self.insert_retry((item,0))
@@ -233,7 +274,7 @@ class avmo:
  
     #重试
     def retry_errorurl(self):
-        sql = 'SELECT linkid FROM {0};'.format(self.retry_table)
+        sql = 'SELECT linkid FROM {0} WHERE status_code<>404;'.format(self.retry_table)
         self.CUR.execute(sql)
         res = self.CUR.fetchall()
         reslen = res.__len__()
@@ -253,9 +294,6 @@ class avmo:
                 continue
              
             if r.status_code != 200:
-                if r.status_code == 404:
-                    dellist.append(item[0])
- 
                 print(reslen, item[0], r.status_code)
                 continue
  
