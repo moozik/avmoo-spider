@@ -12,12 +12,15 @@ class avmo:
         #初始化
         self.config()
         try:
-            opts, args = getopt.getopt(sys.argv[1:], "his:e:q:", ['help','insert','start','end','sqlite'])
+            opts, args = getopt.getopt(sys.argv[1:], "his:e:mc", ['help','insert','start','end','mysql','check'])
         except:
             self.usage()
             sys.exit()
         self.flag_insert = False
         self.flag_retry = True
+        self.flag_check = False
+        self.use_list = False
+        self.sqlite_file = 'avmo.db'
         self.start_id = '0000'
         self.stop_id = 'zzzz'
         for op, value in opts:
@@ -27,8 +30,12 @@ class avmo:
                 self.start_id = value
             elif op == '-e' or op == '-end':
                 self.stop_id = value
-            elif op == '-q' or op == '-sqlite':
-                self.sqlite_file = value
+            elif op == '-m' or op == '-mysql':
+                self.sqlite_file = ''
+            elif op == '-c' or op == '-check':
+                self.flag_check = True
+                self.flag_insert = True
+                self.use_list = True
             elif op == '-h' or op == '-help':
                 self.usage()
                 sys.exit()
@@ -37,8 +44,13 @@ class avmo:
         
         #链接数据库
         self.conn()
-        #主程序
-        self.main()
+
+        if self.flag_check:
+            #检测遗漏项
+            self.data_check()
+        else:
+            #主程序
+            self.main()
          
         #重试失败地址
         # self.retry_errorurl()
@@ -47,9 +59,11 @@ class avmo:
  
     #销毁
     def __del__(self):
-        if self.flag_insert:
+        try:
             #关闭数据库
             self.CONN.close()
+        except:
+            pass
  
     #默认配置
     def config(self):
@@ -96,6 +110,8 @@ class avmo:
         self.main_table = 'av_list'
         #重试表
         self.retry_table = 'av_error_linkid'
+        #遗漏记录表
+        self.miss_table = 'av_miss_linkid'
         #站点url
         site_url = 'https://avmo.pw/cn'
         #番号主页url
@@ -164,20 +180,73 @@ class avmo:
                     CREATE TABLE "av_error_linkid" (
                     "id"  INTEGER PRIMARY KEY AUTOINCREMENT,
                     "linkid"  TEXT(4) NOT NULL,
-                    "status_code"  INTEGER,
-                    "datetime"  TEXT(50)
+                    "status_code"  INTEGER
                     );
                     '''.replace("av_error_linkid",self.retry_table))
+                if self.flag_check:
+                    try:
+                        self.CUR.execute('select count(1) from ' + self.miss_table)
+                    except:
+                        self.CUR.execute('''
+                        CREATE TABLE "av_miss_linkid" (
+                        "id"  INTEGER PRIMARY KEY AUTOINCREMENT,
+                        "linkid"  TEXT(4) NOT NULL
+                        );
+                        '''.replace("av_miss_linkid",self.miss_table))
     #写出命令行格式
     def usage(self):
-        print(sys.argv[0] + ' -i -s 0000 -e zzzz -q avmo.db')
+        print(sys.argv[0] + ' -i -m -s 0000 -e zzzz')
         print(sys.argv[0] + ' -s 1000 -e 2000')
         print('-h(-help):Show usage')
         print('-i(-insert):Insert database')
         print('-s(-start):Start linkid')
         print('-e(-end):End linkid')
-        print('-q(-sqlite):use sqlite')
+        print('-m(-mysql):use mysql')
+    
+    #检查被遗漏的页面，并插入数据库
+    def data_check(self):
+        self.CUR.execute("SELECT linkid FROM av_list WHERE 1 ORDER BY linkid;")
+        res = self.CUR.fetchall()
         
+        res_index = 0
+        res_list = [x[0] for x in res]
+        res_min = res_list[0]
+        res_max = res_list[res.__len__()-1]
+        miss_list = []
+
+        for i1 in self.sl:
+            for i2 in self.sl:
+                for i3 in self.sl:
+                    for i4 in self.sl:
+                        tmp = i1+i2+i3+i4
+                        if tmp < res_min:
+                            continue
+                        if tmp > res_max:
+                            break
+
+                        if tmp == res_list[res_index]:
+                            res_index += 1
+                            continue
+                        else:
+                            miss_list.append(tmp)
+                            continue
+
+        print('miss count:',miss_list.__len__())
+        self.CUR.execute('DELETE FROM "main"."{0}";'.format(self.miss_table))
+        self.CONN.commit()
+        if miss_list.__len__()!=0:
+            for item in miss_list:
+                self.CUR.execute('INSERT INTO "main"."{0}" ("linkid") VALUES ("{1}");'.format(self.miss_table,item))
+            self.CONN.commit()
+        else:
+            print("miss_linkid no fond")
+            return
+        
+        #重试错误链接并插入数据库
+        self.CUR.execute('SELECT linkid FROM "main"."{0}" ORDER BY linkid;'.format(self.miss_table))
+        res = self.CUR.fetchall()
+        self.linkid_list = [x[0] for x in res]
+        self.main()
     #测试单个页面
     def test_page(self,linkid):
         url = self.movie_url+linkid
@@ -189,14 +258,22 @@ class avmo:
     #插入重试表
     def insert_retry(self,data):
         if self.flag_insert:
-            self.CUR.execute("INSERT INTO {0} (linkid,status_code,datetime)VALUE('{1[0]}',{1[1]} ,now());".format(self.retry_table,data))
+            if self.flag_check:
+                self.CUR.execute('UPDATE "main"."{0}" SET "linkid"="{1[0]}", "status_code"="{1[1]}" WHERE ("id" IS "{1[0]}");'.format(self.miss_table,data))
+            else:
+                self.CUR.execute("INSERT INTO {0} (linkid,status_code)VALUES('{1[0]}','{1[1]}');".format(self.retry_table,data))
             self.CONN.commit()
     
     #主函数，抓取页面内信息
     def main(self):
-        for item in self.get_linkid():
+        if self.use_list:
+            nowlist = self.linkid_list
+        else:
+            nowlist = self.get_linkid()
+        
+        for item in nowlist:
             url = self.movie_url+item
-            
+            time.sleep(3)
             try:
                 res = requests.get(url, timeout = self.timeout)
                 if res.status_code!=200:
@@ -205,14 +282,14 @@ class avmo:
                     continue
             except:
                 print(url,'requests.get error')
-                self.insert_retry((item,0))
+                self.insert_retry((item,777))
                 continue
             
             try:
                 html=etree.HTML(res.text)
             except:
                 print(url,'etree.HTML error')
-                self.insert_retry((item,1))
+                self.insert_retry((item,888))
                 continue
             
             #解析页面内容
@@ -232,6 +309,7 @@ class avmo:
  
     #遍历urlid
     def get_linkid(self):
+
         for i1 in self.sl:
             for i2 in self.sl:
                 for i3 in self.sl:
@@ -274,7 +352,7 @@ class avmo:
  
     #重试
     def retry_errorurl(self):
-        sql = 'SELECT linkid FROM {0} WHERE status_code<>404;'.format(self.retry_table)
+        sql = "SELECT linkid FROM {0} WHERE status_code<>'404';".format(self.retry_table)
         self.CUR.execute(sql)
         res = self.CUR.fetchall()
         reslen = res.__len__()
