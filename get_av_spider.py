@@ -3,6 +3,7 @@ import time
 import getopt
 import requests
 import sqlite3
+import pymysql
 from lxml import etree
 """
 https://avmo.pw/cn
@@ -66,8 +67,8 @@ class avmo:
         #链接数据库
         self.conn()
         #重试失败地址
-        # self.retry_errorurl()
-        # exit()
+        self.retry_errorurl()
+        exit()
         #测试单个页面
         # self.test_page('')
 
