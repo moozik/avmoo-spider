@@ -9,16 +9,13 @@ from lxml import etree
 https://avmo.pw/cn
 https://jp.netcdn.space/digital/video/parathd01839/parathd01839ps.jpg
 https://jp.netcdn.space/digital/video/29gxaz00084/29gxaz00084ps.jpg
-
 https://avso.pw/cn
 https://us.netcdn.space/ave/new/bigcover/DVD1CWPBD-149.jpg
 https://us.netcdn.space/ave/new/bigcover/DVD1DSAMBD-12.jpg
 https://us.netcdn.space/ave/archive/bigcover/DVD1PM0038.jpg
-
 https://avxo.pw/cn
 https://us.netcdn.space/upfile/ddfnetwork/f76d4ae402e7f2a8b5d07ad4b2a1b46c0996afc5/ps.jpg
 https://us.netcdn.space/ddfs/content/ddf/90056/preview.jpg
-
 https://us.netcdn.space/bz/scenes/10284/200.jpg
 https://us.netcdn.space/bz/scenes/10284/768x432.jpg
 """
@@ -49,7 +46,7 @@ class avmo:
                 sys.exit()
             elif op == '-t' or op == '-site':
                 #站点url
-                site_url='https://{0}.pw/cn'.format(value)
+                site_url='https://{0}/cn'.format(value)
                 #sqlite数据库地址
                 self.sqlite_file='{0}.db'.format(value)
 
@@ -61,14 +58,17 @@ class avmo:
                 self.label = site_url+'/label'
                 self.series = site_url+'/series'
                 self.genre_url = site_url+'/genre'
+        if len(sys.argv)==1:
+            self.usage()
+            sys.exit()
         if self.flag_insert == False:
             self.flag_retry = False
         
         #链接数据库
         self.conn()
         #重试失败地址
-        self.retry_errorurl()
-        exit()
+        # self.retry_errorurl()
+        # exit()
         #测试单个页面
         # self.test_page('')
 
@@ -181,13 +181,18 @@ class avmo:
 
     #写出命令行格式
     def usage(self):
-        print(sys.argv[0] + ' -i -s 0000 -e zzzz')
-        print(sys.argv[0] + ' -s 1000 -e 2000')
-        print('-h(-help):Show usage')
-        print('-i(-insert):Insert database')
-        print('-s(-start):Start linkid')
-        print('-e(-end):End linkid')
-        print('-t(-site):site')
+        print('抓取来自avmo.pw的信息，并插入数据库，id区间为0000-zzzz')
+        print(sys.argv[0] + " -i -s 0000 -e zzzz -t avmo.pw\n")
+        print('抓取来自avmo.pw的信息，不进行存储操作')
+        print(sys.argv[0] + " -s 1000 -e 2000 -t avmo.pw\n")
+        print('检查抓取到的avmo.pw的遗漏信息，重新抓取并插入')
+        print(sys.argv[0] + " -c -t avmo.pw\n")
+        print('-h(-help):使用说明')
+        print('-i(-insert):插入数据库')
+        print('-s(-start):开始id(0000,1ddd,36wq)')
+        print('-e(-end):结束id(0000,1ddd,36wq)')
+        print('-t(-site):抓取哪个网站(avmo.pw,avso.pw,avxo.pw)')
+        print('-c(-check):检查被遗漏的页面，并插入数据库')
     
     #主函数，抓取页面内信息
     def main(self):
