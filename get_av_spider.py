@@ -46,7 +46,7 @@ class avmo:
         #================测试区间================
 
         try:
-            opts, args = getopt.getopt(sys.argv[1:], "his:e:a", ['help', 'insert', 'start', 'end', 'auto'])
+            opts, args = getopt.getopt(sys.argv[1:], "his:e:arp:", ['help', 'insert', 'start', 'end', 'auto', 'retry', 'proxies'])
         except:
             self.usage()
             sys.exit()
@@ -65,9 +65,19 @@ class avmo:
                 self.auto = True
                 self.flag_insert = True
 
+            elif op == '-r' or op == '-retry':
+                self.flag_insert = True
+                self.conn()
+                self.retry_errorurl()
+                sys.exit()
+
             elif op == '-h' or op == '-help':
                 self.usage()
                 sys.exit()
+            elif op == '-p' or op == '-proxies':
+                self.proxies = {
+                    'https':value
+                }
 
         if len(sys.argv) == 1:
             self.usage()
@@ -109,11 +119,9 @@ class avmo:
         self.retry_counter = 0
         #重试阈值
         self.retry_threshold = 5
-        #超时时间
-        self.timeout = 6
 
         #主函数延时
-        self.main_sleep = 1
+        self.main_sleep = 3
         #更新flag
         self.last_flag = False
 
@@ -142,7 +150,7 @@ class avmo:
         self.site_url = 'https://{0}/cn'.format(self.site)
         #sqlite数据库地址
         #self.sqlite_file='{0}.db'.format(site)
-        self.sqlite_file = 'avmo.pw.db'.format(self.site)
+        self.sqlite_file = 'avio.pw.db'.format(self.site)
         # self.sqlite_file='avso.db'.format(site)
         #番号主页url
         self.movie_url = self.site_url+'/movie/'
@@ -153,6 +161,23 @@ class avmo:
         self.series = self.site_url+'/series'
         self.genre_url = self.site_url+'/genre'
 
+        # # 代理 
+        # self.proxies = {
+        #     'https':'http://127.0.0.1:52771'
+        # }
+        # #socks代理
+        # self.proxies = {
+        #     'https':'socks5://127.0.0.1:52772'
+        # }
+
+        #创建会话对象
+        self.s = requests.Session()
+        #超时时间
+        self.s.timeout = 20
+        #代理
+        self.s.proxies = {
+            'https':'socks5://127.0.0.1:52772'
+        }
     #mysql conn
     def conn(self):
         #如果正式插入那么链接数据库
@@ -209,14 +234,15 @@ class avmo:
         print(sys.argv[0] + " -s 1000 -e 2000\n")
         # print('检查抓取到的{}的遗漏信息，重新抓取并插入'.format(self.site))
         # print(sys.argv[0] + " -c\n")
-        print('接着上次抓取')
-        print(sys.argv[0] + " -a\n")
+        print('接着上次抓取并使用代理')
+        print(sys.argv[0] + " -a -p http://127.0.0.1:1080\n")
         print('-h(-help):使用说明')
         print('-i(-insert):插入数据库')
         print('-s(-start):开始id(0000,1ddd,36wq)')
         print('-e(-end):结束id(0000,1ddd,36wq)')
         # print('-c(-check):检查被遗漏的页面，并插入数据库')
         print('-a(-auto):获取当前最新的一个id和网站最新的一个id，补全新增数据')
+        print('-p(-proxies):使用指定的https代理服务器或SOCKS5代理服务器。例如：-p http://127.0.0.1:1080,-p socks5://127.0.0.1:52772')
 
     #主函数，抓取页面内信息
     def main(self):
@@ -224,11 +250,12 @@ class avmo:
             nowlist = self.linkid_list
         else:
             nowlist = self.get_linkid()
+
         for item in nowlist:
             url = self.movie_url+item
             time.sleep(self.main_sleep)
             try:
-                res = requests.get(url, timeout=self.timeout)
+                res = self.s.get(url)
                 if res.status_code != 200:
                     self.insert_retry((item, res.status_code))
                     print(url, res.status_code)
@@ -265,8 +292,12 @@ class avmo:
         data = self.CUR.execute(sql)
         res = self.CUR.fetchall()
         self.start_id = res[0][0]
-
-        html = etree.HTML(requests.get(self.site_url).text)
+        try:
+            response = self.s.get(self.site_url)
+        except:
+            print('访问超时')
+            exit()
+        html = etree.HTML(response.text)
         self.stop_id = html.xpath('//*[@id="waterfall"]/div[1]/a')[0].attrib.get('href')[-4:]
         print('database start:{0},website end:{1}'.format(self.start_id, self.stop_id))
     
@@ -321,8 +352,7 @@ class avmo:
         self.CONN.commit()
     #重试
     def retry_errorurl(self):
-        #status_code<>'404'
-        self.CUR.execute("SELECT * FROM {0} WHERE status_code IS NOT 404 ORDER BY linkid;".format(self.retry_table))
+        self.CUR.execute("SELECT * FROM {0} WHERE status_code<>'404' ORDER BY linkid;".format(self.retry_table))
         res = self.CUR.fetchall()
         reslen = res.__len__()
         if reslen == 0:
@@ -331,6 +361,7 @@ class avmo:
 
         dellist = []
         update_list = []
+
         for item in res:
             reslen -= 1
 
@@ -344,7 +375,7 @@ class avmo:
 
             url = self.movie_url + item[0]
             try:
-                response = requests.get(url, timeout=self.timeout)
+                response = self.s.get(url)
                 html = etree.HTML(response.text)
             except:
                 # 重写重试记录
@@ -493,14 +524,14 @@ class avmo:
     #测试单个页面
     def test_page(self, linkid):
         url = self.movie_url+linkid
-        res = requests.get(url, timeout=self.timeout).text
+        res = self.s.get(url).text
         #解析页面内容
         data = self.movie_page_data(etree.HTML(res))
         print(data)
 
     #获取所有类别
     def replace_genre(self):
-        html = etree.HTML(requests.get(self.genre_url).text)
+        html = etree.HTML(self.s.get(self.genre_url).text)
         insert_list = []
         h4 = html.xpath('/html/body/div[2]/h4/text()')
         div = html.xpath('/html/body/div[2]/div')
