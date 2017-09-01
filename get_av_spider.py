@@ -5,7 +5,6 @@ import time
 import getopt
 import requests
 import sqlite3
-#import pymysql
 from lxml import etree
 
 '''
@@ -17,6 +16,13 @@ replace_genre() 输出所有类别
 未启用的两个函数
 
 
+图片服务器：
+https://jp.netcdn.space/digital/video/miae00056/miae00056jp-10.jpg
+https://pics.dmm.co.jp/digital/video/miae00056/miae00056jp-10.jpg
+https://pics.dmm.com/digital/video/miae00056/miae00056jp-10.jpg
+
+小封面：
+https://pics.javbus.info/thumb/{{linkid}}.jpg
 '''
 
 class avmo:
@@ -161,22 +167,13 @@ class avmo:
         self.series = self.site_url+'/series'
         self.genre_url = self.site_url+'/genre'
 
-        # # 代理 
-        # self.proxies = {
-        #     'https':'http://127.0.0.1:52771'
-        # }
-        # #socks代理
-        # self.proxies = {
-        #     'https':'socks5://127.0.0.1:52772'
-        # }
-
         #创建会话对象
         self.s = requests.Session()
         #超时时间
-        self.s.timeout = 20
+        self.s.timeout = 5
         #代理
         self.s.proxies = {
-            'https':'socks5://127.0.0.1:52772'
+            'https':'socks5://127.0.0.1:1080'
         }
     #mysql conn
     def conn(self):
