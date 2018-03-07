@@ -5,22 +5,21 @@ import time
 import getopt
 import requests
 import sqlite3
+import re
 from lxml import etree
 
 '''
 data_check()
-按照主表检查缺少数据，时间非常常，需手动配置
+按照主表检查缺少数据，时间非常长，需手动配置
 
+未启用的两个函数:
 test_page() 输出单页数据
 replace_genre() 输出所有类别
-未启用的两个函数
-
 
 图片服务器：
 https://jp.netcdn.space/digital/video/miae00056/miae00056jp-10.jpg
 https://pics.dmm.co.jp/digital/video/miae00056/miae00056jp-10.jpg
 https://pics.dmm.com/digital/video/miae00056/miae00056jp-10.jpg
-
 小封面：
 https://pics.javbus.info/thumb/{{linkid}}.jpg
 '''
@@ -28,7 +27,18 @@ https://pics.javbus.info/thumb/{{linkid}}.jpg
 class avmo:
  
     def __init__(self):
-        #初始化
+        
+        #================主要配置================
+
+        #目标域名
+        self.site = 'javmoo.net'
+
+        #sqlite数据库地址
+        self.sqlite_file = 'avmoo.db'
+
+        #================主要配置================
+
+        #其他配置初始化
         self.config()
 
         #================测试区间================
@@ -37,22 +47,23 @@ class avmo:
         self.conn()
         #清算失败地址，里面还有些能访问的
         self.retry_errorurl()
-
         #重试失败地址
         # self.retry_errorurl()
         #测试单个页面
         # self.test_page('')
-
         #检测遗漏项
         # self.flag_check = True
         # self.data_check()
-
         exit()
         '''
         #================测试区间================
 
         try:
-            opts, args = getopt.getopt(sys.argv[1:], "his:e:arp:", ['help', 'insert', 'start', 'end', 'auto', 'retry', 'proxies'])
+            opts, args = getopt.getopt(
+                sys.argv[1:],
+                "his:e:arp:",
+                ['help', 'insert', 'start', 'end', 'auto', 'retry', 'proxies']
+            )
         except:
             self.usage()
             sys.exit()
@@ -116,7 +127,9 @@ class avmo:
         #获取sl的字典列表dl
         self.relist()
         #表结构
-        self.column = ['id', 'linkid', 'director', 'director_url', 'studio', 'studio_url', 'label', 'label_url', 'series', 'series_url', 'image_len', 'genre', 'len', 'stars', 'av_id', 'title', 'bigimage', 'release_date']
+        self.column = ['id', 'linkid', 'director', 'director_url', 'studio',
+        'studio_url', 'label', 'label_url', 'series', 'series_url', 'image_len',
+        'genre', 'len', 'stars', 'av_id', 'title', 'bigimage', 'release_date']
         #表结构str
         self.column_str = ",".join(self.column)
         #插入阈值
@@ -150,22 +163,18 @@ class avmo:
         self.main_table = 'av_list'
         #重试表
         self.retry_table = 'av_error_linkid'
-        self.site = 'avio.pw'
 
         #站点url
         self.site_url = 'https://{0}/cn'.format(self.site)
-        #sqlite数据库地址
-        #self.sqlite_file='{0}.db'.format(site)
-        self.sqlite_file = 'avio.pw.db'.format(self.site)
-        # self.sqlite_file='avso.db'.format(site)
+
         #番号主页url
         self.movie_url = self.site_url+'/movie/'
         #导演 制作 发行 系列
-        self.director = self.site_url+'/director'
-        self.studio = self.site_url+'/studio'
-        self.label = self.site_url+'/label'
-        self.series = self.site_url+'/series'
-        self.genre_url = self.site_url+'/genre'
+        self.director = self.site_url+'/director/'
+        self.studio = self.site_url+'/studio/'
+        self.label = self.site_url+'/label/'
+        self.series = self.site_url+'/series/'
+        self.genre_url = self.site_url+'/genre/'
 
         #创建会话对象
         self.s = requests.Session()
@@ -173,7 +182,7 @@ class avmo:
         self.s.timeout = 5
         #代理
         self.s.proxies = {
-            'https':'socks5://127.0.0.1:1080'
+            'https':'https://127.0.0.1:1080'
         }
     #mysql conn
     def conn(self):
@@ -239,7 +248,7 @@ class avmo:
         print('-e(-end):结束id(0000,1ddd,36wq)')
         # print('-c(-check):检查被遗漏的页面，并插入数据库')
         print('-a(-auto):获取当前最新的一个id和网站最新的一个id，补全新增数据')
-        print('-p(-proxies):使用指定的https代理服务器或SOCKS5代理服务器。例如：-p http://127.0.0.1:1080,-p socks5://127.0.0.1:52772')
+        print('-p(-proxies):使用指定的https代理服务器或SOCKS5代理服务器。例如：-p https://127.0.0.1:1080,-p socks5://127.0.0.1:52772')
 
     #主函数，抓取页面内信息
     def main(self):
@@ -286,7 +295,7 @@ class avmo:
     #获取最后一次的id
     def get_last(self):
         sql = "SELECT linkid FROM {0} ORDER BY linkid DESC LIMIT 0,1".format(self.main_table)
-        data = self.CUR.execute(sql)
+        self.CUR.execute(sql)
         res = self.CUR.fetchall()
         self.start_id = res[0][0]
         try:
@@ -301,7 +310,16 @@ class avmo:
     #插入重试表
     def insert_retry(self, data):
         if self.flag_insert:
-            self.CUR.execute("REPLACE INTO {0}(linkid, status_code, datetime)VALUES('{1[0]}', {1[1]}, '{2}');".format(self.retry_table, data, time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+            self.CUR.execute("REPLACE INTO {0}(linkid, status_code, datetime)VALUES('{1[0]}', {1[1]}, '{2}');"
+                .format(
+                    self.retry_table,
+                    data,
+                    time.strftime(
+                        "%Y-%m-%d %H:%M:%S",
+                        time.localtime()
+                    )
+                )
+            )
             self.CONN.commit()
 
     #遍历urlid
@@ -310,7 +328,7 @@ class avmo:
             for i2 in self.sl:
                 for i3 in self.sl:
                     for i4 in self.sl:
-                        tmp = i1+i2+i3+i4
+                        tmp = i1 + i2 + i3 + i4
                         if tmp > self.stop_id:
                             print('start:{0} end:{1} done!'.format(self.start_id, self.stop_id))
                             #插入剩余的数据
@@ -347,6 +365,7 @@ class avmo:
     def replace_sql(self, table, column, data):
         self.CUR.execute("REPLACE INTO {0}({1})VALUES({2});".format(table, column, data))
         self.CONN.commit()
+    
     #重试
     def retry_errorurl(self):
         self.CUR.execute("SELECT * FROM {0} WHERE status_code<>'404' ORDER BY linkid;".format(self.retry_table))
@@ -377,7 +396,6 @@ class avmo:
             except:
                 # 重写重试记录
                 if response.status_code == 404:
-                    # self.insert_retry((item[0], 404))
                     update_list.append((item[0], 404))
                 print(reslen, item[0], 'fail_1', response.status_code)
                 continue
@@ -433,22 +451,22 @@ class avmo:
         for i in info:
             if i.text == None:
                 continue
-            if i.attrib.get('href')[:27] == self.director:
+            if self.director in i.attrib.get('href'):
                 #导演
                 data[0] = i.text.replace("'", '"')
-                data[1] = i.attrib.get('href')[28:]
-            elif i.attrib.get('href')[:25] == self.studio:
+                data[1] = i.attrib.get('href').replace(self.director, '')
+            elif self.studio in i.attrib.get('href'):
                 #制作商
                 data[2] = i.text.replace("'", '"')
-                data[3] = i.attrib.get('href')[26:]
-            elif i.attrib.get('href')[:24] == self.label:
+                data[3] = i.attrib.get('href').replace(self.studio, '')
+            elif self.label in i.attrib.get('href'):
                 #发行商
                 data[4] = i.text.replace("'", '"')
-                data[5] = i.attrib.get('href')[25:]
-            elif i.attrib.get('href')[:25] == self.series:
+                data[5] = i.attrib.get('href').replace(self.label, '')
+            elif self.series in i.attrib.get('href'):
                 #系列
                 data[6] = i.text.replace("'", '"')
-                data[7] = i.attrib.get('href')[26:]
+                data[7] = i.attrib.get('href').replace(self.series, '')
 
         #图片个数image_len
         data[8] = str(html.xpath('//*[@id="sample-waterfall"]/a').__len__())
@@ -456,7 +474,7 @@ class avmo:
         data[9] = '|'.join(html.xpath('/html/body/div[2]/div[1]/div[2]/p/span/a/text()')).replace("'", '"')
         #时长len
         tmp = html.xpath('/html/body/div[2]/div[1]/div[2]/p[3]/text()')
-        if tmp.__len__() != 0:
+        if tmp.__len__() != 0 and '分钟' in tmp[0]:
             data[10] = tmp[0].replace('分钟', '').strip()
         else:
             data[10] = '0'
@@ -465,8 +483,8 @@ class avmo:
 
         #接取除了番号的标题
         data[13] = html.xpath('/html/body/div[2]/h3/text()')[0][data[12].__len__()+1:].replace("'", '"')
-        #封面 截取video之后的部分
-        data[14] = html.xpath('/html/body/div[2]/div[1]/div[1]/a/img/@src')[0][23:]
+        #封面 截取域名之后的部分
+        data[14] = '/' + html.xpath('/html/body/div[2]/div[1]/div[1]/a/img/@src')[0].split('/',3)[3]
         #发行时间
         data[15] = html.xpath('/html/body/div[2]/div[1]/div[2]/p[2]/text()')[0].strip()
         return data
