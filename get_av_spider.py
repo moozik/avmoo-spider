@@ -181,9 +181,9 @@ class avmo:
         #超时时间
         self.s.timeout = 5
         #代理
-        self.s.proxies = {
-            'https':'https://127.0.0.1:1080'
-        }
+        #self.s.proxies = {
+        #    'https':'https://127.0.0.1:1080'
+        #}
     #mysql conn
     def conn(self):
         #如果正式插入那么链接数据库
