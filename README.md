@@ -1,9 +1,9 @@
-最新地址：https://javmoo.net/cn
+最新地址：https://javlog.com/cn
 
-# avio.pw番号爬虫
+# javlog.com番号爬虫
 
 ## 使用方法
-抓取来自avio.pw的信息，并存入数据库，id区间为0000-zzzz
+抓取来自javlog.com的信息，并存入数据库，id区间为0000-zzzz
 `get_av_spider.py -i -s 0000 -e 0100`
 
 抓取来自avio.pw的信息，不进行存储操作
