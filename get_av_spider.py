@@ -11,11 +11,9 @@ from lxml import etree
 '''
 data_check()
 按照主表检查缺少数据，时间非常长，需手动配置
-
-未启用的两个函数:
 test_page() 输出单页数据
 replace_genre() 输出所有类别
-
+未启用的两个函数
 图片服务器：
 https://jp.netcdn.space/digital/video/miae00056/miae00056jp-10.jpg
 https://pics.dmm.co.jp/digital/video/miae00056/miae00056jp-10.jpg
@@ -31,15 +29,15 @@ class avmo:
         #================主要配置================
 
         #目标域名
-        self.site = 'javmoo.net'
+        self.site = 'javlog.com'
 
         #sqlite数据库地址
         self.sqlite_file = 'avmoo.db'
-
-        #================主要配置================
-
+        
         #其他配置初始化
         self.config()
+
+
 
         #================测试区间================
         '''
@@ -56,8 +54,9 @@ class avmo:
         # self.data_check()
         exit()
         '''
-        #================测试区间================
 
+        
+        #================读取参数================
         try:
             opts, args = getopt.getopt(
                 sys.argv[1:],
@@ -80,7 +79,7 @@ class avmo:
 
             elif op == '-a' or op == '-auto':
                 self.auto = True
-                self.flag_insert = True
+                #self.flag_insert = True
 
             elif op == '-r' or op == '-retry':
                 self.flag_insert = True
@@ -95,7 +94,7 @@ class avmo:
                 self.proxies = {
                     'https':value
                 }
-
+        #展示说明
         if len(sys.argv) == 1:
             self.usage()
             sys.exit()
@@ -140,7 +139,7 @@ class avmo:
         self.retry_threshold = 5
 
         #主函数延时
-        self.main_sleep = 3
+        self.main_sleep = 1
         #更新flag
         self.last_flag = False
 
@@ -179,11 +178,11 @@ class avmo:
         #创建会话对象
         self.s = requests.Session()
         #超时时间
-        self.s.timeout = 5
+        self.s.timeout = 3
         #代理
-        #self.s.proxies = {
-        #    'https':'https://127.0.0.1:1080'
-        #}
+        # self.s.proxies = {
+        #     'https':'https://127.0.0.1:1080'
+        # }
     #mysql conn
     def conn(self):
         #如果正式插入那么链接数据库
@@ -235,18 +234,15 @@ class avmo:
     #写出命令行格式
     def usage(self):
         print('抓取来自{}的信息，并插入数据库，id区间为0000-zzzz'.format(self.site))
-        print(sys.argv[0] + " -i -s 0000 -e zzzz\n")
+        print(sys.argv[0] + " -i -s 0000 -e 0100\n")
         print('抓取来自{}的信息，不进行存储操作'.format(self.site))
-        print(sys.argv[0] + " -s 1000 -e 2000\n")
-        # print('检查抓取到的{}的遗漏信息，重新抓取并插入'.format(self.site))
-        # print(sys.argv[0] + " -c\n")
-        print('接着上次抓取并使用代理')
-        print(sys.argv[0] + " -a -p http://127.0.0.1:1080\n")
+        print(sys.argv[0] + " -s 0000 -e 0100\n")
+        print('接着上次抓取并存入数据库')
+        print(sys.argv[0] + " -a -i\n\n")
         print('-h(-help):使用说明')
         print('-i(-insert):插入数据库')
         print('-s(-start):开始id(0000,1ddd,36wq)')
         print('-e(-end):结束id(0000,1ddd,36wq)')
-        # print('-c(-check):检查被遗漏的页面，并插入数据库')
         print('-a(-auto):获取当前最新的一个id和网站最新的一个id，补全新增数据')
         print('-p(-proxies):使用指定的https代理服务器或SOCKS5代理服务器。例如：-p https://127.0.0.1:1080,-p socks5://127.0.0.1:52772')
 
@@ -268,6 +264,9 @@ class avmo:
                     continue
             except:
                 print(url, 'requests.get error')
+                #超过一定时间就退出
+                if time.time() > 1520632800:
+                    exit()
                 self.insert_retry((item, 777))
                 continue
             try:
