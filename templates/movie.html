@@ -1,0 +1,135 @@
+{% extends "main.html" %}
+{% block container %}
+<div class="container">
+    <h3>{{data.2}}</h3>
+    <div class="row movie">
+        <div class="col-md-9 screencap">
+            <a class="bigImage" href="{{cdn}}{{data.16}}" title="EBOD-350 卑猥な制服性交 浅香蘭">
+                <img src="{{cdn}}{{data.16}}">
+            </a>
+        </div>
+        <div class="col-md-3 info">
+            <p>
+                <span class="header">识别码:</span>
+                <span style="color:#CC0000;">{{data.3}}</span>
+            </p>
+            <p>
+                <span class="header">发行时间:</span> {{data.4}}</p>
+            <p>
+                <span class="header">长度:</span> {{data.5}}分钟</p>
+            <p>
+                <span class="header">导演:</span>
+                <a href="/director/{{data.12}}">{{data.6}}</a>
+            </p>
+            <p class="header">制作商: </p>
+            <p>
+                <a href="/studio/{{data.13}}">{{data.7}}</a>
+            </p>
+            <p class="header">发行商: </p>
+            <p>
+                <a href="/label/{{data.14}}">{{data.8}}</a>
+            </p>
+            <p class="header">系列:</p>
+            <p>
+                <a href="/series/{{data.15}}">{{data.9}}</a>
+            </p>
+            <p class="header">类别:</p>
+            <p>
+                 {% for item in genre %}
+                    <span class="genre">
+                        <a href="/genre/{{item}}">{{item}}</a>
+                    </span>
+                 {% endfor %}
+            </p>
+        </div>
+    </div>
+    <div id="movie-share" class="row" style="margin:20px 0px 20px 0px;text-align:center;">
+        <a class="share-facebook">
+            <span class="icon"></span>
+        </a>
+        <a class="share-twitter">
+            <span class="icon"></span>
+        </a>
+        <a class="share-tumblr hidden-xxs">
+            <span class="icon"></span>
+        </a>
+        <a class="share-reddit">
+            <span class="icon"></span>
+        </a>
+        <a class="share-pinterest">
+            <span class="icon"></span>
+        </a>
+        <a class="share-google_plusone_share hidden-xxs">
+            <span class="icon"></span>
+        </a>
+        <a class="share-blogger hidden-xxs">
+            <span class="icon"></span>
+        </a>
+        <a class="share-google hidden-xxs">
+            <span class="icon"></span>
+        </a>
+        <a class="share-qrcode">
+            <span class="icon"></span>
+        </a>
+        <a class="share-email">
+            <span class="icon"></span>
+        </a>
+        <a class="share-favorites">
+            <span class="icon"></span>
+        </a>
+    </div>
+
+    <div class="visible-xs-block pt-10 text-center">
+        <div type="text/data-position" style="display:none" id="j_M_300x100-1">W3siaWQiOiJidHNfal9NXzMwMHgxMDAiLCJhZHNwb3QiOiJqX01fMzAweDEwMCIsIndlaWdodCI6IjEiLCJmY2FwIjpmYWxzZSwic2NoZWR1bGUiOmZhbHNlLCJtYXhXaWR0aCI6Ijc2OCIsIm1pbldpZHRoIjpmYWxzZSwidGltZXpvbmUiOmZhbHNlLCJleGNsdWRlIjpmYWxzZSwiZG9tYWluIjpmYWxzZSwiY29kZSI6IjxhIGhyZWY9XCJodHRwczpcL1wvYnRzby5wd1wvdmlkZW9cLyVFNSU4RCU5MSVFNyU4QyVBNSVFMyU4MSVBQSVFNSU4OCVCNiVFNiU5QyU4RCVFNiU4MCVBNyVFNCVCQSVBNCUyMCVFNiVCNSU4NSVFOSVBNiU5OSVFOCU5OCVBRFwiIHRhcmdldD1cIl9ibGFua1wiPjxpbWcgc3JjPVwiXC9hcHBcL2J0c1wvVmlld1wvaW1nXC9wMzAwMTAwLnBuZ1wiPjxcL2E+In0seyJpZCI6ImV4b2Nfal9NXzMwMHgxMDAiLCJhZHNwb3QiOiJqX01fMzAweDEwMCIsIndlaWdodCI6IjMiLCJmY2FwIjpmYWxzZSwic2NoZWR1bGUiOmZhbHNlLCJtYXhXaWR0aCI6Ijc2OCIsIm1pbldpZHRoIjpmYWxzZSwidGltZXpvbmUiOmZhbHNlLCJleGNsdWRlIjpmYWxzZSwiZG9tYWluIjpmYWxzZSwiY29kZSI6IjxzY3JpcHQ+XHJcbmFkX2lkem9uZSA9IFwiMTAyNjMxMFwiO1xyXG5hZF93aWR0aCA9IFwiMzAwXCI7XHJcbmFkX2hlaWdodCA9IFwiMTAwXCI7XHJcbmlmKHRvcD09PXNlbGYpIHZhciBwPWRvY3VtZW50LlVSTDsgZWxzZSB2YXIgcD1kb2N1bWVudC5yZWZlcnJlcjt2YXIgZHQ9bmV3IERhdGUoKS5nZXRUaW1lKCk7XHJcbnZhciBleG9Eb2N1bWVudFByb3RvY29sID0gKGRvY3VtZW50LmxvY2F0aW9uLnByb3RvY29sICE9IFwiaHR0cHM6XCIgJiYgZG9jdW1lbnQubG9jYXRpb24ucHJvdG9jb2wgIT0gXCJodHRwOlwiKSA/IFwiaHR0cHM6XCIgOiBkb2N1bWVudC5sb2NhdGlvbi5wcm90b2NvbDtcclxuaWYodHlwZW9mKGFkX3N1YikgPT0gJ3VuZGVmaW5lZCcpIHZhciBhZF9zdWIgPSBcIlwiO1xyXG5pZih0eXBlb2YoYWRfdGFncykgPT0gJ3VuZGVmaW5lZCcpIHZhciBhZF90YWdzID0gXCJcIjtcclxudmFyIGFkX3R5cGUgPSBhZF93aWR0aCArICd4JyArIGFkX2hlaWdodDtcclxuaWYoYWRfd2lkdGggPT0gJzEwMCUnICYmIGFkX2hlaWdodCA9PSAnMTAwJScpIGFkX3R5cGUgPSAnYXV0byc7XHJcbnZhciBhZF9zY3JlZW5fcmVzb2x1dGlvbiA9IHNjcmVlbi53aWR0aCArICd4JyArIHNjcmVlbi5oZWlnaHQ7XHJcbmRvY3VtZW50LndyaXRlKCc8aWZyYW1lIGZyYW1lYm9yZGVyPVwiMFwiIHNjcm9sbGluZz1cIm5vXCIgd2lkdGg9XCInICsgYWRfd2lkdGggKyAnXCIgaGVpZ2h0PVwiJyArIGFkX2hlaWdodCArICdcIiBzcmM9XCInICsgZXhvRG9jdW1lbnRQcm90b2NvbCArICdcL1wvc3luZGljYXRpb24uZXhvY2xpY2suY29tXC9hZHMtaWZyYW1lLWRpc3BsYXkucGhwP2lkem9uZT0nICsgYWRfaWR6b25lICsgJyZ0eXBlPScgKyBhZF90eXBlICsgJyZwPScgKyBlc2NhcGUocCkgKyAnJmR0PScgKyBkdCArICcmc3ViPScgKyBhZF9zdWIgKyAnJnRhZ3M9JyArIGFkX3RhZ3MgKyAnJnNjcmVlbl9yZXNvbHV0aW9uPScgKyBhZF9zY3JlZW5fcmVzb2x1dGlvbiArICdcIj48XC9pZnJhbWU+Jyk7XHJcbjxcL3NjcmlwdD4ifSx7ImlkIjoiamF2dV9qX01fMzAweDEwMCIsImFkc3BvdCI6ImpfTV8zMDB4MTAwIiwid2VpZ2h0IjoiMiIsImZjYXAiOmZhbHNlLCJzY2hlZHVsZSI6ZmFsc2UsIm1heFdpZHRoIjoiNzY4IiwibWluV2lkdGgiOmZhbHNlLCJ0aW1lem9uZSI6ZmFsc2UsImV4Y2x1ZGUiOmZhbHNlLCJkb21haW4iOmZhbHNlLCJjb2RlIjoiPGEgaHJlZj1cImh0dHBzOlwvXC9qYXZmZWUuY29tXCIgdGFyZ2V0PVwiX2JsYW5rXCI+PGltZyBzcmM9XCJcL2FwcFwvamF2dVwvVmlld1wvaW1nXC9iYW5uZXIuNjAweDEwMC5qcGdcIiB3aWR0aD1cIjMwMFwiIGhlaWdodD1cIjUwXCI+PFwvYT4ifSx7ImlkIjoianVpY19qX01fMzAweDEwMCIsImFkc3BvdCI6ImpfTV8zMDB4MTAwIiwid2VpZ2h0IjoiNSIsImZjYXAiOmZhbHNlLCJzY2hlZHVsZSI6ZmFsc2UsIm1heFdpZHRoIjoiNzY4IiwibWluV2lkdGgiOmZhbHNlLCJ0aW1lem9uZSI6ZmFsc2UsImV4Y2x1ZGUiOmZhbHNlLCJkb21haW4iOmZhbHNlLCJjb2RlIjoiPGlmcmFtZSBib3JkZXI9MCBmcmFtZWJvcmRlcj0wIG1hcmdpbmhlaWdodD0wIG1hcmdpbndpZHRoPTAgd2lkdGg9MzAwIGhlaWdodD0xMDAgc2Nyb2xsaW5nPW5vIGFsbG93dHJhbnNwYXJlbmN5PXRydWUgc3JjPVwvXC9hZHNlcnZlci5qdWljeWFkcy5jb21cL2Fkc2hvdy5waHA/YWR6b25lPTQ1MTczOT48XC9pZnJhbWU+In0seyJpZCI6Indhdl9qX01fMzAweDEwMCIsImFkc3BvdCI6ImpfTV8zMDB4MTAwIiwid2VpZ2h0IjoiMiIsImZjYXAiOmZhbHNlLCJzY2hlZHVsZSI6ZmFsc2UsIm1heFdpZHRoIjoiNzY4IiwibWluV2lkdGgiOmZhbHNlLCJ0aW1lem9uZSI6ZmFsc2UsImV4Y2x1ZGUiOmZhbHNlLCJkb21haW4iOmZhbHNlLCJjb2RlIjoiPGEgaHJlZj1cImh0dHBzOlwvXC9hdnhvLmNsdWJcL1wiIHRhcmdldD1cIl9ibGFua1wiPjxpbWcgc3JjPVwiXC9hcHBcL3dhdlwvVmlld1wvaW1nXC9iYW5uZXIuNjAweDEwMC5qcGdcIiB3aWR0aD1cIjMwMFwiIGhlaWdodD1cIjUwXCI+PFwvYT4ifV0=</div>
+    </div>
+
+    <h4>演员</h4>
+    <div id="avatar-waterfall">
+        {% for item in actor %}
+        <a class="avatar-box" href="/star/{{item}}">
+            <div class="photo-frame">
+                <img src="#" title="">
+            </div>
+            <span>{{item}}</span>
+        </a>
+        {% endfor %}
+    </div>
+
+    <div class="clearfix"></div>
+    <h4>样品图像</h4>
+    <div id="sample-waterfall">
+         {% for item in img %}
+            <a class="sample-box" href="{{item.1}}" title="{{data.2}}">
+                <div class="photo-frame">
+                    <img src="{{item.0}}">
+                </div>
+            </a>
+         {% endfor %}
+    </div>
+    <div class="clearfix"></div>
+
+    <div class="row visible-xs-block">
+        <div class="col-xs-6 text-center">
+            <a href="https://btso.pw/search/{{data.3}}" class="btn btn-lg btn-primary" target="_blank">
+                <span class="glyphicon glyphicon-save"></span> 下载</a>
+        </div>
+        <div class="col-xs-6 text-center">
+            <a href="https://btso.pw/video/{{data.3}}"
+                class="btn btn-lg btn-warning" target="_blank">
+                <span class="glyphicon glyphicon-play"></span> 播放</a>
+        </div>
+    </div>
+    <div class="hidden-xs">
+        <h4>下载</h4>
+        <div class="row ptb-10 text-center">
+            <a href="https://btso.pw/search/{{data.3}}" target="_blank">
+                <img src="https://javlog.com/app/jav/View/img/download_zh.png">
+            </a>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block pagination %}
+{% endblock %}

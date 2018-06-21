@@ -1,0 +1,124 @@
+<html lang="cn"><head>
+<meta charset="utf-8">
+<meta name="trafficjunky-site-verification" content="445w343y8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta http-equiv="x-dns-prefetch-control" content="on">
+<meta name="renderer" content="webkit">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AV2099 - 塑料袋之歌</title>
+<meta name="author" content="AVMOO">
+<meta name="keywords" content="">
+<meta name="description" content="AVMOO - 你的线上日本成人影片情报站。管理你的影片并分享你的想法。">
+<link rel="shortcut Icon" href="{{url_for('static', filename='favicon.ico')}}">
+<link rel="bookmark" href="{{url_for('static', filename='favicon.ico')}}">
+<link rel="dns-prefetch" href="https://jp.netcdn.space">
+<link rel="stylesheet" type="text/css" href="{{url_for('static', filename='app.min.css')}}">
+</head>
+
+  <body>
+    <nav class="navbar navbar-default navbar-fixed-top top-bar">
+      <div class="container-fluid">
+        <div class="navbar-header">
+        	<a href="/" class="logo"></a>
+        </div>
+
+        <div id="navbar" class="collapse navbar-collapse">
+          <form class="navbar-form navbar-left fullsearch-form" action="/search" onsubmit="return false">
+            <div class="input-group">
+              <input name="keyword" type="text" class="form-control" placeholder="搜寻 识别码, 影片, 演员">
+              <span class="input-group-btn">
+                <button class="btn btn-default" type="submit">搜寻</button>
+              </span>
+            </div>
+          </form>
+          <ul class="nav navbar-nav">
+            <li class="active"><a href="/">全部</a></li>
+			<li><a href="/released">已发布</a></li>
+			
+            <li><a href="/actresses">女优</a></li>
+            <li><a href="/genre">类别</a></li>
+          </ul>
+          
+        </div><!--/.nav-collapse -->
+      </div>
+    </nav>
+<div class="row visible-xs-inline footer-bar">
+    <div class="col-xs-3 text-center">
+        <a id="menu" class="btn btn-default trigger-overlay"><i class="glyphicon glyphicon-align-justify"></i></a>
+    </div>
+        <div class="col-xs-3 text-center">
+            </div>
+    <div class="col-xs-3 text-center">
+                <a id="prev" class="btn btn-default" href="/page/2" style=""><i class="glyphicon glyphicon-chevron-right"></i></a>
+            </div>
+        <div class="col-xs-3 text-center">
+        <a id="back" class="btn btn-default" href="javascript:window.history.back()"><i class="glyphicon glyphicon-share-alt flipx"></i></a>
+    </div>
+</div>
+{% block container %}
+{% endblock %}
+
+{% block pagination %}
+	<div class="text-center hidden-xs mtb-20">
+
+		<ul class="pagination pagination-lg mtb-0">
+            {% if page.left>0 %}
+            <li>
+                <a name="prepage" href="{{pageroot}}/page/{{page.left}}">
+                    <span class="glyphicon glyphicon-chevron-left"></span> 上一页</a>
+            </li>
+            {% endif %}
+            {% for item in page.list %}
+                {% if page.now == item %}
+                    <li class="active">
+                        <a name="numbar" href="{{pageroot}}/page/{{item}}">{{item}}</a>
+                    </li>
+                {% else %}
+                    <li>
+                        <a name="numbar" href="{{pageroot}}/page/{{item}}">{{item}}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+
+             {% if page.right>0 %}
+            <li>
+                <a name="nextpage" href="{{pageroot}}/page/{{page.right}}">
+                    <span class="glyphicon glyphicon-chevron-right"></span> 下一页</a>
+            </li>
+            {% endif %}
+		</ul>
+  </div>
+{% endblock %}
+<footer class="footer hidden-xs">
+	<div class="container-fluid">
+<p><a href="/terms">Terms</a> / <a href="/privacy">Privacy</a> / <a href="/usc">2257</a> / <a href="http://www.rtalabel.org/" target="_blank" rel="external nofollow">RTA</a> / <a href="#advertisingModal" role="button" data-toggle="modal">Advertising</a> / <a class="contactus" href="javascript:;" role="button" data-toggle="modal">Contact</a> / <a href="https://tellme.pw/avmoo" target="_blank">Guide</a> | Links: <a href="https://javlog.com" target="_blank">AVMOO</a> / <a href="https://javfee.com" target="_blank">AVSOX</a> / <a href="https://avxo.pw" target="_blank">AVMEMO</a><br>Copyright © 2013 AVMOO. All Rights Reserved. All other trademarks and copyrights are the property of their respective holders. The reviews and comments expressed at or through this website are the opinions of the individual author and do not reflect the opinions or views of AVMOO. AVMOO is not responsible for the accuracy of any of the information supplied here.</p>
+	</div>
+</footer>
+
+<div class="visible-xs-block footer-bar-placeholder"></div>
+
+<!-- ////////////////////////////////////////////////// -->
+<div class="overlay overlay-contentscale">
+    <nav>
+        <ul>
+            <li>
+            <form class="fullsearch-form" action="/search" onsubmit="return false">
+               <div class="input-group col-xs-offset-2 col-xs-8">
+                  <input name="keyword" type="text" class="form-control" placeholder="搜寻 识别码, 影片, 演员">
+                  <span class="input-group-btn">
+                    <button class="btn btn-default" type="submit">搜寻</button>
+                  </span>
+               </div>
+            </form>
+            </li>
+            <li><a href="/released">已发布</a></li>
+            <li><a href="/popular">热门</a></li>
+            <li><a href="/actresses">女优</a></li>
+            <li><a href="/genre">类别</a></li>
+        </ul>
+    </nav>
+    <div class="row overlay-close"><i class="glyphicon glyphicon-remove" style="color:#fff;font-size: 24px;margin:30px;"></i></div>
+</div>
+<script src="{{url_for('static', filename='app.min.js')}}"></script><!--Modal-->  
+</body>
+</html>
