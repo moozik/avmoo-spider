@@ -59,8 +59,11 @@ def index(keyword = '', pagenum = 1):
         where = '1'
     result = sqliteSelect(
         'linkid,title,av_id,release_date,genre,stars,replace(bigimage,"pl.jpg","ps.jpg") as simage', 'av_list', where, (limit_start, PAGE_LIMIT))
-
-    return render_template('index.html', data=result[0], cdn=CDN_SITE, pageroot='', page=pagination(pagenum, result[1]))
+    if keyword != '':
+        page_root = '/{}/{}'.format('search', keyword)
+    else:
+        page_root = ''
+    return render_template('index.html', data=result[0], cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]))
 
 
 @app.route('/movie/<linkid>')
@@ -116,17 +119,17 @@ def search(keyword='', pagenum = 1):
     if function == 'star':
         where = 'stars like "%{}%"'.format(keyword)
 
-    pageroot = '/{}/{}'.format(function, keyword)
+    page_root = '/{}/{}'.format(function, keyword)
     result = sqliteSelect(
         'linkid,title,av_id,release_date,genre,stars,replace(bigimage,"pl.jpg","ps.jpg") as simage', 'av_list', where, (limit_start, PAGE_LIMIT))
-    return render_template('index.html', data=result[0], cdn=CDN_SITE, pageroot=pageroot, page=pagination(pagenum, result[1]))
+    return render_template('index.html', data=result[0], cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]))
 
 
 def pagination(pagenum, count):
     pagecount = math.ceil(count/PAGE_LIMIT)
     if pagecount<=15:
         p1 = 1
-        p2 = 15
+        p2 = pagecount
     else:
         if pagenum - 7 < 1:
             p1 = 1
@@ -137,7 +140,7 @@ def pagination(pagenum, count):
         else:
             p2 = pagenum + 7
 
-    pagelist = [x for x in range(p1, p2)]
+    pagelist = [x for x in range(p1, p2+1)]
 
     if pagenum != pagecount:
         pageright = pagenum + 1
@@ -169,7 +172,7 @@ def sqliteSelect(column = '*', table = 'av_list', where = '1', limit = (0,30)):
         column, table, where, limit[0], limit[1])
     DB['CUR'].execute(sqltext)
     result = DB['CUR'].fetchall()
-    print('sql:', sqltext)
+    # print('sql:', sqltext)
 
     sqltext = 'select count(1) as count from {} where {}'.format(table, where)
     DB['CUR'].execute(sqltext)
