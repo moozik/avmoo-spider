@@ -2,6 +2,13 @@
 
 # javlog.com番号爬虫
 
+## 打开本地检索页
+
+`pip install flask` 安装flask
+`python flask_avmo.py` 启动本地web
+
+打开http://127.0.0.1:5000 查看
+
 ## 使用方法
 抓取来自javlog.com的信息，并存入数据库，id区间为0000-zzzz
 `get_av_spider.py -i -s 0000 -e 0100`
