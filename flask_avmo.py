@@ -4,6 +4,7 @@ from flask import request
 from flask import redirect
 from flask import url_for
 import sqlite3
+import time
 import re
 import math
 import os
@@ -49,19 +50,23 @@ def index(keyword = '', pagenum = 1):
     if pagenum < 1:
         redirect(url_for('/'))
     limit_start = (pagenum -1) * PAGE_LIMIT
-
-
     keyword = keyword.replace("'",'').replace('"','').strip()
+
     if re.match('[a-zA-Z0-9 \-]{4,14}', keyword):
         where = 'av_id="{}"'.format(keyword.replace(' ', '-').upper())
     elif keyword != '':
-        where = '''
-         title like "%{0}%" or
-         av_id like "%{0}%" or
-         series like "%{0}%" or
-         genre like "%{0}%" or
-         stars like "%{0}%"
-         '''.format(keyword)
+        where = ''
+        key_list = keyword.split(' ')
+        for key_item in key_list:
+            where += '''
+            (title like "%{0}%" or
+            director like "%{0}%" or
+            studio like "%{0}%" or
+            label like "%{0}%" or
+            series like "%{0}%" or
+            genre like "%{0}%" or
+            stars like "%{0}%")and'''.format(key_item)
+        where = where[:-3]
     elif keyword == '':
         where = '1'
     result = sqliteSelect(
@@ -70,8 +75,22 @@ def index(keyword = '', pagenum = 1):
         page_root = '/{}/{}'.format('search', keyword)
     else:
         page_root = ''
-    return render_template('index.html', data=result[0], cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]))
+    return render_template('index.html', data=result[0], cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]), keyword=keyword)
 
+
+@app.route('/released')
+@app.route('/released/page/<int:pagenum>')
+def released(pagenum = 1):
+    if pagenum < 1:
+        redirect(url_for('/'))
+    limit_start = (pagenum - 1) * PAGE_LIMIT
+    date = time.strftime("%Y-%m-%d", time.localtime())
+    where = 'release_date <= "{}"'.format(date)
+    result = sqliteSelect(
+        'linkid,title,av_id,release_date,genre,stars,replace(bigimage,"pl.jpg","ps.jpg") as simage', 'av_list', where, (limit_start, PAGE_LIMIT))
+
+    page_root = '/released'
+    return render_template('index.html', data=result[0], cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]),keyword='已发布 ')
 
 @app.route('/movie/<linkid>')
 def movie(linkid=''):
@@ -99,6 +118,7 @@ def movie(linkid=''):
                 '{}jp-{}.jpg'.format(imgurl, i)
             ))
     return render_template('movie.html', data=result, genre=genre, img=img, actor=actor, cdn=CDN_SITE)
+
 
 
 @app.route('/director/<keyword>')
@@ -142,6 +162,7 @@ def genre():
         data[item[1]].append(item)
     data = list(data.values())
     return render_template('genre.html', data=data, cdn=CDN_SITE)
+
 
 def pagination(pagenum, count):
     pagecount = math.ceil(count/PAGE_LIMIT)
