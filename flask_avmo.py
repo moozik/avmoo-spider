@@ -6,6 +6,7 @@ from flask import url_for
 import sqlite3
 import re
 import math
+import os
 app = Flask(__name__)
 
 #数据库列名
@@ -32,7 +33,7 @@ app = Flask(__name__)
 
 #每页展示的数量
 PAGE_LIMIT = 30
-CDN_SITE = '//jp.netcdn.space/digital/video'
+CDN_SITE = '//jp.netcdn.space'
 
 @app.route('/')
 @app.route('/page/<int:pagenum>')
@@ -85,7 +86,7 @@ def movie(linkid=''):
     img = []
     if result[17] != '0':
         count = int(result[17])
-        imgurl = CDN_SITE + result[16].replace('pl.jpg','')
+        imgurl = CDN_SITE + '/digital/video' + result[16].replace('pl.jpg', '')
         for i in range(1, count+1):
             img.append((
                 '{}-{}.jpg'.format(imgurl, i),
@@ -124,6 +125,17 @@ def search(keyword='', pagenum = 1):
         'linkid,title,av_id,release_date,genre,stars,replace(bigimage,"pl.jpg","ps.jpg") as simage', 'av_list', where, (limit_start, PAGE_LIMIT))
     return render_template('index.html', data=result[0], cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]))
 
+
+@app.route('/genre')
+def genre():
+    result = sqliteSelect('name,title','av_genre',1,(0,500),'')
+    data = {}
+    for item in result[0]:
+        if item[1] not in data:
+            data[item[1]] = []
+        data[item[1]].append(item)
+    data = list(data.values())
+    return render_template('genre.html', data=data, cdn=CDN_SITE)
 
 def pagination(pagenum, count):
     pagecount = math.ceil(count/PAGE_LIMIT)
@@ -166,10 +178,15 @@ def conn(dbfile= 'avmoo.db'):
         'CUR':CUR,
     }
 
-def sqliteSelect(column = '*', table = 'av_list', where = '1', limit = (0,30)):
+
+def sqliteSelect(column='*', table='av_list', where='1', limit=(0, 30), order='id desc'):
     #db = conn()
-    sqltext = 'select {},id from {} where {} order by id desc limit {},{}'.format(
-        column, table, where, limit[0], limit[1])
+    if order.strip() == '':
+        order = ''
+    else:
+        order = 'order by ' + order
+    sqltext = 'select {},id from {} where {} {} limit {},{}'.format(
+        column, table, where, order, limit[0], limit[1])
     DB['CUR'].execute(sqltext)
     result = DB['CUR'].fetchall()
     # print('sql:', sqltext)
