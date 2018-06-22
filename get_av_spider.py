@@ -9,17 +9,21 @@ import re
 from lxml import etree
 
 '''
+未启用的两个函数
 data_check()
 按照主表检查缺少数据，时间非常长，需手动配置
 test_page() 输出单页数据
-replace_genre() 输出所有类别
-未启用的两个函数
+
+
 图片服务器：
 https://jp.netcdn.space/digital/video/miae00056/miae00056jp-10.jpg
 https://pics.dmm.co.jp/digital/video/miae00056/miae00056jp-10.jpg
 https://pics.dmm.com/digital/video/miae00056/miae00056jp-10.jpg
 小封面：
+https://jp.netcdn.space/digital/video/miae00056/miae00056ps.jpg
 https://pics.javbus.info/thumb/{{linkid}}.jpg
+大封面:
+https://jp.netcdn.space/digital/video/miae00056/miae00056pl.jpg
 '''
 
 class avmo:
@@ -38,30 +42,21 @@ class avmo:
         self.config()
 
 
-
         #================测试区间================
         '''
+        #重试缺失地址
         self.flag_insert = True
         self.conn()
-        #清算失败地址，里面还有些能访问的
-        self.retry_errorurl()
-        #重试失败地址
-        # self.retry_errorurl()
-        #测试单个页面
-        # self.test_page('')
-        #检测遗漏项
-        # self.flag_check = True
         # self.data_check()
         exit()
         '''
 
-        
         #================读取参数================
         try:
             opts, args = getopt.getopt(
                 sys.argv[1:],
-                "his:e:arp:",
-                ['help', 'insert', 'start', 'end', 'auto', 'retry', 'proxies']
+                "his:e:arp:g",
+                ['help', 'insert', 'start', 'end', 'auto', 'retry', 'proxies', 'genre']
             )
         except:
             self.usage()
@@ -79,7 +74,6 @@ class avmo:
 
             elif op == '-a' or op == '-auto':
                 self.auto = True
-                #self.flag_insert = True
 
             elif op == '-r' or op == '-retry':
                 self.flag_insert = True
@@ -89,6 +83,11 @@ class avmo:
 
             elif op == '-h' or op == '-help':
                 self.usage()
+                sys.exit()
+            elif op == '-g' or op == '-genre':
+                self.flag_insert = True
+                self.conn()
+                self.genre_update()
                 sys.exit()
             elif op == '-p' or op == '-proxies':
                 self.proxies = {
@@ -124,11 +123,14 @@ class avmo:
         #遍历linkid
         self.sl = '0123456789abcdefghijklmnopqrstuvwxyz'
         #获取sl的字典列表dl
-        self.relist()
+        self.dl = {}
+        for item in range(self.sl.__len__()):
+            self.dl[self.sl[item]] = item
         #表结构
         self.column = ['id', 'linkid', 'director', 'director_url', 'studio',
         'studio_url', 'label', 'label_url', 'series', 'series_url', 'image_len',
         'genre', 'len', 'stars', 'av_id', 'title', 'bigimage', 'release_date']
+
         #表结构str
         self.column_str = ",".join(self.column)
         #插入阈值
@@ -159,10 +161,12 @@ class avmo:
         self.auto = False
 
         #主表
-        self.main_table = 'av_list'
+        self.table_main = 'av_list'
         #重试表
-        self.retry_table = 'av_error_linkid'
+        self.table_retry = 'av_error_linkid'
 
+        self.table_genre = 'av_genre'
+        
         #站点url
         self.site_url = 'https://{0}/cn'.format(self.site)
 
@@ -196,7 +200,7 @@ class avmo:
                 self.usage()
                 sys.exit()
             try:
-                self.CUR.execute('select count(1) from ' + self.main_table)
+                self.CUR.execute('select count(1) from ' + self.table_main)
             except:
                 self.CUR.execute('''
                 CREATE TABLE "av_list" (
@@ -219,9 +223,9 @@ class avmo:
                 "bigimage"  TEXT(200),
                 "image_len"  INTEGER,
                 PRIMARY KEY ("linkid")
-                ); '''.replace("av_list", self.main_table))
+                ); '''.replace("av_list", self.table_main))
             try:
-                self.CUR.execute('select count(1) from ' + self.retry_table)
+                self.CUR.execute('select count(1) from ' + self.table_retry)
             except:
                 self.CUR.execute('''
                 CREATE TABLE "av_error_linkid" (
@@ -229,7 +233,7 @@ class avmo:
                 "status_code"  INTEGER,
                 "datetime"  TEXT(50),
                 PRIMARY KEY ("linkid")
-                ); '''.replace("av_error_linkid", self.retry_table))
+                ); '''.replace("av_error_linkid", self.table_retry))
 
     #写出命令行格式
     def usage(self):
@@ -244,6 +248,7 @@ class avmo:
         print('-s(-start):开始id(0000,1ddd,36wq)')
         print('-e(-end):结束id(0000,1ddd,36wq)')
         print('-a(-auto):获取当前最新的一个id和网站最新的一个id，补全新增数据')
+        print('-g(-genre):更新av_genre类别表')
         print('-p(-proxies):使用指定的https代理服务器或SOCKS5代理服务器。例如：-p https://127.0.0.1:1080,-p socks5://127.0.0.1:52772')
 
     #主函数，抓取页面内信息
@@ -279,13 +284,13 @@ class avmo:
             #解析页面内容
             data = self.movie_page_data(html)
             #从linkid获取id
-            id = self.linkid2id(item)
+            id_column = self.linkid2id(item)
             #输出当前进度
-            print(data[12].ljust(30), data[15].ljust(11), item.ljust(5), id)
+            print(data[12].ljust(30), data[15].ljust(11), item.ljust(5), id_column)
 
             if self.flag_insert:
                 self.insert_list.append(
-                    "'{0}','{1}','{2}'".format(id, item, "','".join(data))
+                    "'{0}','{1}','{2}'".format(id_column, item, "','".join(data))
                 )
                 #存储数据
                 if self.insert_list.__len__() == self.insert_threshold:
@@ -293,7 +298,7 @@ class avmo:
 
     #获取最后一次的id
     def get_last(self):
-        sql = "SELECT linkid FROM {0} ORDER BY linkid DESC LIMIT 0,1".format(self.main_table)
+        sql = "SELECT linkid FROM {0} ORDER BY linkid DESC LIMIT 0,1".format(self.table_main)
         self.CUR.execute(sql)
         res = self.CUR.fetchall()
         self.start_id = res[0][0]
@@ -301,6 +306,9 @@ class avmo:
             response = self.s.get(self.site_url)
         except:
             print('访问超时')
+            exit()
+        if response.status_code != 200:
+            print('页面返回错误')
             exit()
         html = etree.HTML(response.text)
         self.stop_id = html.xpath('//*[@id="waterfall"]/div[1]/a')[0].attrib.get('href')[-4:]
@@ -311,7 +319,7 @@ class avmo:
         if self.flag_insert:
             self.CUR.execute("REPLACE INTO {0}(linkid, status_code, datetime)VALUES('{1[0]}', {1[1]}, '{2}');"
                 .format(
-                    self.retry_table,
+                    self.table_retry,
                     data,
                     time.strftime(
                         "%Y-%m-%d %H:%M:%S",
@@ -349,7 +357,7 @@ class avmo:
             return
 
         if self.flag_insert == True:
-            self.replace_sql(self.main_table, self.column_str, "),(".join(self.insert_list))
+            self.replace_sql(self.table_main, self.column_str, "),(".join(self.insert_list))
 
         print('rows:', self.insert_list.__len__(), 'retry_counter:', self.retry_counter)
         self.insert_list = []
@@ -367,24 +375,35 @@ class avmo:
     
     #重试
     def retry_errorurl(self):
-        self.CUR.execute("SELECT * FROM {0} WHERE status_code<>'404' ORDER BY linkid;".format(self.retry_table))
+        self.CUR.execute("SELECT * FROM {0} WHERE status_code<>'404' ORDER BY linkid;".format(self.table_retry))
         res = self.CUR.fetchall()
         reslen = res.__len__()
         if reslen == 0:
             return
         print('retry error url count:', reslen)
 
-        dellist = []
+        del_list = []
         update_list = []
 
+        def update_sql(update_list):
+            time_now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+            sql = "REPLACE INTO {0}(linkid, status_code, datetime)VALUES({1});".format(
+            self.table_retry, "),(".join(["'{0[0]}',{0[1]},'{1}'".format(x, time_now) for x in update_list]))
+            self.CUR.execute(sql)
+            self.CONN.commit()
+        
+        def delete_sql(del_list):
+            sql = 'DELETE FROM {0} WHERE {1};'.format(
+                self.table_retry, ' OR '.join([" linkid='{0}' ".format(x) for x in del_list]))
+            self.CUR.execute(sql)
+            self.CONN.commit()
+        
         for item in res:
             reslen -= 1
 
             #统一更新表，提高效率
             if len(update_list) == 20:
-                time_now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-                self.CUR.execute("REPLACE INTO {0}(linkid, status_code, datetime)VALUES({1});".format(self.retry_table, "),(".join(["'{0[0]}',{0[1]},'{1}'".format(x, time_now) for x in update_list]) ))
-                self.CONN.commit()
+                update_sql(update_list)
                 update_list = []
                 print('some status_code update done.')
 
@@ -396,47 +415,37 @@ class avmo:
                 # 重写重试记录
                 if response.status_code == 404:
                     update_list.append((item[0], 404))
-                print(reslen, item[0], 'fail_1', response.status_code)
+                print(reslen, item[0], 'status_code:404')
                 continue
 
             if response.status_code != 200:
                 # 重写重试记录
                 update_list.append((item[0], response.status_code))
-                print(reslen, item[0], 'fail_2', response.status_code)
+                print(reslen, item[0], 'status_code:{}'.format(response.status_code))
                 continue
             print(reslen, item[0], 'success')
             data = self.movie_page_data(html)
             id = self.linkid2id(item[0])
             self.insert_list.append("'{0}','{1}','{2}'".format(id, item[0], "','".join(data)))
-            dellist.append(item[0])
+            del_list.append(item[0])
 
             #存储数据
             if len(self.insert_list) == self.insert_threshold:
                 #插入数据
                 print(self.insert_threshold, 'insert.')
-                self.replace_sql(self.main_table, self.column_str, "),(".join(self.insert_list))
-                if dellist != []:
-                    self.CUR.execute('DELETE FROM {0} WHERE {1};'.format(self.retry_table, ' OR '.join([" linkid='{0}' ".format(x) for x in dellist])))
-                    self.CONN.commit()
-                    dellist = []
+                self.replace_sql(self.table_main, self.column_str, "),(".join(self.insert_list))
+                if del_list != []:
+                    delete_sql(del_list)
+                    del_list = []
         #插入数据
         if len(self.insert_list) != 0:
-            self.replace_sql(self.main_table, self.column_str, "),(".join(self.insert_list))
+            self.replace_sql(self.table_main, self.column_str, "),(".join(self.insert_list))
         #删除数据
-        if len(dellist) != 0:
-            self.CUR.execute('DELETE FROM {0} WHERE {1};'.format(self.retry_table, ' OR '.join([" linkid='{0}' ".format(x) for x in dellist])))
-            self.CONN.commit()
+        if len(del_list) != 0:
+            delete_sql(del_list)
         #更新数据
         if len(update_list) != 0:
-            time_now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-            self.CUR.execute("REPLACE INTO {0}(linkid, status_code, datetime)VALUES({1});".format(self.retry_table, "),(".join(["'{0[0]}',{0[1]},'{1}'".format(x, time_now) for x in update_list]) ))
-            self.CONN.commit()
-
-    #获取idlist的字典
-    def relist(self):
-        self.dl = {}
-        for item in range(self.sl.__len__()):
-            self.dl[self.sl[item]] = item
+            update_sql(update_list)
 
     def movie_page_data(self, html):
         data = ['' for x in range(16)]
@@ -490,10 +499,9 @@ class avmo:
     #检查被遗漏的页面，并插入数据库
     #按照linkid的顺序检查漏掉的番号，并不是从重试表检索
     def data_check(self):
-        self.CUR.execute("SELECT linkid FROM {0} WHERE 1 ORDER BY linkid;".format(self.main_table))
+        self.CUR.execute("SELECT linkid FROM {0} WHERE 1 ORDER BY linkid;".format(self.table_main))
         res = self.CUR.fetchall()
-        
-        res_index = 0
+
         res_list = [x[0] for x in res]
         res_min = res_list[0]
         res_max = res_list[res.__len__()-1]
@@ -504,37 +512,60 @@ class avmo:
                 for i3 in self.sl:
                     for i4 in self.sl:
                         tmp = i1+i2+i3+i4
-                        if tmp < res_min:
+                        if tmp <= res_min:
                             continue
-                        if tmp > res_max:
+                        if tmp >= res_max:
                             break
 
-                        if tmp == res_list[res_index]:
-                            res_index += 1
+                        if tmp in res_list:
                             continue
                         else:
                             miss_list.append(tmp)
                             continue
 
         print('miss count:', miss_list.__len__())
-        self.CUR.execute('DELETE FROM "{0}";'.format(self.retry_table))
+        print('需要遍历请手动修改代码')
+        return
+        self.CUR.execute('DELETE FROM "{0}";'.format(self.table_retry))
         self.CONN.commit()
         if miss_list.__len__() != 0:
             for item in miss_list:
-                self.CUR.execute('INSERT INTO "{0}" ("linkid") VALUES ("{1}");'.format(self.retry_table, item))
+                self.CUR.execute('INSERT INTO "{0}" ("linkid") VALUES ("{1}");'.format(self.table_retry, item))
             self.CONN.commit()
         else:
             print("miss_linkid no fond")
             return
 
         #重试错误链接并插入数据库
-        self.CUR.execute('SELECT linkid FROM "{0}" ORDER BY linkid;'.format(self.retry_table))
+        self.CUR.execute('SELECT linkid FROM "{0}" ORDER BY linkid;'.format(self.table_retry))
         res = self.CUR.fetchall()
         self.linkid_list = [x[0] for x in res]
         self.flag_check = True
         self.main()
         #插入剩余的数据
         self.insert_mysql()
+
+    #获取所有类别
+    def genre_update(self):
+        html = etree.HTML(self.s.get(self.genre_url).text)
+        insert_list = []
+        h4 = html.xpath('/html/body/div[2]/h4/text()')
+        div = html.xpath('/html/body/div[2]/div')
+        for div_item in range(div.__len__()):
+            g_title = h4[div_item]
+            a_list = div[div_item].xpath('a')
+            for a_item in a_list:
+                if a_item.text == None:
+                    continue
+                g_name = a_item.text#.replace('・','')
+                g_id = a_item.attrib.get('href').replace(self.genre_url,'')
+                insert_list.append("'{0}','{1}','{2}'".format(g_id,g_name,g_title))
+        
+        sql = "REPLACE INTO {} (id,name,title)VALUES({});".format(self.table_genre, "),(".join(insert_list))
+        self.CUR.execute(sql)
+        self.CONN.commit()
+        print('本次更新类别：{}条'.format(len(insert_list)))
+    
     #测试单个页面
     def test_page(self, linkid):
         url = self.movie_url+linkid
@@ -543,22 +574,6 @@ class avmo:
         data = self.movie_page_data(etree.HTML(res))
         print(data)
 
-    #获取所有类别
-    def replace_genre(self):
-        html = etree.HTML(self.s.get(self.genre_url).text)
-        insert_list = []
-        h4 = html.xpath('/html/body/div[2]/h4/text()')
-        div = html.xpath('/html/body/div[2]/div')
-        for item in range(div.__len__()):
-            g_title = h4[item]
-            a = div[item].xpath('a')
-            for item2 in a:
-                g_name = item2.text.replace('・','')
-                g_id = item2.attrib.get('href')[25:]
-                insert_list.append("'{0}','{1}','{2}'".format(g_id,g_name,g_title))
-        sql = "REPLACE INTO avmo_genre (g_id,g_name,g_title)VALUES({0});".format("),(".join(insert_list))
-        self.CUR.execute(sql)
-        self.CONN.commit()
 
 if __name__ == '__main__':
     avmo()
