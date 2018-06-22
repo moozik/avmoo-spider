@@ -129,7 +129,7 @@ def search(keyword='', pagenum = 1):
     page_root = '/{}/{}'.format(function, keyword)
     result = sqliteSelect(
         'linkid,title,av_id,release_date,genre,stars,replace(bigimage,"pl.jpg","ps.jpg") as simage', 'av_list', where, (limit_start, PAGE_LIMIT))
-    return render_template('index.html', data=result[0], cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]))
+    return render_template('index.html', data=result[0], cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]), keyword=keyword)
 
 
 @app.route('/genre')
