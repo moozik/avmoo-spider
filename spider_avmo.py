@@ -106,7 +106,7 @@ class avmo:
             self.get_last()
 
         #主程序
-        self.main()
+        self.main(self.get_linkid())
 
     #销毁
     def __del__(self):
@@ -121,11 +121,11 @@ class avmo:
         #待insert数据
         self.insert_list = []
         #遍历linkid
-        self.sl = '0123456789abcdefghijklmnopqrstuvwxyz'
+        self.abc_sequence = '0123456789abcdefghijklmnopqrstuvwxyz'
         #获取sl的字典列表dl
         self.dl = {}
-        for item in range(self.sl.__len__()):
-            self.dl[self.sl[item]] = item
+        for item in range(len(self.abc_sequence)):
+            self.dl[self.abc_sequence[item]] = item
         #表结构
         self.column = ['id', 'linkid', 'director', 'director_url', 'studio',
         'studio_url', 'label', 'label_url', 'series', 'series_url', 'image_len',
@@ -149,9 +149,6 @@ class avmo:
         self.flag_insert = False
         #是否重试
         self.flag_retry = True
-
-        #是否启用data_check()
-        self.flag_check = False
 
         #开始id
         self.start_id = '0000'
@@ -252,13 +249,8 @@ class avmo:
         print('-p(-proxies):使用指定的https代理服务器或SOCKS5代理服务器。例如：-p https://127.0.0.1:1080,-p socks5://127.0.0.1:52772')
 
     #主函数，抓取页面内信息
-    def main(self):
-        if self.flag_check:
-            nowlist = self.linkid_list
-        else:
-            nowlist = self.get_linkid()
-
-        for item in nowlist:
+    def main(self, looplist):
+        for item in looplist:
             url = self.movie_url+item
             time.sleep(self.main_sleep)
             try:
@@ -293,7 +285,7 @@ class avmo:
                     "'{0}','{1}','{2}'".format(id_column, item, "','".join(data))
                 )
                 #存储数据
-                if self.insert_list.__len__() == self.insert_threshold:
+                if len(self.insert_list) == self.insert_threshold:
                     self.insert_mysql()
 
     #获取最后一次的id
@@ -331,35 +323,41 @@ class avmo:
 
     #遍历urlid
     def get_linkid(self):
-        for i1 in self.sl:
-            for i2 in self.sl:
-                for i3 in self.sl:
-                    for i4 in self.sl:
+        '''
+        for i1 in self.abc_sequence:
+            for i2 in self.abc_sequence:
+                for i3 in self.abc_sequence:
+                    for i4 in self.abc_sequence:
                         tmp = i1 + i2 + i3 + i4
-                        if tmp > self.stop_id:
-                            print('start:{0} end:{1} done!'.format(self.start_id, self.stop_id))
-                            #插入剩余的数据
-                            self.insert_mysql()
-                            #重试错误数据
-                            self.retry_errorurl()
-                            exit()
-                        if self.start_id < tmp:
-                            yield tmp
-                        else:
-                            continue
+        '''
+        for abcd in self.abc_map():
+            if abcd < self.start_id:
+                continue
+            
+            if self.start_id <= abcd <= self.stop_id:
+                yield abcd
+            
+            if abcd > self.stop_id:
+                print('start:{0} end:{1} done!'.format(self.start_id, self.stop_id))
+                #插入剩余的数据
+                self.insert_mysql()
+                #重试错误数据
+                self.retry_errorurl()
+                exit()
+
     #由urlid获取排序自增id
     def linkid2id(self, item):
         return self.dl[item[3]] + self.dl[item[2]]*36 + self.dl[item[1]]*1296 + self.dl[item[0]]*46656
 
     #插入数据库
     def insert_mysql(self):
-        if self.insert_list.__len__() == 0:
+        if len(self.insert_list) == 0:
             return
 
         if self.flag_insert == True:
             self.replace_sql(self.table_main, self.column_str, "),(".join(self.insert_list))
 
-        print('rows:', self.insert_list.__len__(), 'retry_counter:', self.retry_counter)
+        print('rows:', len(self.insert_list), 'retry_counter:', self.retry_counter)
         self.insert_list = []
         self.retry_counter += 1
 
@@ -376,8 +374,8 @@ class avmo:
     #重试
     def retry_errorurl(self):
         self.CUR.execute("SELECT * FROM {0} WHERE status_code<>'404' ORDER BY linkid;".format(self.table_retry))
-        res = self.CUR.fetchall()
-        reslen = res.__len__()
+        res_retry = self.CUR.fetchall()
+        reslen = len(res_retry)
         if reslen == 0:
             return
         print('retry error url count:', reslen)
@@ -398,7 +396,8 @@ class avmo:
             self.CUR.execute(sql)
             self.CONN.commit()
         
-        for item in res:
+        for item in res_retry:
+            retry_linkid = item[0]
             reslen -= 1
 
             #统一更新表，提高效率
@@ -407,27 +406,27 @@ class avmo:
                 update_list = []
                 print('some status_code update done.')
 
-            url = self.movie_url + item[0]
+            url = self.movie_url + retry_linkid
             try:
                 response = self.s.get(url)
                 html = etree.HTML(response.text)
             except:
                 # 重写重试记录
                 if response.status_code == 404:
-                    update_list.append((item[0], 404))
-                print(reslen, item[0], 'status_code:404')
+                    update_list.append((retry_linkid, 404))
+                print(reslen, retry_linkid, 'status_code:404')
                 continue
 
             if response.status_code != 200:
                 # 重写重试记录
-                update_list.append((item[0], response.status_code))
-                print(reslen, item[0], 'status_code:{}'.format(response.status_code))
+                update_list.append((retry_linkid, response.status_code))
+                print(reslen, retry_linkid, 'status_code:{}'.format(response.status_code))
                 continue
-            print(reslen, item[0], 'success')
+            print(reslen, retry_linkid, 'success')
             data = self.movie_page_data(html)
-            id = self.linkid2id(item[0])
-            self.insert_list.append("'{0}','{1}','{2}'".format(id, item[0], "','".join(data)))
-            del_list.append(item[0])
+            id = self.linkid2id(retry_linkid)
+            self.insert_list.append("'{0}','{1}','{2}'".format(id, retry_linkid, "','".join(data)))
+            del_list.append(retry_linkid)
 
             #存储数据
             if len(self.insert_list) == self.insert_threshold:
@@ -455,47 +454,57 @@ class avmo:
         except:
             return data
         #获取：导演、制作商、发行商、系列
-        info = html.xpath('/html/body/div[2]/div[1]/div[2]/p/a')
-        for i in info:
+        right_info = html.xpath('/html/body/div[2]/div[1]/div[2]/p/a')
+        for i in right_info:
             if i.text == None:
                 continue
-            if self.director in i.attrib.get('href'):
+            tmp_text = i.text.replace("'", '"')
+            tmp_href = i.attrib.get('href')
+
+            if self.director in tmp_href:
                 #导演
-                data[0] = i.text.replace("'", '"')
-                data[1] = i.attrib.get('href').replace(self.director, '')
-            elif self.studio in i.attrib.get('href'):
+                data[0] = tmp_text
+                data[1] = tmp_href.replace(self.director, '')
+            elif self.studio in tmp_href:
                 #制作商
-                data[2] = i.text.replace("'", '"')
-                data[3] = i.attrib.get('href').replace(self.studio, '')
-            elif self.label in i.attrib.get('href'):
+                data[2] = tmp_text
+                data[3] = tmp_href.replace(self.studio, '')
+            elif self.label in tmp_href:
                 #发行商
-                data[4] = i.text.replace("'", '"')
-                data[5] = i.attrib.get('href').replace(self.label, '')
-            elif self.series in i.attrib.get('href'):
+                data[4] = tmp_text
+                data[5] = tmp_href.replace(self.label, '')
+            elif self.series in tmp_href:
                 #系列
-                data[6] = i.text.replace("'", '"')
-                data[7] = i.attrib.get('href').replace(self.series, '')
+                data[6] = tmp_text
+                data[7] = tmp_href.replace(self.series, '')
 
         #图片个数image_len
-        data[8] = str(html.xpath('//*[@id="sample-waterfall"]/a').__len__())
+        data[8] = str(len(html.xpath('//*[@id="sample-waterfall"]/a')))
         #获取类别列表genre
         data[9] = '|'.join(html.xpath('/html/body/div[2]/div[1]/div[2]/p/span/a/text()')).replace("'", '"')
         #时长len
-        tmp = html.xpath('/html/body/div[2]/div[1]/div[2]/p[3]/text()')
-        if tmp.__len__() != 0 and '分钟' in tmp[0]:
-            data[10] = tmp[0].replace('分钟', '').strip()
+        lentext = html.xpath('/html/body/div[2]/div[1]/div[2]/p[3]/text()')
+        if len(lentext) != 0 and '分钟' in lentext[0]:
+            data[10] = lentext[0].replace('分钟', '').strip()
         else:
             data[10] = '0'
         #演员stars
         data[11] = '|'.join(html.xpath('//*[@id="avatar-waterfall"]/a/span/text()')).replace("'", '"')
 
         #接取除了番号的标题
-        data[13] = html.xpath('/html/body/div[2]/h3/text()')[0][data[12].__len__()+1:].replace("'", '"')
+        data[13] = html.xpath('/html/body/div[2]/h3/text()')[0][len(data[12]) + 1:].replace("'", '"')
         #封面 截取域名之后的部分
         data[14] = '/' + html.xpath('/html/body/div[2]/div[1]/div[1]/a/img/@src')[0].split('/',5)[5]
         #发行时间
         data[15] = html.xpath('/html/body/div[2]/div[1]/div[2]/p[2]/text()')[0].strip()
         return data
+    def abc_map(self):
+        for i1 in self.abc_sequence:
+            for i2 in self.abc_sequence:
+                for i3 in self.abc_sequence:
+                    for i4 in self.abc_sequence:
+                        yield (i1 + i2 + i3 + i4)
+    
     #检查被遗漏的页面，并插入数据库
     #按照linkid的顺序检查漏掉的番号，并不是从重试表检索
     def data_check(self):
@@ -504,13 +513,13 @@ class avmo:
 
         res_list = [x[0] for x in res]
         res_min = res_list[0]
-        res_max = res_list[res.__len__()-1]
+        res_max = res_list[len(res)-1]
         miss_list = []
-
-        for i1 in self.sl:
-            for i2 in self.sl:
-                for i3 in self.sl:
-                    for i4 in self.sl:
+        '''
+        for i1 in self.abc_sequence:
+            for i2 in self.abc_sequence:
+                for i3 in self.abc_sequence:
+                    for i4 in self.abc_sequence:
                         tmp = i1+i2+i3+i4
                         if tmp <= res_min:
                             continue
@@ -522,13 +531,25 @@ class avmo:
                         else:
                             miss_list.append(tmp)
                             continue
+        '''
+        for abcd in self.abc_map():
+            if abcd <= res_min:
+                continue
+            if abcd >= res_max:
+                break
 
-        print('miss count:', miss_list.__len__())
+            if abcd in res_list:
+                continue
+            else:
+                miss_list.append(abcd)
+                continue
+
+        print('miss count:', len(miss_list))
         print('需要遍历请手动修改代码')
-        return
+        exit()
         self.CUR.execute('DELETE FROM "{0}";'.format(self.table_retry))
         self.CONN.commit()
-        if miss_list.__len__() != 0:
+        if len(miss_list) != 0:
             for item in miss_list:
                 self.CUR.execute('INSERT INTO "{0}" ("linkid") VALUES ("{1}");'.format(self.table_retry, item))
             self.CONN.commit()
@@ -539,9 +560,7 @@ class avmo:
         #重试错误链接并插入数据库
         self.CUR.execute('SELECT linkid FROM "{0}" ORDER BY linkid;'.format(self.table_retry))
         res = self.CUR.fetchall()
-        self.linkid_list = [x[0] for x in res]
-        self.flag_check = True
-        self.main()
+        self.main([x[0] for x in res])
         #插入剩余的数据
         self.insert_mysql()
 
@@ -551,7 +570,7 @@ class avmo:
         insert_list = []
         h4 = html.xpath('/html/body/div[2]/h4/text()')
         div = html.xpath('/html/body/div[2]/div')
-        for div_item in range(div.__len__()):
+        for div_item in range(len(div)):
             g_title = h4[div_item]
             a_list = div[div_item].xpath('a')
             for a_item in a_list:
@@ -568,7 +587,7 @@ class avmo:
     
     #测试单个页面
     def test_page(self, linkid):
-        url = self.movie_url+linkid
+        url = self.movie_url + linkid
         res = self.s.get(url).text
         #解析页面内容
         data = self.movie_page_data(etree.HTML(res))

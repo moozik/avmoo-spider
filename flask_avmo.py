@@ -39,7 +39,7 @@ CDN_SITE = '//jp.netcdn.space'
 
 @app.route('/spider')
 def spider():
-    os.popen('python get_av_spider.py -i -a')
+    os.popen('python spider_avmo.py -i -a')
     return '正在更新'
 
 @app.route('/')
