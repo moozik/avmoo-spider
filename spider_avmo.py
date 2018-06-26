@@ -6,6 +6,7 @@ import getopt
 import requests
 import sqlite3
 import re
+import os
 from lxml import etree
 
 '''
@@ -36,7 +37,10 @@ class avmo:
         self.site = 'javlog.com'
 
         #sqlite数据库地址
-        self.sqlite_file = 'avmoo.db'
+        if os.path.exists('avmoo_.db'):
+            self.sqlite_file = 'avmoo_.db'
+        else:
+            self.sqlite_file = 'avmoo.db'
         
         #其他配置初始化
         self.config()
@@ -261,9 +265,6 @@ class avmo:
                     continue
             except:
                 print(url, 'requests.get error')
-                #超过一定时间就退出
-                if time.time() > 1520632800:
-                    exit()
                 self.insert_retry((item, 777))
                 continue
             try:

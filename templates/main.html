@@ -35,12 +35,41 @@
               <!--  class="active" -->
             <li><a href="/">全部</a></li>
 			<li><a href="/released">已发布</a></li>
-			
-            <li><a href="/actresses">女优</a></li>
+            <!-- <li><a href="/actresses">女优</a></li> -->
             <li><a href="/genre">类别</a></li>
-            <li><a href="/spider" target="_blank">更新数据</a></li>
           </ul>
-          
+
+        <ul class="nav navbar-nav navbar-right">
+            <li class="dropdown">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+                    <span class="glyphicon glyphicon-star" style="font-size:12px;"></span>
+                    <span class="hidden-sm">收藏列表</span>
+                    <span class="caret"></span>
+                </a>
+                <ul class="dropdown-menu" role="menu">
+                    <li>
+                        <a href="/like/movie">影片</a>
+                    </li>
+                    <li>
+                        <a href="/like/stars">明星</a>
+                    </li>
+                    <li>
+                        <a href="/like/series">系列</a>
+                    </li>
+                    <li>
+                        <a href="/like/director">导演</a>
+                    </li>
+                    </li>
+                    <li>
+                        <a href="/like/studio">制作</a>
+                    </li>
+                    </li>
+                    <li>
+                        <a href="/like/label">发行</a>
+                    </li>
+                </ul>
+            </li>
+        </ul>
         </div><!--/.nav-collapse -->
       </div>
     </nav>
@@ -121,6 +150,7 @@
     </nav>
     <div class="row overlay-close"><i class="glyphicon glyphicon-remove" style="color:#fff;font-size: 24px;margin:30px;"></i></div>
 </div>
-<script src="{{url_for('static', filename='app.min.js')}}"></script><!--Modal-->  
+<script src="{{url_for('static', filename='app.min.js')}}"></script>
+{% block javascript %} {% endblock %}
 </body>
 </html>

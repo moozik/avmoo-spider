@@ -1,0 +1,23 @@
+{% extends "main.html" %}
+
+{% block title %} 我喜欢的{{type_nick}} - {% endblock %}
+{% block keyword %}{% endblock %}
+{% block container %}
+<div class="container-fluid">
+    <div class="row">
+        <div id="avatar-waterfall" style="margin: 70px 70px;">
+        {% for item in data %}
+            <a data-type="stars" data-val="{{item.0}}" class="avatar-box like" href="/stars/{{item.0}}">
+                <!--<div class="photo-frame">
+                        <img src="#" title="">
+                    </div>-->
+                <span>{{item.0}}</span>
+            </a>
+        {% endfor %}
+        </div>
+	</div>
+</div>
+{% endblock %}
+
+{% block pagination %}
+{% endblock %}
