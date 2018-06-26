@@ -104,9 +104,15 @@ def movie(linkid=''):
         '*', 'av_list', where, (0, 1))[0][0]
     
     #系列
-    genre = result[10].split('|')
+    if result[10]:
+        genre = result[10].split('|')
+    else:
+        genre = ''
     #演员
-    actor = result[11].split('|')
+    if result[11]:
+        actor = result[11].split('|')
+    else:
+        actor = ''
     #图片
     img = []
     if result[17] != '0':
@@ -117,6 +123,8 @@ def movie(linkid=''):
                 '{}-{}.jpg'.format(imgurl, i),
                 '{}jp-{}.jpg'.format(imgurl, i)
             ))
+    else:
+        img = ''
     return render_template('movie.html', data=result, genre=genre, img=img, actor=actor, cdn=CDN_SITE)
 
 

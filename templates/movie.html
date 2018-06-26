@@ -12,28 +12,43 @@
         <div class="col-md-3 info">
             <p>
                 <span class="header">识别码:</span>
-                <span style="color:#CC0000;">{{data.3}}</span>
+                <span class="like" data-type="av_id" data-val="{{data.3}}" style="color:#CC0000;">{{data.3}}</span>
             </p>
-            <p>
-                <span class="header">发行时间:</span> {{data.4}}</p>
-            <p>
-                <span class="header">长度:</span> {{data.5}}分钟</p>
-            <p>
-                <span class="header">导演:</span>
-                <a href="/director/{{data.12}}">{{data.6}}</a>
-            </p>
-            <p class="header">制作商: </p>
-            <p>
-                <a href="/studio/{{data.13}}">{{data.7}}</a>
-            </p>
-            <p class="header">发行商: </p>
-            <p>
-                <a href="/label/{{data.14}}">{{data.8}}</a>
-            </p>
-            <p class="header">系列:</p>
-            <p>
-                <a href="/series/{{data.15}}">{{data.9}}</a>
-            </p>
+            {% if data.4 %}
+                <p>
+                    <span class="header">发行时间:</span> {{data.4}}
+                </p>
+            {% endif %}
+            {% if data.5 %}
+                <p>
+                    <span class="header">长度:</span> {{data.5}}分钟
+                </p>
+            {% endif %}
+            {% if data.12 %}
+                <p>
+                    <span class="header">导演:</span>
+                    <a class="like" data-type="director" data-val="{{data.12}}" href="/director/{{data.12}}">{{data.6}}</a>
+                </p>
+            {% endif %}
+            {% if data.13 %}
+                <p class="header">制作商: </p>
+                <p>
+                    <a class="like" data-type="studio" data-val="{{data.13}}" href="/studio/{{data.13}}">{{data.7}}</a>
+                </p>
+            {% endif %}
+            {% if data.14 %}
+                <p class="header">发行商: </p>
+                <p>
+                    <a class="like" data-type="label" data-val="{{data.14}}" href="/label/{{data.14}}">{{data.8}}</a>
+                </p>
+            {% endif %}
+            {% if data.15 %}
+                <p class="header">系列:</p>
+                <p>
+                    <a class="like" data-type="series" data-val="{{data.15}}" href="/series/{{data.15}}">{{data.9}}</a>
+                </p>
+            {% endif %}
+            {% if genre %}
             <p class="header">类别:</p>
             <p>
                  {% for item in genre %}
@@ -42,6 +57,7 @@
                     </span>
                  {% endfor %}
             </p>
+            {% endif %}
         </div>
     </div>
 
@@ -64,6 +80,7 @@
     color: #fff;
     border-radius: 10px;
     margin-left: 10px;
+    margin-top: 10px;
     bottom: 106px;
     float: left;
         }
@@ -80,11 +97,11 @@
         <a class="solink" href="https://zhongziso.com/list/{{data.3}}/1" target="_blank">种子搜</a>
         <a class="solink" href="https://www.btdalu.com/list/{{data.3}}/1/1/1" target="_blank">BT大陆</a>
     </div>
-
+    {% if actor %}
     <h4>演员</h4>
     <div id="avatar-waterfall">
         {% for item in actor %}
-        <a class="avatar-box" href="/star/{{item}}">
+        <a data-type="star" data-val="{{data}}" class="avatar-box like" href="/star/{{item}}">
             <!--<div class="photo-frame">
                 <img src="#" title="">
             </div>-->
@@ -92,8 +109,10 @@
         </a>
         {% endfor %}
     </div>
+    {% endif %}
 
     <div class="clearfix"></div>
+    {% if img %}
     <h4>样品图像</h4>
     <div id="sample-waterfall">
          {% for item in img %}
@@ -104,6 +123,7 @@
             </a>
          {% endfor %}
     </div>
+    {% endif %}
     <div class="clearfix"></div>
 
     <div class="row visible-xs-block">
@@ -117,9 +137,14 @@
                 <span class="glyphicon glyphicon-play"></span> 播放</a>
         </div>
     </div>
-
-
 </div>
+<script>
+    /*
+    <span class="glyphicon glyphicon-star" style="
+    padding: 2px;
+    color: #FFC107;"></span>*/
+
+</script>
 {% endblock %}
 
 {% block pagination %}
