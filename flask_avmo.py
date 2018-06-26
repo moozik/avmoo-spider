@@ -227,7 +227,7 @@ def like_page_other(keyword=''):
 
 @app.route('/like/stars')
 def like_stars():
-    sqltext = 'SELECT val FROM "av_like" where type="stars"'
+    sqltext = 'SELECT val FROM "av_like" where type="stars" order by time desc'
     result = db_fetchall(sqltext)
     return render_template('stars.html', data=result)
 
