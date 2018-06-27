@@ -87,8 +87,7 @@ def released(pagenum = 1):
     limit_start = (pagenum - 1) * PAGE_LIMIT
     date = time.strftime("%Y-%m-%d", time.localtime())
     where = 'release_date <= "{}"'.format(date)
-    result = sqliteSelect(
-        '*', 'av_list', where, (limit_start, PAGE_LIMIT))
+    result = sqliteSelect('*', 'av_list', where, (limit_start, PAGE_LIMIT))
 
     page_root = '/released'
     return render_template('index.html', data=list_filter(result[0]), cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]), keyword='已发布 ')
@@ -101,32 +100,29 @@ def movie(linkid=''):
         where = ' av_id="{}"'.format(linkid.upper())
     else:
         where = ' linkid="{}"'.format(linkid)
-    result = sqliteSelect(
-        '*', 'av_list', where, (0, 1))[0][0]
-    
+
+    movie = list2dict(sqliteSelect('*', 'av_list', where, (0, 1))[0][0])
     #系列
-    if result[10]:
-        genre = result[10].split('|')
-    else:
-        genre = ''
+    if movie['genre']:
+        movie['genre'] = movie['genre'].split('|')
     #演员
-    if result[11]:
-        actor = result[11].split('|')
-    else:
-        actor = ''
+    if movie['stars']:
+        movie['stars'] = movie['stars'].split('|')
     #图片
     img = []
-    if result[17] != '0':
-        count = int(result[17])
-        imgurl = CDN_SITE + '/digital/video' + result[16].replace('pl.jpg', '')
+    if movie['image_len'] != '0':
+        count = int(movie['image_len'])
+        imgurl = CDN_SITE + '/digital/video' + \
+            movie['bigimage'].replace('pl.jpg', '')
         for i in range(1, count+1):
-            img.append((
-                '{}-{}.jpg'.format(imgurl, i),
-                '{}jp-{}.jpg'.format(imgurl, i)
-            ))
+            img.append({
+                'small':'{}-{}.jpg'.format(imgurl, i),
+                'big':'{}jp-{}.jpg'.format(imgurl, i)
+            })
     else:
         img = ''
-    return render_template('movie.html', data=result, genre=genre, img=img, actor=actor, cdn=CDN_SITE)
+    movie['imglist'] = img
+    return render_template('movie.html', data=movie, cdn=CDN_SITE)
 
 
 
@@ -150,14 +146,11 @@ def search(keyword='', pagenum = 1):
     function = request.path.split('/')[1]
     if function == 'director' or function == 'studio' or function == 'label' or function == 'series':
         where = '{}_url="{}"'.format(function, keyword)
-    if function == 'genre':
-        where = 'genre like "%{}%"'.format(keyword)
-    if function == 'stars':
-        where = 'stars like "%{}%"'.format(keyword)
+    if function == 'genre' or function == 'stars':
+        where = '{} LIKE "%{}%"'.format(function, keyword)
 
     page_root = '/{}/{}'.format(function, keyword)
-    result = sqliteSelect(
-        '*', 'av_list', where, (limit_start, PAGE_LIMIT))
+    result = sqliteSelect('*', 'av_list', where, (limit_start, PAGE_LIMIT))
     return render_template('index.html', data=list_filter(result[0]), cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]), keyword='')
 
 
@@ -178,7 +171,7 @@ def genre():
 def like_add(data_type=None, data_val=None):
     if data_type != None and data_val != None:
         timetext = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        sqltext = 'replace into av_like values("{}", "{}", "{}")'.format(
+        sqltext = 'REPLACE INTO av_like VALUES("{}", "{}", "{}")'.format(
             data_type, data_val, timetext)
         DB['CUR'].execute(sqltext)
         DB['CONN'].commit()
@@ -188,19 +181,17 @@ def like_add(data_type=None, data_val=None):
 
 @app.route('/like/movie')
 @app.route('/like/movie/page/<int:pagenum>')
-def like_page(keyword='', pagenum=1):
+def like_page(pagenum=1):
     if pagenum < 1:
         redirect(url_for('/'))
     limit_start = (pagenum - 1) * PAGE_LIMIT
-    if keyword == 'movie':
-        keyword = 'av_id'
 
-    main_sql = "select av_list.* from av_like join av_list on av_like.type='av_id' and av_like.val = av_list.av_id"
-    select_sql = main_sql + ' order by av_like.time desc limit {}, {}'.format(
+    main_sql = "SELECT av_list.* FROM av_like JOIN av_list ON av_like.type='av_id' AND av_like.val = av_list.av_id"
+    select_sql = main_sql + ' ORDER BY av_like.time DESC LIMIT {}, {}'.format(
         limit_start, PAGE_LIMIT)
-    count_sql = main_sql.replace('av_list.*', 'count(1)')
+    count_sql = main_sql.replace('av_list.*', 'COUNT(1)')
     
-    page_root = '/like/{}/page'.format(keyword)
+    page_root = '/like/movie/page'
     result = db_fetchall(select_sql)
     page_count = db_fetchall(count_sql)[0][0]
     return render_template('index.html', data=list_filter(result), cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, page_count), keyword='')
@@ -214,11 +205,7 @@ def like_page_other(keyword=''):
         'label':'发行',
         'series':'系列',
     }
-    #director
-    #studio
-    #label
-    #series
-    sqltext = "select av_list.* from av_like join (select * from av_list GROUP BY {0}_url order by id desc )av_list on av_like.type='{0}' and av_like.val=av_list.{0}_url".format(
+    sqltext = "SELECT av_list.* FROM av_like JOIN (SELECT * FROM av_list GROUP BY {0}_url ORDER BY id DESC )av_list ON av_like.type='{0}' AND av_like.val=av_list.{0}_url".format(
         keyword
     )
     result = db_fetchall(sqltext)
@@ -234,28 +221,36 @@ def like_stars():
 def list_filter(data):
     result = []
     for row in data:
-        result.append({
-            'linkid':row[1], #linkid
-            'title':row[2], #title
-            'av_id':row[3], #av_id
-            'release_date':row[4], #release_date
-            'genre':row[10], #genre
-            'stars':row[11], #stars
-            'smallimage':row[16].replace('pl.jpg','ps.jpg'), #bigimage
-            'director':row[6],#director
-            'studio':row[7],#studio
-            'label':row[8],#label
-            'series':row[9],#series
-            'director_url':row[12],  #director_url
-            'studio_url':row[13],  #studio_url
-            'label_url':row[14],  #label_url
-            'series_url':row[15],  #series_url
-        })
+        tmp = list2dict(row)
+        tmp['smallimage'] = tmp['bigimage'].replace('pl.jpg', 'ps.jpg')
+        result.append(tmp)
     return result
 
+def list2dict(row):
+    return {
+        'id' : row[0],
+        'linkid' : row[1],
+        'title' : row[2],
+        'av_id' : row[3],
+        'release_date' : row[4],
+        'len' : row[5],
+        'director' : row[6],
+        'studio' : row[7],
+        'label' : row[8],
+        'series' : row[9],
+        'genre' : row[10],
+        'stars' : row[11],
+        'director_url' : row[12],
+        'studio_url' : row[13],
+        'label_url' : row[14],
+        'series_url' : row[15],
+        'bigimage' : row[16],
+        'image_len' : row[17]
+    }
+
 def pagination(pagenum, count):
-    pagecount = math.ceil(count/PAGE_LIMIT)
-    if pagecount<=15:
+    pagecount = math.ceil(count / PAGE_LIMIT)
+    if pagecount <= 15:
         p1 = 1
         p2 = pagecount
     else:
@@ -268,7 +263,7 @@ def pagination(pagenum, count):
         else:
             p2 = pagenum + 7
 
-    pagelist = [x for x in range(p1, p2+1)]
+    pagelist = [x for x in range(p1, p2 + 1)]
 
     if pagenum != pagecount:
         pageright = pagenum + 1
@@ -297,19 +292,19 @@ def conn(dbfile= 'avmoo.db'):
     }
 
 
-def sqliteSelect(column='*', table='av_list', where='1', limit=(0, 30), order='id desc'):
+def sqliteSelect(column='*', table='av_list', where='1', limit=(0, 30), order='id DESC'):
     #db = conn()
     if order.strip() == '':
         order = ''
     else:
-        order = 'order by ' + order
-    sqltext = 'select {} from {} where {} {} limit {},{}'.format(
+        order = 'ORDER BY ' + order
+    sqltext = 'SELECT {} FROM {} WHERE {} {} LIMIT {},{}'.format(
         column, table, where, order, limit[0], limit[1])
 
     result = db_fetchall(sqltext)
     # print('sql:', sqltext)
 
-    sqltext = 'select count(1) as count from {} where {}'.format(table, where)
+    sqltext = 'SELECT COUNT(1) AS count FROM {} WHERE {}'.format(table, where)
     result_count = db_fetchall(sqltext)[0][0]
     return (result, result_count)
 

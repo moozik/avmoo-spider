@@ -1,57 +1,57 @@
 {% extends "main.html" %}
-{% block title %}{{data.3}} {{data.2}} - {% endblock %}
+{% block title %}{{data.av_id}} {{data.title}} - {% endblock %}
 {% block container %}
 <div class="container">
-    <h3>{{data.2}}</h3>
+    <h3>{{data.title}}</h3>
     <div class="row movie">
         <div class="col-md-9 screencap">
-            <a class="bigImage" href="{{cdn}}{{data.16}}" title="{{data.2}}">
-                <img src="{{cdn}}/digital/video{{data.16}}">
+            <a class="bigImage" href="{{cdn}}/digital/video{{data.bigimage}}" title="{{data.title}}">
+                <img src="{{cdn}}/digital/video{{data.bigimage}}">
             </a>
         </div>
         <div class="col-md-3 info">
             <p>
                 <span class="header">识别码:</span>
-                <span class="like" data-type="av_id" data-val="{{data.3}}" style="color:#CC0000;">{{data.3}}</span>
+                <span class="like" data-type="av_id" data-val="{{data.av_id}}" style="color:#CC0000;">{{data.av_id}}</span>
             </p>
-            {% if data.4 %}
+            {% if data.release_date %}
                 <p>
-                    <span class="header">发行时间:</span> {{data.4}}
+                    <span class="header">发行时间:</span> {{data.release_date}}
                 </p>
             {% endif %}
-            {% if data.5 %}
+            {% if data.len %}
                 <p>
-                    <span class="header">长度:</span> {{data.5}}分钟
+                    <span class="header">长度:</span> {{data.len}}分钟
                 </p>
             {% endif %}
-            {% if data.12 %}
+            {% if data.director_url %}
                 <p>
                     <span class="header">导演:</span>
-                    <a class="like" data-type="director" data-val="{{data.12}}" href="/director/{{data.12}}">{{data.6}}</a>
+                    <a class="like" data-type="director" data-val="{{data.director_url}}" href="/director/{{data.director_url}}">{{data.director}}</a>
                 </p>
             {% endif %}
-            {% if data.13 %}
+            {% if data.studio_url %}
                 <p class="header">制作商: </p>
                 <p>
-                    <a class="like" data-type="studio" data-val="{{data.13}}" href="/studio/{{data.13}}">{{data.7}}</a>
+                    <a class="like" data-type="studio" data-val="{{data.studio_url}}" href="/studio/{{data.studio_url}}">{{data.studio}}</a>
                 </p>
             {% endif %}
-            {% if data.14 %}
+            {% if data.label_url %}
                 <p class="header">发行商: </p>
                 <p>
-                    <a class="like" data-type="label" data-val="{{data.14}}" href="/label/{{data.14}}">{{data.8}}</a>
+                    <a class="like" data-type="label" data-val="{{data.label_url}}" href="/label/{{data.label_url}}">{{data.label}}</a>
                 </p>
             {% endif %}
-            {% if data.15 %}
+            {% if data.series_url %}
                 <p class="header">系列:</p>
                 <p>
-                    <a class="like" data-type="series" data-val="{{data.15}}" href="/series/{{data.15}}">{{data.9}}</a>
+                    <a class="like" data-type="series" data-val="{{data.series_url}}" href="/series/{{data.series_url}}">{{data.series}}</a>
                 </p>
             {% endif %}
-            {% if genre %}
+            {% if data.genre %}
             <p class="header">类别:</p>
             <p>
-                 {% for item in genre %}
+                 {% for item in data.genre %}
                     <span class="genre">
                         <a href="/genre/{{item}}">{{item}}</a>
                     </span>
@@ -87,22 +87,22 @@
     </style>
     <h4>资源</h4>
     <div class="row">
-        <a class="solink" href="http://alicili.cc/list/{{data.3}}/1-0-0/" target="_blank">BT阿狸</a>
-        <a class="solink" href="http://www.aicili.me/main-search-kw-{{data.3}}-1.html" target="_blank">爱磁力</a>
-        <a class="solink" href="http://www.cilimao.me/search?word={{data.3}}" target="_blank">磁力猫</a>
-        <a class="solink" href="https://torrentz2.eu/search?f={{data.3}}" target="_blank">Torrentz2</a>
-        <a class="solink" href="https://btso.pw/search/{{data.3}}" target="_blank">btso.pw</a>
-        <a class="solink" href="http://www.baocaibt.org/search/{{data.3}}/" target="_blank">BT包菜</a>
-        <a class="solink" href="http://ciliba.net/word/{{data.3}}.html" target="_blank">磁力吧</a>
-        <a class="solink" href="http://www.juzisousuo.com/word/{{data.3}}.html" target="_blank">BT橘子</a>
-        <a class="solink" href="http://btfinder.com/main-search-kw-{{data.3}}-1.html" target="_blank">BTfinder</a>
-        <a class="solink" href="https://zhongziso.com/list/{{data.3}}/1" target="_blank">种子搜</a>
-        <a class="solink" href="https://www.btdalu.com/list/{{data.3}}/1/1/1" target="_blank">BT大陆</a>
+        <a class="solink" href="http://alicili.cc/list/{{data.av_id}}/1-0-0/" target="_blank">BT阿狸</a>
+        <a class="solink" href="http://www.aicili.me/main-search-kw-{{data.av_id}}-1.html" target="_blank">爱磁力</a>
+        <a class="solink" href="http://www.cilimao.me/search?word={{data.av_id}}" target="_blank">磁力猫</a>
+        <a class="solink" href="https://torrentz2.eu/search?f={{data.av_id}}" target="_blank">Torrentz2</a>
+        <a class="solink" href="https://btso.pw/search/{{data.av_id}}" target="_blank">btso.pw</a>
+        <a class="solink" href="http://www.baocaibt.org/search/{{data.av_id}}/" target="_blank">BT包菜</a>
+        <a class="solink" href="http://ciliba.net/word/{{data.av_id}}.html" target="_blank">磁力吧</a>
+        <a class="solink" href="http://www.juzisousuo.com/word/{{data.av_id}}.html" target="_blank">BT橘子</a>
+        <a class="solink" href="http://btfinder.com/main-search-kw-{{data.av_id}}-1.html" target="_blank">BTfinder</a>
+        <a class="solink" href="https://zhongziso.com/list/{{data.av_id}}/1" target="_blank">种子搜</a>
+        <a class="solink" href="https://www.btdalu.com/list/{{data.av_id}}/1/1/1" target="_blank">BT大陆</a>
     </div>
-    {% if actor %}
+    {% if data.stars %}
     <h4>演员</h4>
     <div id="avatar-waterfall">
-        {% for item in actor %}
+        {% for item in data.stars %}
         <a data-type="stars" data-val="{{item}}" class="avatar-box like" href="/stars/{{item}}">
             <!--<div class="photo-frame">
                 <img src="#" title="">
@@ -114,13 +114,13 @@
     {% endif %}
 
     <div class="clearfix"></div>
-    {% if img %}
+    {% if data.imglist %}
     <h4>样品图像</h4>
     <div id="sample-waterfall">
-         {% for item in img %}
-            <a class="sample-box" href="{{item.1}}" title="{{data.2}}">
+         {% for item in data.imglist %}
+            <a class="sample-box" href="{{item.big}}" title="{{data.title}}">
                 <div class="photo-frame">
-                    <img src="{{item.0}}">
+                    <img src="{{item.small}}">
                 </div>
             </a>
          {% endfor %}
@@ -128,17 +128,6 @@
     {% endif %}
     <div class="clearfix"></div>
 
-    <div class="row visible-xs-block">
-        <div class="col-xs-6 text-center">
-            <a href="https://btso.pw/search/{{data.3}}" class="btn btn-lg btn-primary" target="_blank">
-                <span class="glyphicon glyphicon-save"></span> 下载</a>
-        </div>
-        <div class="col-xs-6 text-center">
-            <a href="https://btso.pw/video/{{data.3}}"
-                class="btn btn-lg btn-warning" target="_blank">
-                <span class="glyphicon glyphicon-play"></span> 播放</a>
-        </div>
-    </div>
 </div>
 {% endblock %}
 
