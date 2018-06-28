@@ -41,16 +41,12 @@ class avmo:
             self.sqlite_file = 'avmoo_.db'
         else:
             self.sqlite_file = 'avmoo.db'
-        
         #其他配置初始化
         self.config()
-
 
         #================测试区间================
         '''
         #重试缺失地址
-        self.flag_insert = True
-        self.conn()
         # self.data_check()
         exit()
         '''
@@ -59,77 +55,66 @@ class avmo:
         try:
             opts, args = getopt.getopt(
                 sys.argv[1:],
-                "his:e:arp:gt",
-                ['help', 'insert', 'start', 'end', 'auto', 'retry', 'proxies', 'genre', 'stars']
+                "hs:e:arp:gt",
+                ['help', 'start', 'end', 'auto', 'retry', 'proxies', 'genre', 'stars']
             )
         except:
             self.usage()
-            sys.exit()
+            exit()
 
         for op, value in opts:
-            if op == '-i' or op == '-insert':
-                self.flag_insert = True
-
-            elif op == '-s' or op == '-start':
+            if op == '-s' or op == '-start':
                 self.start_id = value
-
             elif op == '-e' or op == '-end':
                 self.stop_id = value
-
             elif op == '-a' or op == '-auto':
                 self.auto = True
-
+            elif op == '-p' or op == '-proxies':
+                self.s.proxies['https'] = value
             elif op == '-r' or op == '-retry':
-                self.flag_insert = True
-                self.conn()
-                self.retry_errorurl()
-                sys.exit()
-
+                if self.action != 'movie':
+                    print('参数错误')
+                    exit()
+                else:
+                    self.action = 'retry'
+            elif op == '-g' or op == '-genre':
+                if self.action != 'movie':
+                    print('参数错误')
+                    exit()
+                else:
+                    self.action = 'genre'
+            elif op == '-t' or op == '-stars':
+                if self.action != 'movie':
+                    print('参数错误')
+                    exit()
+                else:
+                    self.action = 'stars'
             elif op == '-h' or op == '-help':
                 self.usage()
-                sys.exit()
-            elif op == '-g' or op == '-genre':
-                self.flag_insert = True
-                self.conn()
-                self.genre_update()
-                sys.exit()
-            elif op == '-p' or op == '-proxies':
-                self.proxies = {
-                    'https':value
-                }
-            elif op == '-t' or op == '-stars':
-                print('开始更新演员表')
-                self.action = 'stars'
-                self.flag_insert = True
-                self.conn()
-                self.stars_loop()
                 exit()
         #展示说明
         if len(sys.argv) == 1:
             self.usage()
-            sys.exit()
-        if self.flag_insert == False:
-            self.flag_retry = False
+            exit()
 
-        #链接数据库
-        self.conn()
-        if self.auto:
+        if self.action == 'retry':
+            self.retry_errorurl()
+            exit()
+        elif self.action == 'genre':
+            self.genre_update()
+            exit()
+        elif self.action == 'stars':
+            self.stars_loop()
+            exit()
+        elif self.auto == True:
             self.get_last()
 
         #主程序
         self.main(self.get_linkid())
 
-    #销毁
-    def __del__(self):
-        try:
-            #关闭数据库
-            self.CONN.close()
-        except:
-            pass
-
     #默认配置
     def config(self):
-        #默认抓取影片
+        #默认抓电影
         self.action = 'movie'
         #待insert数据
         self.insert_list = []
@@ -139,30 +124,14 @@ class avmo:
         self.dl = {}
         for item in range(len(self.abc_sequence)):
             self.dl[self.abc_sequence[item]] = item
-        #表结构
-        self.column = ['id', 'linkid', 'director', 'director_url', 'studio',
-        'studio_url', 'label', 'label_url', 'series', 'series_url', 'image_len',
-        'genre', 'len', 'stars', 'av_id', 'title', 'bigimage', 'release_date']
 
-        #表结构str
-        self.column_str = ",".join(self.column)
-        #插入阈值
-        self.insert_threshold = 20
-        #用于重试失败阈值
-        self.retry_counter = 0
-        #重试阈值
-        self.retry_threshold = 5
 
         #主函数延时
         self.main_sleep = 1
         #更新flag
         self.last_flag = False
-
-        #是否插入数据库
-        self.flag_insert = False
         #是否重试
         self.flag_retry = True
-
         #开始id
         self.start_id = '0000'
         #结束id
@@ -170,13 +139,29 @@ class avmo:
         #自动获取start stop
         self.auto = False
 
+        #插入阈值
+        self.insert_threshold = 20
+        #用于重试失败计数
+        self.retry_counter = 0
+        #重试阈值
+        self.retry_threshold = 5
+
+
         #主表
         self.table_main = 'av_list'
         #重试表
         self.table_retry = 'av_error_linkid'
-
         self.table_genre = 'av_genre'
-        
+        self.table_stars = 'av_stars'
+        #表结构
+        self.column = ['id', 'linkid', 'director', 'director_url', 'studio',
+                       'studio_url', 'label', 'label_url', 'series', 'series_url', 'image_len',
+                       'genre', 'len', 'stars', 'av_id', 'title', 'bigimage', 'release_date']
+        #表结构str
+        self.column_str = ",".join(self.column)
+        #链接数据库
+        self.conn()
+
         #站点url
         self.site_url = 'https://{0}/cn'.format(self.site)
 
@@ -194,10 +179,13 @@ class avmo:
         self.s = requests.Session()
         #超时时间
         self.s.timeout = 3
+        self.s.headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'
+        }
         #代理
-        # self.s.proxies = {
-        #     'https':'https://127.0.0.1:1080'
-        # }
+        self.s.proxies = {
+            'https':'https://127.0.0.1:1080'
+        }
     #mysql conn
     def conn(self):
         try:
@@ -289,13 +277,12 @@ class avmo:
             #输出当前进度
             print(data[12].ljust(30), data[15].ljust(11), item.ljust(5), id_column)
 
-            if self.flag_insert:
-                self.insert_list.append(
-                    "'{0}','{1}','{2}'".format(id_column, item, "','".join(data))
-                )
-                #存储数据
-                if len(self.insert_list) == self.insert_threshold:
-                    self.insert_mysql()
+            self.insert_list.append(
+                "'{0}','{1}','{2}'".format(id_column, item, "','".join(data))
+            )
+            #存储数据
+            if len(self.insert_list) == self.insert_threshold:
+                self.insert_mysql()
 
     #获取最后一次的id
     def get_last(self):
@@ -317,29 +304,29 @@ class avmo:
     
     #插入重试表
     def insert_retry(self, data):
-        if self.flag_insert:
-            self.CUR.execute("REPLACE INTO {0}(linkid, status_code, datetime)VALUES('{1[0]}', {1[1]}, '{2}');"
-                .format(
-                    self.table_retry,
-                    data,
-                    time.strftime(
-                        "%Y-%m-%d %H:%M:%S",
-                        time.localtime()
-                    )
+        self.CUR.execute("REPLACE INTO {0}(linkid, status_code, datetime)VALUES('{1[0]}', {1[1]}, '{2}');"
+            .format(
+                self.table_retry,
+                data,
+                time.strftime(
+                    "%Y-%m-%d %H:%M:%S",
+                    time.localtime()
                 )
             )
-            self.CONN.commit()
+        )
+        self.CONN.commit()
 
     #获取演员
     def stars_loop(self):
         self.CUR.execute(
-            'SELECT linkid FROM av_stars ORDER BY linkid DESC LIMIT 0,1')
+            'SELECT linkid FROM {} ORDER BY linkid DESC LIMIT 0,1'.format(self.table_stars))
         self.start_id = self.CUR.fetchall()[0][0]
         self.stop_id = '1000'
         def get_val(str):
             return str.split(':')[1].strip()
         for linkid in self.get_linkid():
             url = self.star_url + linkid
+            print(url)
             try:
                 response = self.s.get(url)
                 html = etree.HTML(response.text)
@@ -350,13 +337,17 @@ class avmo:
                     break
                 else:
                     print(linkid,
-                          'status_code:'+response.status_code)
-                    time.sleep(2)
+                          'status_code:',response.status_code)
+                    time.sleep(5)
                     continue
+
+            if response.status_code != 200:
+                print(response.status_code)
+                exit()
             data = {
                 'id': self.linkid2id(linkid),
                 'linkid': linkid,
-                'name': html.xpath('//*[@id="waterfall"]/div[1]/div/div[2]/span/text()')[0],
+                'name': '',
                 'birthday':'',
                 'height':'',
                 'cup':'',
@@ -365,18 +356,16 @@ class avmo:
                 'hips':'',
                 'hometown':'',
                 'hobby':'',
-                'headimg': html.xpath('//*[@id="waterfall"]/div[1]/div/div[1]/img/@src')[0].split('/', 3)[3].replace('mono/actjpgs/nowprinting.gif','')
+                'headimg': ''
             }
-            '''
-            生日: 1988-05-24
-            身高: 163cm
-            罩杯: D
-            胸围: 88cm
-            腰围: 59cm
-            臀围: 85cm
-            出生地: 京都府
-            爱好: ゲーム
-            '''
+            try:
+                data['name'] = html.xpath(
+                    '/html/head/meta[8]/@content')[0].split(',', 1)[0]
+                data['headimg'] = html.xpath(
+                    '//*[@id="waterfall"]/div[1]/div/div[1]/img/@src')[0].split('/', 3)[3].replace('mono/actjpgs/nowprinting.gif', '')
+            except:
+                print(response.text)
+                exit()
             for item_p in html.xpath('//*[@id="waterfall"]/div[1]/div/div[2]/p'):
                 if item_p.text == None:
                     continue
@@ -405,7 +394,8 @@ class avmo:
                     data['hobby'] = get_val(item_p.text)
                     continue
             print(data['id'],'  ','  '.join(list(data.values())[1:-1]))
-            insert_sql = 'INSERT INTO "av_stars" VALUES({},"{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}")'.format(
+            insert_sql = 'INSERT INTO "{}" VALUES({},"{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}")'.format(
+                self.table_stars,
                 data['id'],
                 data['linkid'],
                 data['name'],
@@ -421,8 +411,18 @@ class avmo:
             )
             self.CUR.execute(insert_sql)
             self.CONN.commit()
-            
-            time.sleep(0.5)
+            if data['cup'] == 'F':
+                time.sleep(10)
+            elif data['cup'] == 'E':
+                time.sleep(3)
+            elif data['cup'] == 'D':
+                time.sleep(2.5)
+            elif data['cup'] == 'C':
+                time.sleep(2)
+            elif data['cup'] == 'B':
+                time.sleep(1)
+            else:
+                time.sleep(0.5)
     
     
     #遍历urlid
@@ -451,9 +451,7 @@ class avmo:
         if len(self.insert_list) == 0:
             return
 
-        if self.flag_insert == True:
-            self.replace_sql(self.table_main, self.column_str, "),(".join(self.insert_list))
-
+        self.replace_sql(self.table_main, self.column_str, "),(".join(self.insert_list))
         print('rows:', len(self.insert_list), 'retry_counter:', self.retry_counter)
         self.insert_list = []
         self.retry_counter += 1
