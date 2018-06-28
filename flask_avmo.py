@@ -151,7 +151,9 @@ def search(keyword='', pagenum = 1):
 
     page_root = '/{}/{}'.format(function, keyword)
     result = sqliteSelect('*', 'av_list', where, (limit_start, PAGE_LIMIT))
-    return render_template('index.html', data=list_filter(result[0]), cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]), keyword='')
+    if function != 'stars' and function != 'genre':
+        keyword = ''
+    return render_template('index.html', data=list_filter(result[0]), cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]), keyword=keyword)
 
 
 @app.route('/genre')
