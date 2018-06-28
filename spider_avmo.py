@@ -59,8 +59,8 @@ class avmo:
         try:
             opts, args = getopt.getopt(
                 sys.argv[1:],
-                "his:e:arp:g",
-                ['help', 'insert', 'start', 'end', 'auto', 'retry', 'proxies', 'genre']
+                "his:e:arp:gt",
+                ['help', 'insert', 'start', 'end', 'auto', 'retry', 'proxies', 'genre', 'stars']
             )
         except:
             self.usage()
@@ -97,6 +97,13 @@ class avmo:
                 self.proxies = {
                     'https':value
                 }
+            elif op == '-t' or op == '-stars':
+                print('开始更新演员表')
+                self.action = 'stars'
+                self.flag_insert = True
+                self.conn()
+                self.stars_loop()
+                exit()
         #展示说明
         if len(sys.argv) == 1:
             self.usage()
@@ -122,6 +129,8 @@ class avmo:
 
     #默认配置
     def config(self):
+        #默认抓取影片
+        self.action = 'movie'
         #待insert数据
         self.insert_list = []
         #遍历linkid
@@ -179,6 +188,7 @@ class avmo:
         self.label = self.site_url+'/label/'
         self.series = self.site_url+'/series/'
         self.genre_url = self.site_url+'/genre/'
+        self.star_url = self.site_url+'/star/'
 
         #创建会话对象
         self.s = requests.Session()
@@ -190,51 +200,49 @@ class avmo:
         # }
     #mysql conn
     def conn(self):
-        #如果正式插入那么链接数据库
-        if self.flag_insert:
-            try:
-                #链接sqlite
-                self.CONN = sqlite3.connect(self.sqlite_file)
-                self.CUR = self.CONN.cursor()
-            except:
-                print('connect database fail.')
-                self.usage()
-                sys.exit()
-            try:
-                self.CUR.execute('select count(1) from ' + self.table_main)
-            except:
-                self.CUR.execute('''
-                CREATE TABLE "av_list" (
-                "id"  INTEGER,
-                "linkid"  TEXT(10) NOT NULL,
-                "title"  TEXT(500),
-                "av_id"  TEXT(50),
-                "release_date"  TEXT(20),
-                "len"  TEXT(20),
-                "director"  TEXT(100),
-                "studio"  TEXT(100),
-                "label"  TEXT(100),
-                "series"  TEXT(200),
-                "genre"  TEXT(200),
-                "stars"  TEXT(300),
-                "director_url"  TEXT(10),
-                "studio_url"  TEXT(10),
-                "label_url"  TEXT(10),
-                "series_url"  TEXT(10),
-                "bigimage"  TEXT(200),
-                "image_len"  INTEGER,
-                PRIMARY KEY ("linkid")
-                ); '''.replace("av_list", self.table_main))
-            try:
-                self.CUR.execute('select count(1) from ' + self.table_retry)
-            except:
-                self.CUR.execute('''
-                CREATE TABLE "av_error_linkid" (
-                "linkid"  TEXT(4) NOT NULL,
-                "status_code"  INTEGER,
-                "datetime"  TEXT(50),
-                PRIMARY KEY ("linkid")
-                ); '''.replace("av_error_linkid", self.table_retry))
+        try:
+            #链接sqlite
+            self.CONN = sqlite3.connect(self.sqlite_file, check_same_thread=False)
+            self.CUR = self.CONN.cursor()
+        except:
+            print('connect database fail.')
+            # self.usage()
+            sys.exit()
+        try:
+            self.CUR.execute('select count(1) from ' + self.table_main)
+        except:
+            self.CUR.execute('''
+            CREATE TABLE "av_list" (
+            "id"  INTEGER,
+            "linkid"  TEXT(10) NOT NULL,
+            "title"  TEXT(500),
+            "av_id"  TEXT(50),
+            "release_date"  TEXT(20),
+            "len"  TEXT(20),
+            "director"  TEXT(100),
+            "studio"  TEXT(100),
+            "label"  TEXT(100),
+            "series"  TEXT(200),
+            "genre"  TEXT(200),
+            "stars"  TEXT(300),
+            "director_url"  TEXT(10),
+            "studio_url"  TEXT(10),
+            "label_url"  TEXT(10),
+            "series_url"  TEXT(10),
+            "bigimage"  TEXT(200),
+            "image_len"  INTEGER,
+            PRIMARY KEY ("linkid")
+            ); '''.replace("av_list", self.table_main))
+        try:
+            self.CUR.execute('select count(1) from ' + self.table_retry)
+        except:
+            self.CUR.execute('''
+            CREATE TABLE "av_error_linkid" (
+            "linkid"  TEXT(4) NOT NULL,
+            "status_code"  INTEGER,
+            "datetime"  TEXT(50),
+            PRIMARY KEY ("linkid")
+            ); '''.replace("av_error_linkid", self.table_retry))
 
     #写出命令行格式
     def usage(self):
@@ -255,7 +263,7 @@ class avmo:
     #主函数，抓取页面内信息
     def main(self, looplist):
         for item in looplist:
-            url = self.movie_url+item
+            url = self.movie_url + item
             time.sleep(self.main_sleep)
             try:
                 res = self.s.get(url)
@@ -322,30 +330,118 @@ class avmo:
             )
             self.CONN.commit()
 
+    #获取演员
+    def stars_loop(self):
+        self.CUR.execute(
+            'SELECT linkid FROM av_stars ORDER BY linkid DESC LIMIT 0,1')
+        self.start_id = self.CUR.fetchall()[0][0]
+        self.stop_id = '1000'
+        def get_val(str):
+            return str.split(':')[1].strip()
+        for linkid in self.get_linkid():
+            url = self.star_url + linkid
+            try:
+                response = self.s.get(url)
+                html = etree.HTML(response.text)
+            except:
+                print(url)
+                if response.status_code == 404:
+                    print(linkid, 'status_code:404')
+                    break
+                else:
+                    print(linkid,
+                          'status_code:'+response.status_code)
+                    time.sleep(2)
+                    continue
+            data = {
+                'id': self.linkid2id(linkid),
+                'linkid': linkid,
+                'name': html.xpath('//*[@id="waterfall"]/div[1]/div/div[2]/span/text()')[0],
+                'birthday':'',
+                'height':'',
+                'cup':'',
+                'bust':'',
+                'waist':'',
+                'hips':'',
+                'hometown':'',
+                'hobby':'',
+                'headimg': html.xpath('//*[@id="waterfall"]/div[1]/div/div[1]/img/@src')[0].split('/', 3)[3].replace('mono/actjpgs/nowprinting.gif','')
+            }
+            '''
+            生日: 1988-05-24
+            身高: 163cm
+            罩杯: D
+            胸围: 88cm
+            腰围: 59cm
+            臀围: 85cm
+            出生地: 京都府
+            爱好: ゲーム
+            '''
+            for item_p in html.xpath('//*[@id="waterfall"]/div[1]/div/div[2]/p'):
+                if item_p.text == None:
+                    continue
+                if '生日' in item_p.text:
+                    data['birthday'] = get_val(item_p.text)
+                    continue
+                if '身高' in item_p.text:
+                    data['height'] = get_val(item_p.text)
+                    continue
+                if '罩杯' in item_p.text:
+                    data['cup'] = get_val(item_p.text)
+                    continue
+                if '胸围' in item_p.text:
+                    data['bust'] = get_val(item_p.text)
+                    continue
+                if '腰围' in item_p.text:
+                    data['waist'] = get_val(item_p.text)
+                    continue
+                if '臀围' in item_p.text:
+                    data['hips'] = get_val(item_p.text)
+                    continue
+                if '出生地' in item_p.text:
+                    data['hometown'] = get_val(item_p.text)
+                    continue
+                if '爱好' in item_p.text:
+                    data['hobby'] = get_val(item_p.text)
+                    continue
+            print(data['id'],'  ','  '.join(list(data.values())[1:-1]))
+            insert_sql = 'INSERT INTO "av_stars" VALUES({},"{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}")'.format(
+                data['id'],
+                data['linkid'],
+                data['name'],
+                data['birthday'],
+                data['height'],
+                data['cup'],
+                data['bust'],
+                data['waist'],
+                data['hips'],
+                data['hometown'],
+                data['hobby'],
+                data['headimg']
+            )
+            self.CUR.execute(insert_sql)
+            self.CONN.commit()
+            
+            time.sleep(0.5)
+    
+    
     #遍历urlid
     def get_linkid(self):
-        '''
-        for i1 in self.abc_sequence:
-            for i2 in self.abc_sequence:
-                for i3 in self.abc_sequence:
-                    for i4 in self.abc_sequence:
-                        tmp = i1 + i2 + i3 + i4
-        '''
         for abcd in self.abc_map():
-            if abcd < self.start_id:
+            if abcd <= self.start_id:
                 continue
             
-            if self.start_id <= abcd <= self.stop_id:
+            if self.start_id < abcd <= self.stop_id:
                 yield abcd
             
             if abcd > self.stop_id:
                 print('start:{0} end:{1} done!'.format(self.start_id, self.stop_id))
-                #插入剩余的数据
-                self.insert_mysql()
-                #重试错误数据
-                self.retry_errorurl()
+                if self.action == 'movie':
+                    #插入剩余的数据
+                    self.insert_mysql()
+                    #重试错误数据
+                    self.retry_errorurl()
                 exit()
-
     #由urlid获取排序自增id
     def linkid2id(self, item):
         return self.dl[item[3]] + self.dl[item[2]]*36 + self.dl[item[1]]*1296 + self.dl[item[0]]*46656
@@ -516,23 +612,7 @@ class avmo:
         res_min = res_list[0]
         res_max = res_list[len(res)-1]
         miss_list = []
-        '''
-        for i1 in self.abc_sequence:
-            for i2 in self.abc_sequence:
-                for i3 in self.abc_sequence:
-                    for i4 in self.abc_sequence:
-                        tmp = i1+i2+i3+i4
-                        if tmp <= res_min:
-                            continue
-                        if tmp >= res_max:
-                            break
 
-                        if tmp in res_list:
-                            continue
-                        else:
-                            miss_list.append(tmp)
-                            continue
-        '''
         for abcd in self.abc_map():
             if abcd <= res_min:
                 continue
