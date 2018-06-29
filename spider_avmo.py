@@ -359,13 +359,14 @@ class avmo:
             if response.status_code == 404:
                 page_404_count += 1
                 if page_404_count == 10:
-                    print('stat 404 count:100')
+                    print('stat 404 count:10')
                     exit()
                 else:
-                    page_404_count == 0
                     print(data['id'],'  ',data['linkid'],'  ',page_404_count)
                     self.stars_save(data)
                     continue
+
+            page_404_count == 0
             del(response)
 
             try:
