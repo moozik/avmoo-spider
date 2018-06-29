@@ -21,11 +21,11 @@
 更新类别
 `spider_avmo.py -g`
 
--h(-help):使用说明
--s(-start):开始id(0000,1ddd,36wq)
--e(-end):结束id(0000,1ddd,36wq)
--a(-auto):获取当前数据库最新的一个id和网站最新的一个id，补全新增数据
--r(-retry):重试错误链接
--g(-genre):更新类别
--t(-stars):更新演员
--p(-proxies):使用指定的https代理服务器或SOCKS5代理服务器。例如：-p http://127.0.0.1:1080,-p socks5://127.0.0.1:52772
+- -h(-help):使用说明
+- -s(-start):开始id(0000,1ddd,36wq)
+- -e(-end):结束id(0000,1ddd,36wq)
+- -a(-auto):获取当前数据库最新的一个id和网站最新的一个id，补全新增数据
+- -r(-retry):重试错误链接
+- -g(-genre):更新类别
+- -t(-stars):更新演员
+- -p(-proxies):使用指定的https代理服务器或SOCKS5代理服务器。例如：-p http://127.0.0.1:1080,-p socks5://127.0.0.1:52772

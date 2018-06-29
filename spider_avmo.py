@@ -279,7 +279,7 @@ class avmo:
             )
             #存储数据
             if len(self.insert_list) == self.insert_threshold:
-                self.insert_mysql()
+                self.movie_save()
 
     #获取最后一次的id
     def get_last(self):
@@ -318,13 +318,14 @@ class avmo:
         self.CUR.execute(
             'SELECT linkid FROM {} ORDER BY linkid DESC LIMIT 0,1'.format(self.table_stars))
         self.start_id = self.CUR.fetchall()[0][0]
-        self.start_id = '0400'
         self.stop_id = '1000'
         def get_val(str):
             return str.split(':')[1].strip()
+
+        page_404_count = 0
         for linkid in self.get_linkid():
             url = self.star_url + linkid
-            print(url)
+            print(linkid, self.linkid2id(linkid))
             try:
                 response = self.s.get(url)
                 html = etree.HTML(response.text)
@@ -338,11 +339,6 @@ class avmo:
                             'status_code:',response.status_code)
                         time.sleep(5)
                         continue
-
-            if response.status_code != 200:
-                print(response.status_code)
-                exit()
-            del(response)
             data = {
                 'id': self.linkid2id(linkid),
                 'linkid': linkid,
@@ -357,6 +353,21 @@ class avmo:
                 'hobby':'',
                 'headimg': ''
             }
+            if response.status_code == 403:
+                print(response.status_code)
+                exit()
+            if response.status_code == 404:
+                page_404_count += 1
+                if page_404_count == 10:
+                    print('stat 404 count:100')
+                    exit()
+                else:
+                    page_404_count == 0
+                    print(data['id'],'  ',data['linkid'],'  ',page_404_count)
+                    self.stars_save(data)
+                    continue
+            del(response)
+
             try:
                 data['name'] = html.xpath(
                     '/html/head/meta[8]/@content')[0].split(',', 1)[0]
@@ -392,24 +403,18 @@ class avmo:
                 if '爱好' in item_p.text:
                     data['hobby'] = get_val(item_p.text)
                     continue
-            print(data['id'],'  ','  '.join(list(data.values())[1:-1]))
-            insert_sql = 'INSERT INTO "{}" VALUES({},"{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}")'.format(
-                self.table_stars,
-                data['id'],
-                data['linkid'],
-                data['name'],
-                data['birthday'],
-                data['height'],
-                data['cup'],
-                data['bust'],
-                data['waist'],
-                data['hips'],
-                data['hometown'],
-                data['hobby'],
-                data['headimg']
+            #print(data['id'],'  ','  '.join(list(data.values())[1:-1]))
+            print(
+                data['birthday'].ljust(13),
+                data['height'].ljust(7),
+                data['cup'].ljust(3),
+                data['bust'].ljust(7),
+                data['waist'].ljust(7),
+                data['hips'].ljust(7),
+                data['name'].ljust(15),
+                data['hometown']
             )
-            self.CUR.execute(insert_sql)
-            self.CONN.commit()
+            self.stars_save(data)
             if data['cup'] == 'F':
                 time.sleep(5)
             elif data['cup'] == 'E':
@@ -421,8 +426,25 @@ class avmo:
             elif data['cup'] == 'B':
                 time.sleep(1)
             else:
-                time.sleep(0.5)
-
+                time.sleep(0.8)
+    def stars_save(self, data):
+        insert_sql = 'INSERT INTO "{}" VALUES({},"{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}")'.format(
+            self.table_stars,
+            data['id'],
+            data['linkid'],
+            data['name'],
+            data['birthday'],
+            data['height'],
+            data['cup'],
+            data['bust'],
+            data['waist'],
+            data['hips'],
+            data['hometown'],
+            data['hobby'],
+            data['headimg']
+        )
+        self.CUR.execute(insert_sql)
+        self.CONN.commit()
     #遍历urlid
     def get_linkid(self):
         for abcd in self.abc_map():
@@ -436,7 +458,7 @@ class avmo:
                 print('start:{0} end:{1} done!'.format(self.start_id, self.stop_id))
                 if self.action == 'movie':
                     #插入剩余的数据
-                    self.insert_mysql()
+                    self.movie_save()
                     #重试错误数据
                     self.retry_errorurl()
                 exit()
@@ -445,7 +467,7 @@ class avmo:
         return self.dl[item[3]] + self.dl[item[2]]*36 + self.dl[item[1]]*1296 + self.dl[item[0]]*46656
 
     #插入数据库
-    def insert_mysql(self):
+    def movie_save(self):
         if len(self.insert_list) == 0:
             return
 
@@ -639,7 +661,7 @@ class avmo:
         res = self.CUR.fetchall()
         self.main([x[0] for x in res])
         #插入剩余的数据
-        self.insert_mysql()
+        self.movie_save()
 
     #获取所有类别
     def genre_update(self):
