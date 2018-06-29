@@ -9,18 +9,23 @@
 打开http://127.0.0.1:5000 查看
 
 ## 爬虫抓取数据
-抓取来自javlog.com的信息，并存入数据库，id区间为0000-0100
-`get_av_spider.py -i -s 0000 -e 0100`
+抓取来自javlog.com的信息，id区间为0000-0100
+`spider_avmo.py -s 0000 -e 0100`
 
-抓取来自avio.pw的信息，不进行存储操作
-`get_av_spider.py -s 0000 -e 0100`
+接着上次抓取电影
+`spider_avmo.py -a`
 
-接着上次抓取并存入数据库
-`get_av_spider.py -a -i`
+接着上次抓取演员
+`spider_avmo.py -t`
+
+更新类别
+`spider_avmo.py -g`
 
 -h(-help):使用说明
--i(-insert):插入数据库
 -s(-start):开始id(0000,1ddd,36wq)
 -e(-end):结束id(0000,1ddd,36wq)
 -a(-auto):获取当前数据库最新的一个id和网站最新的一个id，补全新增数据
+-r(-retry):重试错误链接
+-g(-genre):更新类别
+-t(-stars):更新演员
 -p(-proxies):使用指定的https代理服务器或SOCKS5代理服务器。例如：-p http://127.0.0.1:1080,-p socks5://127.0.0.1:52772

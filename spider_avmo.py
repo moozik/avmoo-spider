@@ -184,7 +184,7 @@ class avmo:
         }
         #代理
         self.s.proxies = {
-            'https':'https://127.0.0.1:1080'
+            #'https':'https://127.0.0.1:1080'
         }
     #mysql conn
     def conn(self):
@@ -194,7 +194,6 @@ class avmo:
             self.CUR = self.CONN.cursor()
         except:
             print('connect database fail.')
-            # self.usage()
             sys.exit()
         try:
             self.CUR.execute('select count(1) from ' + self.table_main)
@@ -234,19 +233,17 @@ class avmo:
 
     #写出命令行格式
     def usage(self):
-        print('抓取来自{}的信息，并插入数据库，id区间为0000-zzzz'.format(self.site))
-        print(sys.argv[0] + " -i -s 0000 -e 0100\n")
-        print('抓取来自{}的信息，不进行存储操作'.format(self.site))
-        print(sys.argv[0] + " -s 0000 -e 0100\n")
-        print('接着上次抓取并存入数据库')
-        print(sys.argv[0] + " -a -i\n\n")
-        print('-h(-help):使用说明')
-        print('-i(-insert):插入数据库')
-        print('-s(-start):开始id(0000,1ddd,36wq)')
-        print('-e(-end):结束id(0000,1ddd,36wq)')
-        print('-a(-auto):获取当前最新的一个id和网站最新的一个id，补全新增数据')
-        print('-g(-genre):更新av_genre类别表')
-        print('-p(-proxies):使用指定的https代理服务器或SOCKS5代理服务器。例如：-p https://127.0.0.1:1080,-p socks5://127.0.0.1:52772')
+        usage = '''
+        -h(-help):使用说明
+        -s(-start):开始id(0000,1ddd,36wq)
+        -e(-end):结束id(0000,1ddd,36wq)
+        -a(-auto):获取当前数据库最新的一个id和网站最新的一个id，补全新增数据
+        -r(-retry):重试错误链接
+        -g(-genre):更新类别
+        -t(-stars):更新演员
+        -p(-proxies):使用指定的https代理服务器或SOCKS5代理服务器。例如：-p http://127.0.0.1:1080,-p socks5://127.0.0.1:52772
+        '''
+        print(usage)
 
     #主函数，抓取页面内信息
     def main(self, looplist):
@@ -321,6 +318,7 @@ class avmo:
         self.CUR.execute(
             'SELECT linkid FROM {} ORDER BY linkid DESC LIMIT 0,1'.format(self.table_stars))
         self.start_id = self.CUR.fetchall()[0][0]
+        self.start_id = '0400'
         self.stop_id = '1000'
         def get_val(str):
             return str.split(':')[1].strip()
@@ -331,19 +329,20 @@ class avmo:
                 response = self.s.get(url)
                 html = etree.HTML(response.text)
             except:
-                print(url)
-                if response.status_code == 404:
-                    print(linkid, 'status_code:404')
-                    break
-                else:
-                    print(linkid,
-                          'status_code:',response.status_code)
-                    time.sleep(5)
-                    continue
+                if response:
+                    if response.status_code == 404:
+                        print(linkid, 'status_code:404')
+                        break
+                    else:
+                        print(linkid,
+                            'status_code:',response.status_code)
+                        time.sleep(5)
+                        continue
 
             if response.status_code != 200:
                 print(response.status_code)
                 exit()
+            del(response)
             data = {
                 'id': self.linkid2id(linkid),
                 'linkid': linkid,
@@ -412,7 +411,7 @@ class avmo:
             self.CUR.execute(insert_sql)
             self.CONN.commit()
             if data['cup'] == 'F':
-                time.sleep(10)
+                time.sleep(5)
             elif data['cup'] == 'E':
                 time.sleep(3)
             elif data['cup'] == 'D':
@@ -423,8 +422,7 @@ class avmo:
                 time.sleep(1)
             else:
                 time.sleep(0.5)
-    
-    
+
     #遍历urlid
     def get_linkid(self):
         for abcd in self.abc_map():
