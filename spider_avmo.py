@@ -426,9 +426,9 @@ class avmo:
             elif data['cup'] == 'B':
                 time.sleep(1)
             else:
-                time.sleep(0.8)
+                time.sleep(1)
     def stars_save(self, data):
-        insert_sql = 'INSERT INTO "{}" VALUES({},"{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}")'.format(
+        insert_sql = 'REPLACE INTO "{}" VALUES({},"{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}")'.format(
             self.table_stars,
             data['id'],
             data['linkid'],
