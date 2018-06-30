@@ -243,7 +243,7 @@ class avmo:
         -t(-stars):更新演员
         -p(-proxies):使用指定的https代理服务器或SOCKS5代理服务器。例如：-p http://127.0.0.1:1080,-p socks5://127.0.0.1:52772
         '''
-        print(usage)
+        print(usage.replace(' ',''))
 
     #主函数，抓取页面内信息
     def main(self, looplist):
@@ -314,7 +314,7 @@ class avmo:
         self.CONN.commit()
 
     #获取演员
-    def stars_loop(self):
+    def stars_loop(self, map_list = []):
         self.CUR.execute(
             'SELECT linkid FROM {} ORDER BY linkid DESC LIMIT 0,1'.format(self.table_stars))
         self.start_id = self.CUR.fetchall()[0][0]
@@ -323,51 +323,58 @@ class avmo:
             return str.split(':')[1].strip()
 
         page_404_count = 0
-        for linkid in self.get_linkid():
+        if map_list == []:
+            map_list = self.get_linkid()
+        for linkid in map_list:
             url = self.star_url + linkid
             print(linkid, self.linkid2id(linkid))
-            try:
-                response = self.s.get(url)
-                html = etree.HTML(response.text)
-            except:
-                if response:
-                    if response.status_code == 404:
-                        print(linkid, 'status_code:404')
-                        break
-                    else:
-                        print(linkid,
-                            'status_code:',response.status_code)
-                        time.sleep(5)
-                        continue
             data = {
                 'id': self.linkid2id(linkid),
                 'linkid': linkid,
                 'name': '',
-                'birthday':'',
-                'height':'',
-                'cup':'',
-                'bust':'',
-                'waist':'',
-                'hips':'',
-                'hometown':'',
-                'hobby':'',
+                'birthday': '',
+                'height': '',
+                'cup': '',
+                'bust': '',
+                'waist': '',
+                'hips': '',
+                'hometown': '',
+                'hobby': '',
                 'headimg': ''
             }
+            try:
+                response = self.s.get(url)
+                html = etree.HTML(response.text)
+            except:
+                if map_list == []:
+                    data['birthday'] = 'error'
+                    self.stars_save(data)
+                    time.sleep(10)
+                    continue
+            
             if response.status_code == 403:
-                print(response.status_code)
+                print(data['id'], '  ', data['linkid'],'  status_code:403')
                 exit()
             if response.status_code == 404:
                 page_404_count += 1
+                #检查error条目
+                if map_list == []:
+                    sql = 'SELECT linkid FROM "av_stars" WHERE birthday="error"'
+                    self.CUR.execute(sql)
+                    error_list = self.CUR.fetchall()
+                    map_list = [x[0] for x in error_list]
+                    self.stars_loop(map_list)
                 if page_404_count == 10:
                     print('stat 404 count:10')
                     exit()
                 else:
                     print(data['id'],'  ',data['linkid'],'  ',page_404_count)
+                    data['birthday'] = '404'
                     self.stars_save(data)
+                    time.sleep(1)
                     continue
 
-            page_404_count == 0
-            del(response)
+            page_404_count = 0
 
             try:
                 data['name'] = html.xpath(
@@ -404,7 +411,7 @@ class avmo:
                 if '爱好' in item_p.text:
                     data['hobby'] = get_val(item_p.text)
                     continue
-            #print(data['id'],'  ','  '.join(list(data.values())[1:-1]))
+
             print(
                 data['birthday'].ljust(13),
                 data['height'].ljust(7),
@@ -428,6 +435,7 @@ class avmo:
                 time.sleep(1)
             else:
                 time.sleep(1)
+    
     def stars_save(self, data):
         insert_sql = 'REPLACE INTO "{}" VALUES({},"{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}")'.format(
             self.table_stars,
