@@ -7,11 +7,15 @@
     <div class="row">
         <div id="avatar-waterfall" style="margin: 70px 70px;">
         {% for item in data %}
-            <a data-type="stars" data-val="{{item.0}}" class="avatar-box like" href="/stars/{{item.0}}">
-                <!--<div class="photo-frame">
-                        <img src="#" title="">
-                    </div>-->
-                <span>{{item.0}}</span>
+            <a class="avatar-box" href="/stars/{{item.0}}">
+                <div class="photo-frame">
+                    {% if item.2 %}
+                        <img src="{{cdn}}/{{item.2}}" title="">
+                    {% else %}
+                        <img src="{{cdn}}/mono/actjpgs/nowprinting.gif" title="">
+                    {% endif %}
+                    </div>
+                <span>{{item.1}}</span>
             </a>
         {% endfor %}
         </div>

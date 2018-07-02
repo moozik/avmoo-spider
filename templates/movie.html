@@ -102,15 +102,15 @@
         <a class="solink" href="http://www.163sub.org/Search?id={{data.av_id}}" target="_blank">163字幕</a>
         <a class="solink" href="http://assrt.net/sub/?searchword={{data.av_id}}" target="_blank">射手字幕</a>
     </div>
-    {% if data.stars %}
+    {% if data.stars_data %}
     <h4>演员</h4>
     <div id="avatar-waterfall">
-        {% for item in data.stars %}
-        <a data-type="stars" data-val="{{item}}" class="avatar-box like" href="/stars/{{item}}">
-            <!--<div class="photo-frame">
-                <img src="#" title="">
-            </div>-->
-            <span>{{item}}</span>
+        {% for item in data.stars_data %}
+        <a data-type="stars" data-val="{{item.linkid}}" class="avatar-box like" href="/stars/{{item.linkid}}">
+            <div class="photo-frame">
+                <img src="{{cdn}}/{{item.headimg}}" title="">
+            </div>
+            <span>{{item.name}}</span>
         </a>
         {% endfor %}
     </div>

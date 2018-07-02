@@ -106,8 +106,19 @@ def movie(linkid=''):
     if movie['genre']:
         movie['genre'] = movie['genre'].split('|')
     #演员
-    if movie['stars']:
-        movie['stars'] = movie['stars'].split('|')
+    if movie['stars_url']:
+        sql = 'select linkid,name,headimg from av_stars where linkid in ("{}")'.format(
+            movie['stars_url'].replace('|','","'))
+        stars_data = db_fetchall(sql)
+        movie['stars_data'] = []
+        for item in stars_data:
+            movie['stars_data'].append(
+                {
+                    'linkid':item[0],
+                    'name':item[1],
+                    'headimg': 'mono/actjpgs/nowprinting.gif' if item[2] == '' else item[2]
+                }
+            )
     #图片
     img = []
     if movie['image_len'] != '0':
@@ -144,9 +155,9 @@ def search(keyword='', pagenum = 1):
     limit_start = (pagenum - 1) * PAGE_LIMIT
 
     function = request.path.split('/')[1]
-    if function == 'director' or function == 'studio' or function == 'label' or function == 'series':
+    if function == 'director' or function == 'studio' or function == 'label' or function == 'series' or function == 'stars':
         where = '{}_url="{}"'.format(function, keyword)
-    if function == 'genre' or function == 'stars':
+    if function == 'genre':
         where = '{} LIKE "%{}%"'.format(function, keyword)
 
     page_root = '/{}/{}'.format(function, keyword)
@@ -216,9 +227,9 @@ def like_page_other(keyword=''):
 
 @app.route('/like/stars')
 def like_stars():
-    sqltext = 'SELECT val FROM "av_like" where type="stars" order by time desc'
+    sqltext = 'SELECT s.linkid,s.name,s.headimg FROM "av_like" l join "av_stars" s on l.val=s.linkid where l.type="stars" order by l.time desc'
     result = db_fetchall(sqltext)
-    return render_template('stars.html', data=result)
+    return render_template('stars.html', data=result,cdn=CDN_SITE)
 
 def list_filter(data):
     result = []
@@ -246,8 +257,9 @@ def list2dict(row):
         'studio_url' : row[13],
         'label_url' : row[14],
         'series_url' : row[15],
-        'bigimage' : row[16],
-        'image_len' : row[17]
+        'stars_url' : row[16],
+        'bigimage' : row[17],
+        'image_len' : row[18]
     }
 
 def pagination(pagenum, count):

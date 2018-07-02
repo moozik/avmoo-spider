@@ -8,7 +8,6 @@ import sqlite3
 import re
 import os
 from lxml import etree
-
 '''
 未启用的两个函数
 data_check()
@@ -45,6 +44,8 @@ class avmo:
         self.config()
 
         #================测试区间================
+        # self.main(sqlfun.return_dict())
+        # exit()
         '''
         #重试缺失地址
         # self.data_check()
@@ -127,7 +128,7 @@ class avmo:
 
 
         #主函数延时
-        self.main_sleep = 1
+        self.main_sleep = 1.1
         #更新flag
         self.last_flag = False
         #是否重试
@@ -156,7 +157,7 @@ class avmo:
         #表结构
         self.column = ['id', 'linkid', 'director', 'director_url', 'studio',
                        'studio_url', 'label', 'label_url', 'series', 'series_url', 'image_len',
-                       'genre', 'len', 'stars', 'av_id', 'title', 'bigimage', 'release_date']
+                       'genre', 'len', 'stars', 'av_id', 'title', 'bigimage', 'release_date', 'stars_url']
         #表结构str
         self.column_str = ",".join(self.column)
         #链接数据库
@@ -184,9 +185,9 @@ class avmo:
         }
         #代理
         self.s.proxies = {
-            #'https':'https://127.0.0.1:1080'
+            #'https':'http://127.0.0.1:1080'
         }
-    #mysql conn
+    #sqlite conn
     def conn(self):
         try:
             #链接sqlite
@@ -195,41 +196,6 @@ class avmo:
         except:
             print('connect database fail.')
             sys.exit()
-        try:
-            self.CUR.execute('select count(1) from ' + self.table_main)
-        except:
-            self.CUR.execute('''
-            CREATE TABLE "av_list" (
-            "id"  INTEGER,
-            "linkid"  TEXT(10) NOT NULL,
-            "title"  TEXT(500),
-            "av_id"  TEXT(50),
-            "release_date"  TEXT(20),
-            "len"  TEXT(20),
-            "director"  TEXT(100),
-            "studio"  TEXT(100),
-            "label"  TEXT(100),
-            "series"  TEXT(200),
-            "genre"  TEXT(200),
-            "stars"  TEXT(300),
-            "director_url"  TEXT(10),
-            "studio_url"  TEXT(10),
-            "label_url"  TEXT(10),
-            "series_url"  TEXT(10),
-            "bigimage"  TEXT(200),
-            "image_len"  INTEGER,
-            PRIMARY KEY ("linkid")
-            ); '''.replace("av_list", self.table_main))
-        try:
-            self.CUR.execute('select count(1) from ' + self.table_retry)
-        except:
-            self.CUR.execute('''
-            CREATE TABLE "av_error_linkid" (
-            "linkid"  TEXT(4) NOT NULL,
-            "status_code"  INTEGER,
-            "datetime"  TEXT(50),
-            PRIMARY KEY ("linkid")
-            ); '''.replace("av_error_linkid", self.table_retry))
 
     #写出命令行格式
     def usage(self):
@@ -318,7 +284,7 @@ class avmo:
         self.CUR.execute(
             'SELECT linkid FROM {} ORDER BY linkid DESC LIMIT 0,1'.format(self.table_stars))
         self.start_id = self.CUR.fetchall()[0][0]
-        self.stop_id = '1000'
+        self.stop_id = '3000'
         def get_val(str):
             return str.split(':')[1].strip()
 
@@ -332,6 +298,7 @@ class avmo:
                 'id': self.linkid2id(linkid),
                 'linkid': linkid,
                 'name': '',
+                'name_history': '',
                 'birthday': '',
                 'height': '',
                 'cup': '',
@@ -411,7 +378,10 @@ class avmo:
                 if '爱好' in item_p.text:
                     data['hobby'] = get_val(item_p.text)
                     continue
-
+            #讲括号中的名字记录为曾用名
+            tmp = data['name'].replace('（','(').replace('）','').split('(')
+            if len(tmp) == 2:
+                data['name_history'] = tmp[1]
             print(
                 data['birthday'].ljust(13),
                 data['height'].ljust(7),
@@ -437,11 +407,12 @@ class avmo:
                 time.sleep(1)
     
     def stars_save(self, data):
-        insert_sql = 'REPLACE INTO "{}" VALUES({},"{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}")'.format(
+        insert_sql = 'REPLACE INTO "{}" VALUES({},"{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}")'.format(
             self.table_stars,
             data['id'],
             data['linkid'],
             data['name'],
+            data['name_history'],
             data['birthday'],
             data['height'],
             data['cup'],
@@ -571,7 +542,7 @@ class avmo:
             update_sql(update_list)
 
     def movie_page_data(self, html):
-        data = ['' for x in range(16)]
+        data = ['' for x in range(17)]
         #番号
         try:
             data[12] = html.xpath('/html/body/div[2]/div[1]/div[2]/p[1]/span[2]/text()')[0]
@@ -603,7 +574,7 @@ class avmo:
                 data[7] = tmp_href.replace(self.series, '')
 
         #图片个数image_len
-        data[8] = str(len(html.xpath('//*[@id="sample-waterfall"]/a')))
+        data[8] = str(len(html.xpath('//div[@id="sample-waterfall"]/a')))
         #获取类别列表genre
         data[9] = '|'.join(html.xpath('/html/body/div[2]/div[1]/div[2]/p/span/a/text()')).replace("'", '"')
         #时长len
@@ -613,7 +584,7 @@ class avmo:
         else:
             data[10] = '0'
         #演员stars
-        data[11] = '|'.join(html.xpath('//*[@id="avatar-waterfall"]/a/span/text()')).replace("'", '"')
+        data[11] = '|'.join(html.xpath('//div[@id="avatar-waterfall"]/a/span/text()')).replace("'", '"')
 
         #接取除了番号的标题
         data[13] = html.xpath('/html/body/div[2]/h3/text()')[0][len(data[12]) + 1:].replace("'", '"')
@@ -621,6 +592,10 @@ class avmo:
         data[14] = '/' + html.xpath('/html/body/div[2]/div[1]/div[1]/a/img/@src')[0].split('/',5)[5]
         #发行时间
         data[15] = html.xpath('/html/body/div[2]/div[1]/div[2]/p[2]/text()')[0].strip()
+        #stars_url
+        stars_url_list = html.xpath('//div[@id="avatar-waterfall"]/a/@href')
+        if stars_url_list != None and len(stars_url_list)!=0:
+            data[16] = '|'.join([re.findall('([a-z0-9]+)$',x)[0].rjust(4,'0') for x in stars_url_list])
         return data
     def abc_map(self):
         for i1 in self.abc_sequence:
@@ -700,7 +675,6 @@ class avmo:
         #解析页面内容
         data = self.movie_page_data(etree.HTML(res))
         print(data)
-
 
 if __name__ == '__main__':
     avmo()
