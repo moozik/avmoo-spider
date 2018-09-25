@@ -1,4 +1,4 @@
-最新地址：https://javmoo.com/cn
+最新地址：https://avmoo.pw/
 
 ## 仿avmoo站
 
