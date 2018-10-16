@@ -4,6 +4,9 @@ from flask import request
 from flask import redirect
 from flask import url_for
 import sqlite3
+import requests
+import json
+from lxml import etree
 import time
 import re
 import math
@@ -41,7 +44,7 @@ CDN_SITE = '//jp.netcdn.space'
 
 @app.route('/spider')
 def spider():
-    os.popen('python spider_avmo.py -i -a')
+    os.popen('python spider_avmo.py -a')
     return '正在更新'
 
 @app.route('/')
@@ -54,14 +57,20 @@ def index(keyword = '', pagenum = 1):
     limit_start = (pagenum -1) * PAGE_LIMIT
     keyword = keyword.replace("'",'').replace('"','').strip()
 
-    if re.match('[a-zA-Z0-9 \-]{4,14}', keyword):
-        where = 'av_id="{}"'.format(keyword.replace(' ', '-').upper())
+    if re.match('^[a-zA-Z0-9 \-]{4,14}$', keyword):
+        tmp = keyword.replace(' ', '-').upper()
+        if '-' in tmp:
+            return movie(tmp)
+            #where = 'av_id="{}"'.format(tmp)
+        else:
+            where = 'av_id like "%{}%"'.format(tmp)
     elif keyword != '':
         where = ''
         key_list = keyword.split(' ')
         for key_item in key_list:
             where += '''
             (title like "%{0}%" or
+            av_id like "%{0}%" or
             director like "%{0}%" or
             studio like "%{0}%" or
             label like "%{0}%" or
@@ -162,9 +171,17 @@ def search(keyword='', pagenum = 1):
 
     page_root = '/{}/{}'.format(function, keyword)
     result = sqliteSelect('*', 'av_list', where, (limit_start, PAGE_LIMIT))
-    if function != 'stars' and function != 'genre':
+
+    if function == 'stars':
+        inputtext = db_fetchall('SELECT name FROM "av_stars" where linkid="{}";'.format(keyword))[0][0]
+        keyword = inputtext
+    else:
+        inputtext = ''
+    
+    if function != 'genre' and function != 'stars':
         keyword = ''
-    return render_template('index.html', data=list_filter(result[0]), cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]), keyword=keyword)
+
+    return render_template('index.html', data=list_filter(result[0]), cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]), keyword=keyword, inputtext = inputtext)
 
 
 @app.route('/genre')
@@ -204,7 +221,7 @@ def like_page(pagenum=1):
         limit_start, PAGE_LIMIT)
     count_sql = main_sql.replace('av_list.*', 'COUNT(1)')
     
-    page_root = '/like/movie/page'
+    page_root = '/like/movie'
     result = db_fetchall(select_sql)
     page_count = db_fetchall(count_sql)[0][0]
     return render_template('index.html', data=list_filter(result), cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, page_count), keyword='')
@@ -231,6 +248,37 @@ def like_stars():
     result = db_fetchall(sqltext)
     return render_template('stars.html', data=result,cdn=CDN_SITE)
 
+
+@app.route('/api/GetMagnet/<keyword>')
+def get_magnet(keyword=''):
+    s = requests.Session()
+    s.headers = {
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36'
+    }
+    result = []
+    if keyword == '':
+        return '{}'
+    url = 'https://btso.pw/search/{}'.format(keyword)
+    main_html = s.get(url).text
+    print(url)
+    return main_html
+    main_tree = etree.HTML(main_html)
+    alist = main_tree.xpath('/html/body/div[2]/div[4]/div[2]/a')
+
+    for item in alist:
+        url = 'https:'+item.attrib.get('href')
+        item_html = s.get(url).text
+        print(url)
+        item_tree = etree.HTML(item_html)
+
+        magnet = re.findall('[A-Z0-9]+$', item.attrib.get('href'))[0]
+
+        print(magnet, item.attrib.get('href'))
+        result.append([
+            item.attrib.get('href'),
+            magnet,
+        ])
+    return json.dumps(result)
 def list_filter(data):
     result = []
     for row in data:
@@ -316,6 +364,7 @@ def sqliteSelect(column='*', table='av_list', where='1', limit=(0, 30), order='i
         column, table, where, order, limit[0], limit[1])
 
     result = db_fetchall(sqltext)
+    print('sql:', sqltext)
     # print('sql:', sqltext)
 
     sqltext = 'SELECT COUNT(1) AS count FROM {} WHERE {}'.format(table, where)

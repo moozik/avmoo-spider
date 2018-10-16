@@ -33,13 +33,16 @@ class avmo:
         #================主要配置================
 
         #目标域名
-        self.site = 'javlog.com'
+        self.site = 'avmoo.pw'
 
         #sqlite数据库地址
         if os.path.exists('avmoo_.db'):
             self.sqlite_file = 'avmoo_.db'
         else:
             self.sqlite_file = 'avmoo.db'
+        #主函数延时
+        self.main_sleep = 1
+        
         #其他配置初始化
         self.config()
 
@@ -126,9 +129,6 @@ class avmo:
         for item in range(len(self.abc_sequence)):
             self.dl[self.abc_sequence[item]] = item
 
-
-        #主函数延时
-        self.main_sleep = 1.1
         #更新flag
         self.last_flag = False
         #是否重试

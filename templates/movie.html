@@ -87,21 +87,32 @@
     </style>
     <h4>资源</h4>
     <div class="row">
-        <a class="solink" href="http://alicili.cc/list/{{data.av_id}}/1-0-0/" target="_blank">BT阿狸</a>
-        <a class="solink" href="https://www.pushbtt.com/s/{{data.av_id}}" target="_blank">pushBT</a>
+        <a class="solink" href="https://alicili.co/list/{{data.av_id}}/1-0-0/" target="_blank">BT阿狸</a>
+        <!--<a class="solink" href="https://www.pushbtt.com/s/{{data.av_id}}" target="_blank">pushBT</a>-->
         <a class="solink" href="http://www.aicili.me/main-search-kw-{{data.av_id}}-1.html" target="_blank">爱磁力</a>
         <a class="solink" href="http://www.cilimao.me/search?word={{data.av_id}}" target="_blank">磁力猫</a>
         <a class="solink" href="https://torrentz2.eu/search?f={{data.av_id}}" target="_blank">Torrentz2</a>
         <a class="solink" href="https://btso.pw/search/{{data.av_id}}" target="_blank">btso.pw</a>
-        <a class="solink" href="http://www.baocaibt.org/search/{{data.av_id}}/" target="_blank">BT包菜</a>
-        <a class="solink" href="http://ciliba.net/word/{{data.av_id}}.html" target="_blank">磁力吧</a>
-        <a class="solink" href="http://www.juzisousuo.com/word/{{data.av_id}}.html" target="_blank">BT橘子</a>
+        <!-- <a class="solink" href="http://www.baocaibt.org/search/{{data.av_id}}/" target="_blank">BT包菜</a> -->
+        <!-- <a class="solink" href="http://ciliba.net/word/{{data.av_id}}.html" target="_blank">磁力吧</a> -->
+        <!-- <a class="solink" href="http://www.juzisousuo.com/word/{{data.av_id}}.html" target="_blank">BT橘子</a> -->
         <a class="solink" href="http://btfinder.com/main-search-kw-{{data.av_id}}-1.html" target="_blank">BTfinder</a>
-        <a class="solink" href="https://zhongziso.com/list/{{data.av_id}}/1" target="_blank">种子搜</a>
+        <!-- <a class="solink" href="https://zhongziso.com/list/{{data.av_id}}/1" target="_blank">种子搜</a> -->
         <a class="solink" href="https://www.btdalu.com/list/{{data.av_id}}/1/1/1" target="_blank">BT大陆</a>
-        <a class="solink" href="http://www.163sub.org/Search?id={{data.av_id}}" target="_blank">163字幕</a>
+        <!-- <a class="solink" href="http://www.163sub.org/Search?id={{data.av_id}}" target="_blank">163字幕</a> -->
         <a class="solink" href="http://assrt.net/sub/?searchword={{data.av_id}}" target="_blank">射手字幕</a>
     </div>
+    <h4>磁力链接</h4>
+    <div class="row" id="GetMagnet">
+        <a class="solink" href="javascript:GetMagnet('{{data.av_id}}');" style="background:#CC0000;">GET Magnet</a>
+    </div>
+<script>
+function GetMagnet(av_id){
+    result = $.get('http://127.0.0.1:5000/api/GetMagnet/'+av_id);
+    console.log(result);
+}
+</script>
+
     {% if data.stars_data %}
     <h4>演员</h4>
     <div id="avatar-waterfall">
