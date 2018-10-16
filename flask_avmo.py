@@ -248,7 +248,7 @@ def like_stars():
     result = db_fetchall(sqltext)
     return render_template('stars.html', data=result,cdn=CDN_SITE)
 
-
+#暂时没用
 @app.route('/api/GetMagnet/<keyword>')
 def get_magnet(keyword=''):
     s = requests.Session()
