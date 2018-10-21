@@ -40,6 +40,7 @@ linkid,title,av_id,release_date,genre,stars,replace(bigimage,"pl.jpg","ps.jpg") 
 #每页展示的数量
 PAGE_LIMIT = 30
 CDN_SITE = '//jp.netcdn.space'
+CDN_SITE = '//pics.dmm.co.jp'
 
 
 @app.route('/spider')
