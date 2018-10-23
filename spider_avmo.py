@@ -5,6 +5,7 @@ import time
 import getopt
 import requests
 import sqlite3
+import math
 import re
 import os
 from lxml import etree
@@ -59,8 +60,8 @@ class avmo:
         try:
             opts, args = getopt.getopt(
                 sys.argv[1:],
-                "hs:e:arp:gt",
-                ['help', 'start', 'end', 'auto', 'retry', 'proxies', 'genre', 'stars']
+                "hs:e:arp:gtu:",
+                ['help', 'start', 'end', 'auto', 'retry', 'proxies', 'genre', 'stars', 'sub']
             )
         except:
             self.usage()
@@ -73,34 +74,31 @@ class avmo:
                 self.stop_id = value
             elif op == '-a' or op == '-auto':
                 self.auto = True
+                self.get_last()
             elif op == '-p' or op == '-proxies':
                 self.s.proxies['https'] = value
             elif op == '-r' or op == '-retry':
-                if self.action != 'movie':
-                    print('参数错误')
-                    exit()
-                else:
-                    self.action = 'retry'
+                self.retry_errorurl()
+                exit()
             elif op == '-g' or op == '-genre':
-                if self.action != 'movie':
-                    print('参数错误')
-                    exit()
-                else:
-                    self.action = 'genre'
+                self.genre_update()
+                exit()
             elif op == '-t' or op == '-stars':
-                if self.action != 'movie':
-                    print('参数错误')
-                    exit()
-                else:
-                    self.action = 'stars'
+                self.stars_loop()
+                exit()
             elif op == '-h' or op == '-help':
                 self.usage()
                 exit()
+            elif op == '-u' or op == '-sub':
+                self.sub_keyword = value
+                self.get_sub()
+                exit()
+
         #展示说明
         if len(sys.argv) == 1:
             self.usage()
             exit()
-
+        '''
         if self.action == 'retry':
             self.retry_errorurl()
             exit()
@@ -110,9 +108,12 @@ class avmo:
         elif self.action == 'stars':
             self.stars_loop()
             exit()
+        elif self.action == 'sub':
+            self.get_sub()
+            exit()
         elif self.auto == True:
             self.get_last()
-
+        '''
         #主程序
         self.main(self.get_linkid())
 
@@ -208,9 +209,63 @@ class avmo:
         -g(-genre):更新类别
         -t(-stars):更新演员
         -p(-proxies):使用指定的https代理服务器或SOCKS5代理服务器。例如：-p http://127.0.0.1:1080,-p socks5://127.0.0.1:52772
+        -u(-163sub):使用指定关键字查找视频字幕
         '''
         print(usage.replace(' ',''))
 
+    def get_suburl(self, keyword, item = None):
+        if item == None:
+            return 'http://www.163sub.org/search.ashx?q={}'.format(keyword)
+        else:
+            return 'http://www.163sub.org/search.ashx?q={}&lastid={}'.format(keyword, item)
+    
+    def get_subjson(self, response):
+        json = response.json()
+        data = []
+        linkID = 0
+        for item in json.get('Data'):
+            linkID = item['linkID']
+            tmp = re.findall('[a-zA-Z]+[ \-]\d{3,}',item['mkvName'])
+            if tmp == []:
+                continue
+            
+            data.append(
+                (
+                    item['ID'].strip(),
+                    tmp[0].upper().replace(' ','-')
+                )
+            )
+        return int(json.get('Count')), data, linkID
+
+
+    #获取字幕
+    def get_sub(self):
+        resultArr = []
+
+        response = self.s.get(self.get_suburl(self.sub_keyword))
+        res = self.get_subjson(response)
+
+        if res[1] != []:
+            resultArr.extend(res[1])
+
+            print('COUNT:',res[0])
+        else:
+            print('None!')
+            exit()
+        
+        for item in range(1, math.ceil(res[0]/10)):
+            print('now:', item * 10)
+            response = self.s.get(self.get_suburl(self.sub_keyword, res[2]))
+            res = self.get_subjson(response)
+            resultArr.extend(res[1])
+        
+        print(self.sub_keyword, '的字幕总条数为', len(resultArr))
+        if len(resultArr) > 0:
+            INSERT_SQL = 'REPLACE INTO av_163sub VALUES({})'.format('),('.join([
+                '"{}","{}"'.format(x[0],x[1]) for x in resultArr]))
+            self.CUR.execute(INSERT_SQL)
+            self.CONN.commit()
+    
     #主函数，抓取页面内信息
     def main(self, looplist):
         for item in looplist:
@@ -246,6 +301,10 @@ class avmo:
             #存储数据
             if len(self.insert_list) == self.insert_threshold:
                 self.movie_save()
+        #插入剩余的数据
+        self.movie_save()
+        #重试错误数据
+        self.retry_errorurl()
 
     #获取最后一次的id
     def get_last(self):
@@ -436,11 +495,6 @@ class avmo:
             
             if abcd > self.stop_id:
                 print('start:{0} end:{1} done!'.format(self.start_id, self.stop_id))
-                if self.action == 'movie':
-                    #插入剩余的数据
-                    self.movie_save()
-                    #重试错误数据
-                    self.retry_errorurl()
                 exit()
     #由urlid获取排序自增id
     def linkid2id(self, item):

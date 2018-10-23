@@ -64,20 +64,23 @@ def index(keyword = '', pagenum = 1):
             return movie(tmp)
             #where = 'av_id="{}"'.format(tmp)
         else:
-            where = 'av_id like "%{}%"'.format(tmp)
+            where = 'av_list.av_id like "%{}%"'.format(tmp)
     elif keyword != '':
         where = ''
         key_list = keyword.split(' ')
         for key_item in key_list:
+            if key_item == '字幕':
+                where += ' av_163sub.sub_id IS NOT NULL and'
+                continue
             where += '''
-            (title like "%{0}%" or
-            av_id like "%{0}%" or
-            director like "%{0}%" or
-            studio like "%{0}%" or
-            label like "%{0}%" or
-            series like "%{0}%" or
-            genre like "%{0}%" or
-            stars like "%{0}%")and'''.format(key_item)
+            (av_list.title like "%{0}%" or
+            av_list.av_id like "%{0}%" or
+            av_list.director like "%{0}%" or
+            av_list.studio like "%{0}%" or
+            av_list.label like "%{0}%" or
+            av_list.series like "%{0}%" or
+            av_list.genre like "%{0}%" or
+            av_list.stars like "%{0}%")and'''.format(key_item)
         where = where[:-3]
     elif keyword == '':
         where = '1'
@@ -96,7 +99,7 @@ def released(pagenum = 1):
         redirect(url_for('/'))
     limit_start = (pagenum - 1) * PAGE_LIMIT
     date = time.strftime("%Y-%m-%d", time.localtime())
-    where = 'release_date <= "{}"'.format(date)
+    where = 'av_list.release_date <= "{}"'.format(date)
     result = sqliteSelect('*', 'av_list', where, (limit_start, PAGE_LIMIT))
 
     page_root = '/released'
@@ -107,9 +110,9 @@ def movie(linkid=''):
     if linkid=='':
         redirect(url_for('/'))
     if '-' in linkid:
-        where = ' av_id="{}"'.format(linkid.upper())
+        where = ' av_list.av_id="{}"'.format(linkid.upper())
     else:
-        where = ' linkid="{}"'.format(linkid)
+        where = ' av_list.linkid="{}"'.format(linkid)
 
     movie = list2dict(sqliteSelect('*', 'av_list', where, (0, 1))[0][0])
     #系列
@@ -166,9 +169,9 @@ def search(keyword='', pagenum = 1):
 
     function = request.path.split('/')[1]
     if function == 'director' or function == 'studio' or function == 'label' or function == 'series' or function == 'stars':
-        where = '{}_url="{}"'.format(function, keyword)
+        where = 'av_list.{}_url="{}"'.format(function, keyword)
     if function == 'genre':
-        where = '{} LIKE "%{}%"'.format(function, keyword)
+        where = 'av_list.{} LIKE "%{}%"'.format(function, keyword)
 
     page_root = '/{}/{}'.format(function, keyword)
     result = sqliteSelect('*', 'av_list', where, (limit_start, PAGE_LIMIT))
@@ -187,7 +190,7 @@ def search(keyword='', pagenum = 1):
 
 @app.route('/genre')
 def genre():
-    result = sqliteSelect('name,title','av_genre',1,(0,500),'')
+    result = sqliteSelect('name,title','av_genre',1,(0,500),'',subtitle=False)
     data = {}
     for item in result[0]:
         if item[1] not in data:
@@ -308,7 +311,8 @@ def list2dict(row):
         'series_url' : row[15],
         'stars_url' : row[16],
         'bigimage' : row[17],
-        'image_len' : row[18]
+        'image_len' : row[18],
+        'sub_id' : row[19],
     }
 
 def pagination(pagenum, count):
@@ -355,20 +359,25 @@ def conn(dbfile= 'avmoo.db'):
     }
 
 
-def sqliteSelect(column='*', table='av_list', where='1', limit=(0, 30), order='id DESC'):
+def sqliteSelect(column='*', table='av_list', where='1', limit=(0, 30), order='id DESC', subtitle = True):
     #db = conn()
     if order.strip() == '':
         order = ''
     else:
         order = 'ORDER BY ' + order
-    sqltext = 'SELECT {} FROM {} WHERE {} {} LIMIT {},{}'.format(
-        column, table, where, order, limit[0], limit[1])
-
-    result = db_fetchall(sqltext)
-    print('sql:', sqltext)
+    if subtitle:
+        sqltext = 'SELECT {1}.{0},av_163sub.sub_id FROM {1} LEFT JOIN av_163sub ON {1}.av_id=av_163sub.av_id  WHERE {2} GROUP BY {1}.av_id {3}'.format(
+            column, table, where, order)
+    else:
+        sqltext = 'SELECT {} FROM {} WHERE {} {}'.format(
+            column, table, where, order)
+    sqllimit = ' LIMIT {},{}'.format(limit[0], limit[1])
+    result = db_fetchall(sqltext + sqllimit)
+    print(sqltext)
+    print()
     # print('sql:', sqltext)
 
-    sqltext = 'SELECT COUNT(1) AS count FROM {} WHERE {}'.format(table, where)
+    sqltext = 'SELECT COUNT(1) AS count FROM ({})'.format(sqltext)
     result_count = db_fetchall(sqltext)[0][0]
     return (result, result_count)
 

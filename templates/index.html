@@ -14,6 +14,9 @@
 演员:{{ item.stars }}">
 							</div>
 							<div class="photo-info">
+								{% if item.sub_id %}
+									<span class="sub_title">字幕</span>
+								{% endif %}
 								<span>{{ item.title }}
 									<br>
 									<date>{{ item.av_id }}</date> /
