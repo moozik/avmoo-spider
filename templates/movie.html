@@ -12,6 +12,9 @@
         <div class="col-md-3 info">
             <p>
                 <span class="header">识别码:</span>
+                {% if data.sub_id %}
+                <span class="sub_title">字幕</span>
+                {% endif %}
                 <span class="like" data-type="av_id" data-val="{{data.av_id}}" style="color:#CC0000;">{{data.av_id}}</span>
             </p>
             {% if data.release_date %}
