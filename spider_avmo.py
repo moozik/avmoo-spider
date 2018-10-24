@@ -34,7 +34,7 @@ class avmo:
         #================主要配置================
 
         #目标域名
-        self.site = 'avmoo.pw'
+        self.site = 'avmoo.net'
 
         #sqlite数据库地址
         if os.path.exists('avmoo_.db'):
@@ -202,23 +202,21 @@ class avmo:
     def usage(self):
         usage = '''
         -h(-help):使用说明
-        -s(-start):开始id(0000,1ddd,36wq)
-        -e(-end):结束id(0000,1ddd,36wq)
-        -a(-auto):获取当前数据库最新的一个id和网站最新的一个id，补全新增数据
+        -s(-start):开始id
+            例如：'-s 0000' '-s 1ddd'
+        -e(-end):结束id
+            例如：'-e xxxx' '-e zzzz'
+        -a(-auto):(常用功能)获取当前数据库最新的一个id和网站最新的一个id，补全新增数据
         -r(-retry):重试错误链接
         -g(-genre):更新类别
         -t(-stars):更新演员
-        -p(-proxies):使用指定的https代理服务器或SOCKS5代理服务器。例如：-p http://127.0.0.1:1080,-p socks5://127.0.0.1:52772
-        -u(-163sub):使用指定关键字查找视频字幕
+        -p(-proxies):使用指定的https代理服务器或SOCKS5代理服务器。
+            例如：'-p http://127.0.0.1:1080,-p socks5://127.0.0.1:52772'
+        -u(-163sub):使用指定关键字查找视频字幕。
+            例如：'-u IPZ' '-u ABP'
         '''
-        print(usage.replace(' ',''))
+        print(usage.replace('        ',''))
 
-    def get_suburl(self, keyword, item = None):
-        if item == None:
-            return 'http://www.163sub.org/search.ashx?q={}'.format(keyword)
-        else:
-            return 'http://www.163sub.org/search.ashx?q={}&lastid={}'.format(keyword, item)
-    
     def get_subjson(self, response):
         json = response.json()
         data = []
@@ -240,26 +238,31 @@ class avmo:
 
     #获取字幕
     def get_sub(self):
-        resultArr = []
 
-        response = self.s.get(self.get_suburl(self.sub_keyword))
+        def get_suburl(keyword, item = None):
+            if item == None:
+                return 'http://www.163sub.org/search.ashx?q={}'.format(keyword)
+            else:
+                return 'http://www.163sub.org/search.ashx?q={}&lastid={}'.format(keyword, item)
+
+        resultArr = []
+        response = self.s.get(get_suburl(self.sub_keyword))
         res = self.get_subjson(response)
 
         if res[1] != []:
             resultArr.extend(res[1])
-
-            print('COUNT:',res[0])
+            print('字幕文件总条数:',res[0])
         else:
             print('None!')
             exit()
         
         for item in range(1, math.ceil(res[0]/10)):
-            print('now:', item * 10)
-            response = self.s.get(self.get_suburl(self.sub_keyword, res[2]))
+            print('当前:', item * 10)
+            response = self.s.get(get_suburl(self.sub_keyword, res[2]))
             res = self.get_subjson(response)
             resultArr.extend(res[1])
         
-        print(self.sub_keyword, '的字幕总条数为', len(resultArr))
+        print(self.sub_keyword, '字幕有效条数为:', len(resultArr))
         if len(resultArr) > 0:
             INSERT_SQL = 'REPLACE INTO av_163sub VALUES({})'.format('),('.join([
                 '"{}","{}"'.format(x[0],x[1]) for x in resultArr]))
