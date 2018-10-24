@@ -42,7 +42,6 @@ PAGE_LIMIT = 30
 CDN_SITE = '//jp.netcdn.space'
 CDN_SITE = '//pics.dmm.co.jp'
 
-
 @app.route('/spider')
 def spider():
     os.popen('python spider_avmo.py -a')
@@ -90,7 +89,6 @@ def index(keyword = '', pagenum = 1):
     else:
         page_root = ''
     return render_template('index.html', data=list_filter(result[0]), cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]), keyword=keyword)
-
 
 @app.route('/released')
 @app.route('/released/page/<int:pagenum>')
@@ -148,8 +146,6 @@ def movie(linkid=''):
     movie['imglist'] = img
     return render_template('movie.html', data=movie, cdn=CDN_SITE)
 
-
-
 @app.route('/director/<keyword>')
 @app.route('/director/<keyword>/page/<int:pagenum>')
 @app.route('/studio/<keyword>')
@@ -187,7 +183,6 @@ def search(keyword='', pagenum = 1):
 
     return render_template('index.html', data=list_filter(result[0]), cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]), keyword=keyword, inputtext = inputtext)
 
-
 @app.route('/genre')
 def genre():
     result = sqliteSelect('name,title','av_genre',1,(0,500),'',subtitle=False)
@@ -199,8 +194,6 @@ def genre():
     data = list(data.values())
     return render_template('genre.html', data=data, cdn=CDN_SITE)
 
-
-
 @app.route('/like/add/<data_type>/<data_val>')
 def like_add(data_type=None, data_val=None):
     if data_type != None and data_val != None:
@@ -211,7 +204,6 @@ def like_add(data_type=None, data_val=None):
         DB['CONN'].commit()
         return 'ok'
     return ''
-
 
 @app.route('/like/movie')
 @app.route('/like/movie/page/<int:pagenum>')
@@ -230,7 +222,6 @@ def like_page(pagenum=1):
     page_count = db_fetchall(count_sql)[0][0]
     return render_template('index.html', data=list_filter(result), cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, page_count), keyword='')
 
-
 @app.route('/like/<keyword>')
 def like_page_other(keyword=''):
     map_ = {
@@ -244,7 +235,6 @@ def like_page_other(keyword=''):
     )
     result = db_fetchall(sqltext)
     return render_template('like.html', data=list_filter(result), cdn=CDN_SITE, type_nick=map_[keyword], type_name=keyword, type_url=keyword + '_url')
-
 
 @app.route('/like/stars')
 def like_stars():
@@ -358,7 +348,6 @@ def conn(dbfile= 'avmoo.db'):
         'CUR':CUR,
     }
 
-
 def sqliteSelect(column='*', table='av_list', where='1', limit=(0, 30), order='id DESC', subtitle = True):
     #db = conn()
     if order.strip() == '':
@@ -373,15 +362,13 @@ def sqliteSelect(column='*', table='av_list', where='1', limit=(0, 30), order='i
             column, table, where, order)
     sqllimit = ' LIMIT {},{}'.format(limit[0], limit[1])
     result = db_fetchall(sqltext + sqllimit)
-    print(sqltext)
-    print()
-    # print('sql:', sqltext)
-
     sqltext = 'SELECT COUNT(1) AS count FROM ({})'.format(sqltext)
     result_count = db_fetchall(sqltext)[0][0]
     return (result, result_count)
 
 def db_fetchall(sql):
+    print(sql)
+    print()
     DB['CUR'].execute(sql)
     return DB['CUR'].fetchall()
 
