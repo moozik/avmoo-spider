@@ -1,4 +1,4 @@
-最新地址：https://avmoo.pw/
+最新地址：https://avmoo.net/
 
 ## 仿avmoo站
 
