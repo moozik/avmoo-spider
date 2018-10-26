@@ -13,7 +13,7 @@
             <p>
                 <span class="header">识别码:</span>
                 {% if data.sub_id %}
-                <span class="sub_title">字幕</span>
+                <span class="sub_title"><a href="http://163sub.org/LinkInfo/{{data.sub_id}}" target="_blank">字幕</a></span>
                 {% endif %}
                 <span class="like" data-type="av_id" data-val="{{data.av_id}}" style="color:#CC0000;">{{data.av_id}}</span>
             </p>

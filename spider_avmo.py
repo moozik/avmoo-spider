@@ -60,8 +60,8 @@ class avmo:
         try:
             opts, args = getopt.getopt(
                 sys.argv[1:],
-                "hs:e:arp:gtu:",
-                ['help', 'start', 'end', 'auto', 'retry', 'proxies', 'genre', 'stars', 'sub']
+                "hs:e:arp:gtu:c",
+                ['help', 'start', 'end', 'auto', 'retry', 'proxies', 'genre', 'stars', 'sub', 'cover']
             )
         except:
             self.usage()
@@ -90,10 +90,12 @@ class avmo:
                 self.usage()
                 exit()
             elif op == '-u' or op == '-sub':
-                self.sub_keyword = value
+                self.sub_keyword = value.upper()
                 self.get_sub()
                 exit()
-
+            elif op == '-c' or op == '-cover':
+                self.sub_cover = True
+        
         #展示说明
         if len(sys.argv) == 1:
             self.usage()
@@ -120,7 +122,7 @@ class avmo:
     #默认配置
     def config(self):
         #默认抓电影
-        self.action = 'movie'
+        #self.action = 'movie'
         #待insert数据
         self.insert_list = []
         #遍历linkid
@@ -130,6 +132,8 @@ class avmo:
         for item in range(len(self.abc_sequence)):
             self.dl[self.abc_sequence[item]] = item
 
+        #字幕爬虫默认不覆盖
+        self.sub_cover = False
         #更新flag
         self.last_flag = False
         #是否重试
@@ -214,6 +218,7 @@ class avmo:
             例如：'-p http://127.0.0.1:1080,-p socks5://127.0.0.1:52772'
         -u(-163sub):使用指定关键字查找视频字幕。
             例如：'-u IPZ' '-u ABP'
+        -c(-cover):放在-u前面用来覆盖已写入字幕记录。
         '''
         print(usage.replace('        ',''))
 
@@ -238,12 +243,18 @@ class avmo:
 
     #获取字幕
     def get_sub(self):
-
         def get_suburl(keyword, item = None):
             if item == None:
                 return 'http://www.163sub.org/search.ashx?q={}'.format(keyword)
             else:
                 return 'http://www.163sub.org/search.ashx?q={}&lastid={}'.format(keyword, item)
+        
+        SELECT_SQL = 'SELECT * FROM av_163sub WHERE av_id LIKE "%{}%"'.format(self.sub_keyword)
+        self.CUR.execute(SELECT_SQL)
+        data = self.CUR.fetchall()
+        if False == self.sub_cover and data != []:
+            print('关键字已有数据:{}条\n需要重试请添加参数-c(-cover)\n'.format(len(data)))
+            exit()
 
         resultArr = []
         response = self.s.get(get_suburl(self.sub_keyword))
@@ -318,14 +329,15 @@ class avmo:
         try:
             response = self.s.get(self.site_url)
         except:
-            print('访问超时')
+            print('timeout.')
             exit()
         if response.status_code != 200:
-            print('页面返回错误')
+            print('page error.')
             exit()
         html = etree.HTML(response.text)
         self.stop_id = html.xpath('//*[@id="waterfall"]/div[1]/a')[0].attrib.get('href')[-4:]
-        print('database start:{0},website end:{1}'.format(self.start_id, self.stop_id))
+        print('数据库最新ID:{0},线上最新ID:{1}'.format(self.start_id, self.stop_id))
+        print('本次更新数量：{}'.format(self.linkid2id(self.stop_id)-self.linkid2id(self.start_id)))
     
     #插入重试表
     def insert_retry(self, data):
@@ -355,9 +367,10 @@ class avmo:
             map_list = self.get_linkid()
         for linkid in map_list:
             url = self.star_url + linkid
-            print(linkid, self.linkid2id(linkid))
+            sort_id = self.linkid2id(linkid)
+            print(linkid, sort_id)
             data = {
-                'id': self.linkid2id(linkid),
+                'id': sort_id,
                 'linkid': linkid,
                 'name': '',
                 'name_history': '',
@@ -375,16 +388,20 @@ class avmo:
                 response = self.s.get(url)
                 html = etree.HTML(response.text)
             except:
-                if map_list == []:
-                    data['birthday'] = 'error'
-                    self.stars_save(data)
-                    time.sleep(10)
-                    continue
+                data['birthday'] = 'error'
+                self.stars_save(data)
+                print('出现错误，延时10s')
+                time.sleep(10)
+                continue
             
             if response.status_code == 403:
                 print(data['id'], '  ', data['linkid'],'  status_code:403')
                 exit()
             if response.status_code == 404:
+                #id大于38000的页面，出现404直接结束
+                if sort_id > 38000:
+                    print('page 404,done!')
+                    exit()
                 page_404_count += 1
                 #检查error条目
                 if map_list == []:
@@ -394,7 +411,7 @@ class avmo:
                     map_list = [x[0] for x in error_list]
                     self.stars_loop(map_list)
                 if page_404_count == 10:
-                    print('stat 404 count:10')
+                    print('stat=404 count:10')
                     exit()
                 else:
                     print(data['id'],'  ',data['linkid'],'  ',page_404_count)
@@ -497,7 +514,8 @@ class avmo:
                 yield abcd
             
             if abcd > self.stop_id:
-                print('start:{0} end:{1} done!'.format(self.start_id, self.stop_id))
+                print('start:{0} end:{1} done!'.format(
+                    self.start_id, self.stop_id))
                 exit()
     #由urlid获取排序自增id
     def linkid2id(self, item):
@@ -509,7 +527,7 @@ class avmo:
             return
 
         self.replace_sql(self.table_main, self.column_str, "),(".join(self.insert_list))
-        print('rows:', len(self.insert_list), 'retry_counter:', self.retry_counter)
+        print('INSERT:', len(self.insert_list))
         self.insert_list = []
         self.retry_counter += 1
 
@@ -530,7 +548,7 @@ class avmo:
         reslen = len(res_retry)
         if reslen == 0:
             return
-        print('retry error url count:', reslen)
+        print('error url count:', reslen)
 
         del_list = []
         update_list = []
@@ -556,7 +574,7 @@ class avmo:
             if len(update_list) == 20:
                 update_sql(update_list)
                 update_list = []
-                print('some status_code update done.')
+                print('done 20.')
 
             url = self.movie_url + retry_linkid
             try:
@@ -694,7 +712,7 @@ class avmo:
                 self.CUR.execute('INSERT INTO "{0}" ("linkid") VALUES ("{1}");'.format(self.table_retry, item))
             self.CONN.commit()
         else:
-            print("miss_linkid no fond")
+            print("miss_list is empty")
             return
 
         #重试错误链接并插入数据库
@@ -723,7 +741,7 @@ class avmo:
         sql = "REPLACE INTO {} (id,name,title)VALUES({});".format(self.table_genre, "),(".join(insert_list))
         self.CUR.execute(sql)
         self.CONN.commit()
-        print('本次更新类别：{}条'.format(len(insert_list)))
+        print('update record：{}'.format(len(insert_list)))
     
     #测试单个页面
     def test_page(self, linkid):

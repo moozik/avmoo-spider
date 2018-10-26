@@ -11,6 +11,7 @@ import time
 import re
 import math
 import os
+import binascii
 app = Flask(__name__)
 
 #数据库列名
@@ -41,11 +42,7 @@ linkid,title,av_id,release_date,genre,stars,replace(bigimage,"pl.jpg","ps.jpg") 
 PAGE_LIMIT = 30
 CDN_SITE = '//jp.netcdn.space'
 CDN_SITE = '//pics.dmm.co.jp'
-
-@app.route('/spider')
-def spider():
-    os.popen('python spider_avmo.py -a')
-    return '正在更新'
+COUNT_CACHE = {}
 
 @app.route('/')
 @app.route('/page/<int:pagenum>')
@@ -273,6 +270,7 @@ def get_magnet(keyword=''):
             magnet,
         ])
     return json.dumps(result)
+
 def list_filter(data):
     result = []
     for row in data:
@@ -354,21 +352,27 @@ def sqliteSelect(column='*', table='av_list', where='1', limit=(0, 30), order='i
         order = ''
     else:
         order = 'ORDER BY ' + order
+    #是否需要查询字幕
     if subtitle:
-        sqltext = 'SELECT {1}.{0},av_163sub.sub_id FROM {1} LEFT JOIN av_163sub ON {1}.av_id=av_163sub.av_id  WHERE {2} GROUP BY {1}.av_id {3}'.format(
-            column, table, where, order)
+        sqltext = 'SELECT av_list.{0},av_163sub.sub_id FROM av_list LEFT JOIN (SELECT av_id,sub_id FROM av_163sub GROUP BY av_id)av_163sub ON av_list.av_id=av_163sub.av_id WHERE {1} {2}'.format(
+            column, where, order)
     else:
         sqltext = 'SELECT {} FROM {} WHERE {} {}'.format(
             column, table, where, order)
     sqllimit = ' LIMIT {},{}'.format(limit[0], limit[1])
     result = db_fetchall(sqltext + sqllimit)
-    sqltext = 'SELECT COUNT(1) AS count FROM ({})'.format(sqltext)
-    result_count = db_fetchall(sqltext)[0][0]
-    return (result, result_count)
 
+    #使用crc32作为key缓存sql结果
+    key_tmp = (binascii.crc32(sqltext.encode()) & 0xffffffff)
+    if key_tmp not in COUNT_CACHE.keys():
+        sqltext = 'SELECT COUNT(1) AS count FROM ({})'.format(sqltext)
+        COUNT_CACHE[key_tmp] = db_fetchall(sqltext)[0][0]
+
+    return (result, COUNT_CACHE[key_tmp])
+    
 def db_fetchall(sql):
-    print(sql)
-    print()
+    print('SQL LOG:')
+    print(sql , '\n')
     DB['CUR'].execute(sql)
     return DB['CUR'].fetchall()
 
