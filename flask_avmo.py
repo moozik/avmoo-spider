@@ -209,15 +209,10 @@ def like_page(pagenum=1):
         redirect(url_for('/'))
     limit_start = (pagenum - 1) * PAGE_LIMIT
 
-    main_sql = "SELECT av_list.* FROM av_like JOIN av_list ON av_like.type='av_id' AND av_like.val = av_list.av_id"
-    select_sql = main_sql + ' ORDER BY av_like.time DESC LIMIT {}, {}'.format(
-        limit_start, PAGE_LIMIT)
-    count_sql = main_sql.replace('av_list.*', 'COUNT(1)')
-    
-    page_root = '/like/movie'
-    result = db_fetchall(select_sql)
-    page_count = db_fetchall(count_sql)[0][0]
-    return render_template('index.html', data=list_filter(result), cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, page_count), keyword='')
+    result = sqliteSelect(column='*', table='av_list', limit=(limit_start, PAGE_LIMIT),
+                          othertable=" JOIN av_like ON av_like.type='av_id' AND av_like.val = av_list.av_id ", order='av_like.time DESC')
+
+    return render_template('index.html', data=list_filter(result[0]), cdn=CDN_SITE, pageroot='/like/movie', page=pagination(pagenum, result[1]), keyword='')
 
 @app.route('/like/<keyword>')
 def like_page_other(keyword=''):
@@ -300,7 +295,7 @@ def list2dict(row):
         'stars_url' : row[16],
         'bigimage' : row[17],
         'image_len' : row[18],
-        'sub_id' : row[19],
+        'sub_id' : row[19] if len(row)>19 else '',
     }
 
 def pagination(pagenum, count):
@@ -346,7 +341,7 @@ def conn(dbfile= 'avmoo.db'):
         'CUR':CUR,
     }
 
-def sqliteSelect(column='*', table='av_list', where='1', limit=(0, 30), order='id DESC', subtitle = True):
+def sqliteSelect(column='*', table='av_list', where='1', limit=(0, 30), order='id DESC', subtitle = True, othertable = ''):
     #db = conn()
     if order.strip() == '':
         order = ''
@@ -354,8 +349,8 @@ def sqliteSelect(column='*', table='av_list', where='1', limit=(0, 30), order='i
         order = 'ORDER BY ' + order
     #是否需要查询字幕
     if subtitle:
-        sqltext = 'SELECT av_list.{0},av_163sub.sub_id FROM av_list LEFT JOIN (SELECT av_id,sub_id FROM av_163sub GROUP BY av_id)av_163sub ON av_list.av_id=av_163sub.av_id WHERE {1} {2}'.format(
-            column, where, order)
+        sqltext = 'SELECT av_list.{0},av_163sub.sub_id FROM av_list {3} LEFT JOIN (SELECT av_id,sub_id FROM av_163sub GROUP BY av_id)av_163sub ON av_list.av_id=av_163sub.av_id WHERE {1} {2}'.format(
+            column, where, order, othertable)
     else:
         sqltext = 'SELECT {} FROM {} WHERE {} {}'.format(
             column, table, where, order)

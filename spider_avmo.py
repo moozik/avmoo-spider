@@ -274,6 +274,9 @@ class avmo:
             resultArr.extend(res[1])
         
         print(self.sub_keyword, '字幕有效条数为:', len(resultArr))
+        if len(resultArr) < 30:
+            print("\n".join([x[1] for x in resultArr]))
+        
         if len(resultArr) > 0:
             INSERT_SQL = 'REPLACE INTO av_163sub VALUES({})'.format('),('.join([
                 '"{}","{}"'.format(x[0],x[1]) for x in resultArr]))
@@ -516,6 +519,7 @@ class avmo:
             if abcd > self.stop_id:
                 print('start:{0} end:{1} done!'.format(
                     self.start_id, self.stop_id))
+                self.movie_save()
                 exit()
     #由urlid获取排序自增id
     def linkid2id(self, item):
