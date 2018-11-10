@@ -170,15 +170,13 @@ def search(keyword='', pagenum = 1):
     result = sqliteSelect('*', 'av_list', where, (limit_start, PAGE_LIMIT))
 
     if function == 'stars':
-        inputtext = db_fetchall('SELECT name FROM "av_stars" where linkid="{}";'.format(keyword))[0][0]
-        keyword = inputtext
-    else:
-        inputtext = ''
+        keyword = db_fetchall(
+            'SELECT name FROM "av_stars" where linkid="{}";'.format(keyword))[0][0]
     
     if function != 'genre' and function != 'stars':
         keyword = ''
 
-    return render_template('index.html', data=list_filter(result[0]), cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]), keyword=keyword, inputtext = inputtext)
+    return render_template('index.html', data=list_filter(result[0]), cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]), keyword=keyword)
 
 @app.route('/genre')
 def genre():
