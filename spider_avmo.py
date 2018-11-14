@@ -66,63 +66,74 @@ class avmo:
         except:
             self.usage()
             exit()
-
-        for op, value in opts:
-            if op == '-s' or op == '-start':
-                self.start_id = value
-            elif op == '-e' or op == '-end':
-                self.stop_id = value
-            elif op == '-a' or op == '-auto':
-                self.auto = True
-                self.get_last()
-            elif op == '-p' or op == '-proxies':
-                self.s.proxies['https'] = value
-            elif op == '-r' or op == '-retry':
-                self.retry_errorurl()
-                exit()
-            elif op == '-g' or op == '-genre':
-                self.genre_update()
-                exit()
-            elif op == '-t' or op == '-stars':
-                self.stars_loop()
-                exit()
-            elif op == '-h' or op == '-help':
-                self.usage()
-                exit()
-            elif op == '-u' or op == '-sub':
-                self.sub_keyword = value.upper()
-                self.get_sub()
-                exit()
-            elif op == '-c' or op == '-cover':
-                self.sub_cover = True
         
         #展示说明
         if len(sys.argv) == 1:
             self.usage()
             exit()
-        '''
-        if self.action == 'retry':
+
+        opt_dict = {}
+        opt_r = {
+            '-h':'-help',
+            '-s':'-start',
+            '-e':'-end',
+            '-a':'-auto',
+            '-r':'-retry',
+            '-p':'-proxies',
+            '-g':'-genre',
+            '-t':'-stars',
+            '-u':'-sub',
+            '-c':'-cover',
+        }
+        for op, value in opts:
+            if op in opt_r:
+                opt_dict[opt_r[op]] = value
+            else:
+                opt_dict[op] = value
+
+        if '-help' in opt_dict:
+            self.usage()
+            exit()
+
+        if '-proxies' in opt_dict:
+            self.s.proxies['https'] = opt_dict['-proxies']
+
+        if '-auto' in opt_dict:
+            self.auto = True
+            self.get_last()
+
+        if '-cover' in opt_dict:
+            self.sub_cover = True
+
+        if '-start' in opt_dict:
+            self.start_id = opt_dict['-start']
+
+        if '-end' in opt_dict:
+            self.end_id = opt_dict['-end']
+
+        if '-retry' in opt_dict:
             self.retry_errorurl()
             exit()
-        elif self.action == 'genre':
-            self.genre_update()
-            exit()
-        elif self.action == 'stars':
-            self.stars_loop()
-            exit()
-        elif self.action == 'sub':
+
+        if '-sub' in opt_dict:
+            self.sub_keyword = opt_dict['-sub'].upper()
             self.get_sub()
             exit()
-        elif self.auto == True:
-            self.get_last()
-        '''
+
+        if '-genre' in opt_dict:
+            self.genre_update()
+            exit()
+
+        if '-stars' in opt_dict:
+            self.stars_loop()
+            exit()
+
         #主程序
         self.main(self.get_linkid())
 
     #默认配置
     def config(self):
-        #默认抓电影
-        #self.action = 'movie'
+
         #待insert数据
         self.insert_list = []
         #遍历linkid
@@ -141,7 +152,7 @@ class avmo:
         #开始id
         self.start_id = '0000'
         #结束id
-        self.stop_id = 'zzzz'
+        self.end_id = 'zzzz'
         #自动获取start stop
         self.auto = False
 
@@ -216,9 +227,9 @@ class avmo:
         -t(-stars):更新演员
         -p(-proxies):使用指定的https代理服务器或SOCKS5代理服务器。
             例如：'-p http://127.0.0.1:1080,-p socks5://127.0.0.1:52772'
-        -u(-163sub):使用指定关键字查找视频字幕。
+        -u(-163sub):使用指定关键字查找视频字幕
             例如：'-u IPZ' '-u ABP'
-        -c(-cover):放在-u前面用来覆盖已写入字幕记录。
+        -c(-cover):用来覆盖原字幕数据
         '''
         print(usage.replace('        ',''))
 
@@ -252,13 +263,16 @@ class avmo:
         SELECT_SQL = 'SELECT * FROM av_163sub WHERE av_id LIKE "%{}%"'.format(self.sub_keyword)
         self.CUR.execute(SELECT_SQL)
         data = self.CUR.fetchall()
-        if False == self.sub_cover and data != []:
-            print('关键字已有数据:{}条\n需要重试请添加参数-c(-cover)\n'.format(len(data)))
-            exit()
 
         resultArr = []
         response = self.s.get(get_suburl(self.sub_keyword))
         res = self.get_subjson(response)
+
+        if False == self.sub_cover and data != []:
+            print(
+                '关键字已有数据:{}条\n163sub实时数据:{}条\n需要重试请添加参数-c(-cover)\n'.format(len(data), res[0]))
+            exit()
+
 
         if res[1] != []:
             resultArr.extend(res[1])
@@ -338,9 +352,9 @@ class avmo:
             print('page error.')
             exit()
         html = etree.HTML(response.text)
-        self.stop_id = html.xpath('//*[@id="waterfall"]/div[1]/a')[0].attrib.get('href')[-4:]
-        print('数据库最新ID:{0},线上最新ID:{1}'.format(self.start_id, self.stop_id))
-        print('本次更新数量：{}'.format(self.linkid2id(self.stop_id)-self.linkid2id(self.start_id)))
+        self.end_id = html.xpath('//*[@id="waterfall"]/div[1]/a')[0].attrib.get('href')[-4:]
+        print('数据库最新ID:{0},线上最新ID:{1}'.format(self.start_id, self.end_id))
+        print('本次更新数量：{}'.format(self.linkid2id(self.end_id)-self.linkid2id(self.start_id)))
     
     #插入重试表
     def insert_retry(self, data):
@@ -361,7 +375,7 @@ class avmo:
         self.CUR.execute(
             'SELECT linkid FROM {} ORDER BY linkid DESC LIMIT 0,1'.format(self.table_stars))
         self.start_id = self.CUR.fetchall()[0][0]
-        self.stop_id = '3000'
+        self.end_id = '3000'
         def get_val(str):
             return str.split(':')[1].strip()
 
@@ -513,12 +527,12 @@ class avmo:
             if abcd <= self.start_id:
                 continue
             
-            if self.start_id < abcd <= self.stop_id:
+            if self.start_id < abcd <= self.end_id:
                 yield abcd
             
-            if abcd > self.stop_id:
+            if abcd > self.end_id:
                 print('start:{0} end:{1} done!'.format(
-                    self.start_id, self.stop_id))
+                    self.start_id, self.end_id))
                 self.movie_save()
                 exit()
     #由urlid获取排序自增id
