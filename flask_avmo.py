@@ -58,7 +58,6 @@ def index(keyword = '', pagenum = 1):
         tmp = keyword.replace(' ', '-').upper()
         if '-' in tmp:
             return movie(tmp)
-            #where = 'av_id="{}"'.format(tmp)
         else:
             where = 'av_list.av_id like "%{}%"'.format(tmp)
     elif keyword != '':

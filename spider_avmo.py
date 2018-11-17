@@ -229,7 +229,7 @@ class avmo:
             例如：'-p http://127.0.0.1:1080,-p socks5://127.0.0.1:52772'
         -u(-163sub):使用指定关键字查找视频字幕
             例如：'-u IPZ' '-u ABP'
-        -c(-cover):用来覆盖原字幕数据
+        -c(-cover):重新抓取字幕数据
         '''
         print(usage.replace('        ',''))
 
@@ -239,14 +239,25 @@ class avmo:
         linkID = 0
         for item in json.get('Data'):
             linkID = item['linkID']
-            tmp = re.findall('[a-zA-Z]+[ \-]\d{3,}',item['mkvName'])
-            if tmp == []:
+
+            if self.sub_keyword not in item['mkvName'].replace(' ','-'):
                 continue
+            
+            avid_tmp = re.findall('[a-zA-Z0-9]+[ \-]\d{3,}',item['mkvName'])
+            if avid_tmp == []:
+                continue
+
+            time_tmp = re.findall('\d{4}-\d{2}-\d{2}', item['otherName3'])
+            if time_tmp != []:
+                time_tmp = time_tmp[0]
+            else:
+                time_tmp = ''
             
             data.append(
                 (
                     item['ID'].strip(),
-                    tmp[0].upper().replace(' ','-')
+                    avid_tmp[0].upper().replace(' ', '-'),
+                    time_tmp
                 )
             )
         return int(json.get('Count')), data, linkID
@@ -254,48 +265,93 @@ class avmo:
 
     #获取字幕
     def get_sub(self):
-        def get_suburl(keyword, item = None):
+        def get_suburl(keyword, item=None):
             if item == None:
                 return 'http://www.163sub.org/search.ashx?q={}'.format(keyword)
             else:
                 return 'http://www.163sub.org/search.ashx?q={}&lastid={}'.format(keyword, item)
         
-        SELECT_SQL = 'SELECT * FROM av_163sub WHERE av_id LIKE "%{}%"'.format(self.sub_keyword)
+        av_163sub_log = {
+            'sub_keyword': self.sub_keyword,
+            'run_time': time.strftime(
+                "%Y-%m-%d %H:%M:%S",
+                time.localtime()
+            ),
+            'data_count': '',
+            'insert_count': '',
+        }
+        #查询抓取历史
+        SELECT_SQL = 'SELECT * FROM av_163sub_log WHERE sub_keyword = "{}" ORDER BY run_time DESC LIMIT 1;'.format(
+            self.sub_keyword)
         self.CUR.execute(SELECT_SQL)
-        data = self.CUR.fetchall()
+        log_data = self.CUR.fetchall()
 
-        resultArr = []
+        if log_data != []:
+            print('上次查询时间:{}\n条数:{}\n有效条数:{}\n'.format(
+                log_data[0][2], log_data[0][3], log_data[0][4]
+            ))
+        
+        #查询当前条数
         response = self.s.get(get_suburl(self.sub_keyword))
         res = self.get_subjson(response)
-
-        if False == self.sub_cover and data != []:
-            print(
-                '关键字已有数据:{}条\n163sub实时数据:{}条\n需要重试请添加参数-c(-cover)\n'.format(len(data), res[0]))
+        
+        print('163sub实时数据:{}条'.format(
+            res[0]))
+        
+        if False == self.sub_cover and log_data != [] and res[0] == log_data[0][3]:
+            print('需要重新抓取请添加参数-c(-cover)\n')
             exit()
 
-
+        resultArr = []
         if res[1] != []:
             resultArr.extend(res[1])
-            print('字幕文件总条数:',res[0])
+            av_163sub_log['data_count'] = res[0]
         else:
-            print('None!')
+            print('没有找到!')
             exit()
         
-        for item in range(1, math.ceil(res[0]/10)):
+        for item in range(1, math.ceil(res[0] / 10)):
             print('当前:', item * 10)
             response = self.s.get(get_suburl(self.sub_keyword, res[2]))
             res = self.get_subjson(response)
             resultArr.extend(res[1])
         
         print(self.sub_keyword, '字幕有效条数为:', len(resultArr))
-        if len(resultArr) < 30:
-            print("\n".join([x[1] for x in resultArr]))
+        av_163sub_log['insert_count'] = len(resultArr)
         
+        #计算新增的字幕
+        SELECT_SQL = 'SELECT DISTINCT av_id FROM "av_163sub" where av_id like "{}%" ORDER BY av_id;'.format(
+            self.sub_keyword)
+        self.CUR.execute(SELECT_SQL)
+        fetch_data = self.CUR.fetchall()
+
+        if fetch_data != []:
+            history_data = set([x[0] for x in fetch_data])
+            new_data = set([x[1] for x in resultArr])
+            new_sub = new_data - history_data
+            if len(new_sub) != 0:
+                print('新增的字幕为:')
+                print("\n".join(list(new_sub)))
+
         if len(resultArr) > 0:
-            INSERT_SQL = 'REPLACE INTO av_163sub VALUES({})'.format('),('.join([
-                '"{}","{}"'.format(x[0],x[1]) for x in resultArr]))
-            self.CUR.execute(INSERT_SQL)
-            self.CONN.commit()
+            INSERT_SQL = 'REPLACE INTO av_163sub VALUES({});'.format('),('.join([
+                '"{}","{}","{}"'.format(x[0], x[1], x[2]) for x in resultArr]))
+            INSERT_LOG = 'REPLACE INTO av_163sub_log ("sub_keyword","run_time","data_count","insert_count")VALUES("{}","{}","{}","{}");'.format(
+                av_163sub_log['sub_keyword'],
+                av_163sub_log['run_time'],
+                av_163sub_log['data_count'],
+                av_163sub_log['insert_count'],
+            )
+            while True:
+                try:
+                    self.CUR.execute(INSERT_SQL)
+                    self.CUR.execute(INSERT_LOG)
+                    self.CONN.commit()
+                    break
+                except:
+                    print('database is locked!')
+                    time.sleep(3)
+
     
     #主函数，抓取页面内信息
     def main(self, looplist):
