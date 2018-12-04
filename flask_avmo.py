@@ -90,7 +90,7 @@ def index(keyword = '', pagenum = 1):
 @app.route('/released/page/<int:pagenum>')
 def released(pagenum = 1):
     if pagenum < 1:
-        redirect(url_for('/'))
+        return redirect(url_for('index'), 404)
     limit_start = (pagenum - 1) * PAGE_LIMIT
     date = time.strftime("%Y-%m-%d", time.localtime())
     where = 'av_list.release_date <= "{}"'.format(date)
@@ -102,13 +102,17 @@ def released(pagenum = 1):
 @app.route('/movie/<linkid>')
 def movie(linkid=''):
     if linkid=='':
-        redirect(url_for('/'))
+        return redirect(url_for('index'), 404)
     if '-' in linkid:
         where = ' av_list.av_id="{}"'.format(linkid.upper())
     else:
         where = ' av_list.linkid="{}"'.format(linkid)
+    sql_arr = sqliteSelect('*', 'av_list', where, (0, 1))
 
-    movie = list2dict(sqliteSelect('*', 'av_list', where, (0, 1))[0][0])
+    if sql_arr[0] == []:
+        return redirect(url_for('index'),404)
+    
+    movie = list2dict(sql_arr[0][0])
     #系列
     if movie['genre']:
         movie['genre'] = movie['genre'].split('|')
@@ -156,7 +160,7 @@ def movie(linkid=''):
 @app.route('/stars/<keyword>/page/<int:pagenum>')
 def search(keyword='', pagenum = 1):
     if pagenum < 1:
-        redirect(url_for('/'))
+        return redirect(url_for('index'), 404)
     limit_start = (pagenum - 1) * PAGE_LIMIT
 
     function = request.path.split('/')[1]
@@ -203,7 +207,7 @@ def like_add(data_type=None, data_val=None):
 @app.route('/like/movie/page/<int:pagenum>')
 def like_page(pagenum=1):
     if pagenum < 1:
-        redirect(url_for('/'))
+        return redirect(url_for('index'), 404)
     limit_start = (pagenum - 1) * PAGE_LIMIT
 
     result = sqliteSelect(column='*', table='av_list', limit=(limit_start, PAGE_LIMIT),

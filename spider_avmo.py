@@ -34,7 +34,7 @@ class avmo:
         #================主要配置================
 
         #目标域名
-        self.site = 'avmoo.net'
+        self.site = 'avmoo.xyz'
 
         #sqlite数据库地址
         if os.path.exists('avmoo_.db'):
