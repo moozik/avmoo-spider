@@ -67,6 +67,10 @@ def index(keyword = '', pagenum = 1):
             if key_item == '字幕':
                 where += ' av_163sub.sub_id IS NOT NULL and'
                 continue
+            if key_item == '已发布':
+                date = time.strftime("%Y-%m-%d", time.localtime())
+                where += ' av_list.release_date <= "{}" and'.format(date)
+                continue
             where += '''
             (av_list.title like "%{0}%" or
             av_list.av_id like "%{0}%" or
@@ -85,19 +89,6 @@ def index(keyword = '', pagenum = 1):
     else:
         page_root = ''
     return render_template('index.html', data=list_filter(result[0]), cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]), keyword=keyword)
-
-@app.route('/released')
-@app.route('/released/page/<int:pagenum>')
-def released(pagenum = 1):
-    if pagenum < 1:
-        return redirect(url_for('index'), 404)
-    limit_start = (pagenum - 1) * PAGE_LIMIT
-    date = time.strftime("%Y-%m-%d", time.localtime())
-    where = 'av_list.release_date <= "{}"'.format(date)
-    result = sqliteSelect('*', 'av_list', where, (limit_start, PAGE_LIMIT))
-
-    page_root = '/released'
-    return render_template('index.html', data=list_filter(result[0]), cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]), keyword='已发布 ')
 
 @app.route('/movie/<linkid>')
 def movie(linkid=''):
