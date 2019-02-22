@@ -2,13 +2,20 @@
 
 ## 仿avmoo站
 
+![running_flask](https://raw.githubusercontent.com/moozik/avmoo-spider/master/running_flask.png)
+
 - `pip install flask` 安装flask
 - `python flask_avmo.py` 启动本地web
 - 打开`http://127.0.0.1:5000`
 
 打开http://127.0.0.1:5000 查看
 
+
+
 ## 爬虫抓取数据
+
+![running_spider](https://raw.githubusercontent.com/moozik/avmoo-spider/master/running_spider.png)
+
 抓取来自avmoo.pw的信息，id区间为0000-0100
 `spider_avmo.py -s 0000 -e 0100`
 
@@ -21,7 +28,7 @@
 更新类别
 `spider_avmo.py -g`
 
-抓取字幕
+抓取字幕（抓取字幕目前不可用）
 `spider_avmo.py -u keyword`
 ```
 -h(-help):使用说明
