@@ -42,7 +42,8 @@ linkid,title,av_id,release_date,genre,stars,replace(bigimage,"pl.jpg","ps.jpg") 
 PAGE_LIMIT = 30
 CDN_SITE = '//jp.netcdn.space'
 CDN_SITE = '//pics.dmm.co.jp'
-COUNT_CACHE = {}
+SQL_CACHE = {}
+#缓存首页
 
 @app.route('/')
 @app.route('/page/<int:pagenum>')
@@ -340,28 +341,34 @@ def sqliteSelect(column='*', table='av_list', where='1', limit=(0, 30), order='i
     else:
         order = 'ORDER BY ' + order
     #是否需要查询字幕
+    #LEFT JOIN (SELECT av_id,sub_id FROM av_163sub GROUP BY av_id)av_163sub ON av_list.av_id=av_163sub.av_id
+    #,av_163sub.sub_id
     if subtitle:
-        sqltext = 'SELECT av_list.{0},av_163sub.sub_id FROM av_list {3} LEFT JOIN (SELECT av_id,sub_id FROM av_163sub GROUP BY av_id)av_163sub ON av_list.av_id=av_163sub.av_id WHERE {1} {2}'.format(
+        sqltext = 'SELECT av_list.{0} FROM av_list {3} WHERE {1} {2}'.format(
             column, where, order, othertable)
     else:
         sqltext = 'SELECT {} FROM {} WHERE {} {}'.format(
             column, table, where, order)
     sqllimit = ' LIMIT {},{}'.format(limit[0], limit[1])
     result = db_fetchall(sqltext + sqllimit)
-
-    #使用crc32作为key缓存sql结果
-    key_tmp = (binascii.crc32(sqltext.encode()) & 0xffffffff)
-    if key_tmp not in COUNT_CACHE.keys():
-        sqltext = 'SELECT COUNT(1) AS count FROM ({})'.format(sqltext)
-        COUNT_CACHE[key_tmp] = db_fetchall(sqltext)[0][0]
-
-    return (result, COUNT_CACHE[key_tmp])
+    res_count = db_fetchall('SELECT COUNT(1) AS count FROM ({})'.format(sqltext))
+    return (result, res_count[0][0])
     
 def db_fetchall(sql):
-    print('SQL LOG:')
-    print(sql , '\n')
-    DB['CUR'].execute(sql)
-    return DB['CUR'].fetchall()
+    #使用crc32作为key缓存sql结果
+    cacheKey = (binascii.crc32(sql.encode()) & 0xffffffff)
+    if cacheKey not in SQL_CACHE.keys():
+        DB['CUR'].execute(sql)
+        SQL_CACHE[cacheKey] = DB['CUR'].fetchall()
+        print('SQL EXEC[{}]:'.format(cacheKey))
+        print(sql, '\n')
+    else:
+        print('SQL CACHE[{}]:'.format(cacheKey))
+        print(sql, '\n')
+    return SQL_CACHE[cacheKey]
+
+    #DB['CUR'].execute(sql)
+    #return DB['CUR'].fetchall()
 
 if __name__ == '__main__':
     DB = conn()
