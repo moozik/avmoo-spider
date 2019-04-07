@@ -1,6 +1,4 @@
-最新地址：https://avmoo.xyz/
-
-## 仿avmoo站
+## 本地web服务器
 
 ![running_flask](https://raw.githubusercontent.com/moozik/avmoo-spider/master/running_flask.png)
 
@@ -8,11 +6,7 @@
 - `python flask_avmo.py` 启动本地web
 - 打开`http://127.0.0.1:5000`
 
-打开http://127.0.0.1:5000 查看
-
-
-
-## 爬虫抓取数据
+## 爬虫
 
 ![running_spider](https://raw.githubusercontent.com/moozik/avmoo-spider/master/running_spider.png)
 
