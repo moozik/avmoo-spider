@@ -2,10 +2,10 @@
 {% block container %}
 <div class="container-fluid pt-10">
     {% for item in data %}
-    <h4>{{item.0.1}}</h4>
+    <h4>{{item.0.title}}</h4>
     <div class="row genre-box">
          {% for item2 in item %}
-        <a class="col-lg-2 col-md-2 col-sm-3 col-xs-6 text-center" href="/genre/{{item2.0}}">{{item2.0}}</a>
+        <a class="col-lg-2 col-md-2 col-sm-3 col-xs-6 text-center" href="/genre/{{item2.name}}">{{item2.name}}</a>
          {% endfor %}
     </div>
     {% endfor %}

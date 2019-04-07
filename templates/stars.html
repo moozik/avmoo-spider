@@ -1,27 +1,92 @@
 {% extends "main.html" %}
 
 {% block title %} 我喜欢的{{type_nick}} - {% endblock %}
-{% block keyword %}{% endblock %}
+{% block keyword %}{{keyword}}{% endblock %}
 {% block container %}
-<div class="container-fluid">
+<!-- <div class="container-fluid">
     <div class="row">
         <div id="avatar-waterfall" style="margin: 70px 70px;">
         {% for item in data %}
-            <a class="avatar-box" href="/stars/{{item.0}}">
+            <a class="avatar-box" href="/stars/{{item.linkid}}" title="{{item.time}}">
                 <div class="photo-frame">
-                    {% if item.2 %}
-                        <img src="{{cdn}}/{{item.2}}" title="">
+                    {% if item.headimg %}
+                        <img src="{{cdn}}/{{item.headimg}}" title="">
                     {% else %}
                         <img src="{{cdn}}/mono/actjpgs/nowprinting.gif" title="">
                     {% endif %}
                     </div>
-                <span>{{item.1}}</span>
+                <span>{{item.name}}</span>
             </a>
         {% endfor %}
         </div>
 	</div>
+</div> -->
+<div class="container-fluid">
+    <div class="row">
+        <div id="avatar-waterfall" style="margin: 70px 70px;">
+            {% for item in data %}
+            <div class="avatar-box">
+                <a class="" href="/stars/{{item.linkid}}" title="{{item.time}}">
+                    <div class="photo-frame">
+                        {% if item.headimg %}
+                        <img src="{{cdn}}/{{item.headimg}}" title="">
+                        {% else %}
+                        <img src="{{cdn}}/mono/actjpgs/nowprinting.gif" title="">
+                        {% endif %}
+                    </div>
+                </a>
+                <span>{{item.name}}</span>
+                <span class="glyphicon glyphicon-remove del-btn" data-val="{{item.linkid}}" data-toggle="modal" data-target="#myModal"
+                    style="padding: 2px;color: rgb(255, 127, 7);"></span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
 </div>
 {% endblock %}
 
 {% block pagination %}
+{% endblock %}
+
+{% block other %}
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">
+                    &times;
+                </button>
+                <h4 class="modal-title" id="myModalLabel">
+                    删除成功
+                </h4>
+            </div>
+            <!-- <div class="modal-body">
+                删除成功
+            </div> -->
+            <div class="modal-footer">
+                <!-- <button type="button" class="btn btn-default" data-dismiss="modal">关闭
+                </button> -->
+                <button type="button" class="btn btn-primary">
+                    确认
+                </button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal -->
+</div>
+{% endblock %}
+
+
+{% block javascript %}
+<script>
+    
+    // $('#avatar-waterfall > div > span').each(function () {
+    //     $(this).after('<span class="glyphicon glyphicon-remove del-btn" data-toggle="modal" data-target="#myModal" style="padding: 2px;color: #FFC107;"></span>');
+    // });
+
+    $('.del-btn').click(function () {
+        $.get("/like/del/stars/" + $(this).data('val'), function (data) {
+            // alert('已删除');
+        });
+    });
+</script>
 {% endblock %}

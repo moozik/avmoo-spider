@@ -14,37 +14,13 @@ import os
 import binascii
 app = Flask(__name__)
 
-#数据库列名
-'''
-0 => id
-1 => linkid
-2 => title
-3 => av_id
-4 => release_date
-5 => len
-6 => director
-7 => studio
-8 => label
-9 => series
-10 => genre
-11 => stars
-12 => director_url
-13 => studio_url
-14 => label_url
-15 => series_url
-16 => bigimage
-17 => image_len
-
-linkid,title,av_id,release_date,genre,stars,replace(bigimage,"pl.jpg","ps.jpg") as simage,id
-'''
-
 #每页展示的数量
 PAGE_LIMIT = 30
 CDN_SITE = '//jp.netcdn.space'
 CDN_SITE = '//pics.dmm.co.jp'
+#缓存
 SQL_CACHE = {}
-#缓存首页
-
+IF_USE_CACHE = True
 @app.route('/')
 @app.route('/page/<int:pagenum>')
 @app.route('/search/<keyword>')
@@ -55,15 +31,25 @@ def index(keyword = '', pagenum = 1):
     limit_start = (pagenum -1) * PAGE_LIMIT
     keyword = keyword.replace("'",'').replace('"','').strip()
 
+    #识别番号
     if re.match('^[a-zA-Z0-9 \-]{4,14}$', keyword):
         tmp = keyword.replace(' ', '-').upper()
         if '-' in tmp:
             return movie(tmp)
         else:
             where = 'av_list.av_id like "%{}%"'.format(tmp)
+    #搜索
     elif keyword != '':
         where = ''
         key_list = keyword.split(' ')
+        like_dict = {
+            '收藏影片': 'av_id',
+            '收藏导演': 'director_url',
+            '收藏制作': 'studio_url',
+            '收藏发行': 'label_url',
+            '收藏系列': 'series_url',
+            # '收藏明星': 'stars_url'
+        }
         for key_item in key_list:
             if key_item == '字幕':
                 where += ' av_163sub.sub_id IS NOT NULL and'
@@ -72,11 +58,25 @@ def index(keyword = '', pagenum = 1):
                 date = time.strftime("%Y-%m-%d", time.localtime())
                 where += ' av_list.release_date <= "{}" and'.format(date)
                 continue
+            if key_item in like_dict.keys():
+                sql = 'SELECT val FROM av_like WHERE type="{}"'.format(
+                    like_dict[key_item])
+                data = querySql(sql)
+                like_list = [x['val'] for x in data]
+                where += ' av_list.{} in ("{}") and'.format(
+                    like_dict[key_item],'","'.join(like_list))
+                continue
+            if key_item == '收藏明星':
+                sql = 'SELECT val FROM av_like WHERE type="stars"'
+                data = querySql(sql)
+                item_list = ['av_list.stars_url like "%{}%"'.format(x['val']) for x in data]
+                where += '({}) and'.format(' or '.join(item_list))
+                continue
             where += '''
             (av_list.title like "%{0}%" or
             av_list.av_id like "%{0}%" or
-            av_list.director like "%{0}%" or
-            av_list.studio like "%{0}%" or
+            av_list.director = "{0}" or
+            av_list.studio = "{0}" or
             av_list.label like "%{0}%" or
             av_list.series like "%{0}%" or
             av_list.genre like "%{0}%" or
@@ -89,7 +89,7 @@ def index(keyword = '', pagenum = 1):
         page_root = '/{}/{}'.format('search', keyword)
     else:
         page_root = ''
-    return render_template('index.html', data=list_filter(result[0]), cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]), keyword=keyword)
+    return render_template('index.html', data=result[0], cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]), keyword=keyword)
 
 @app.route('/movie/<linkid>')
 def movie(linkid=''):
@@ -104,24 +104,16 @@ def movie(linkid=''):
     if sql_arr[0] == []:
         return redirect(url_for('index'),404)
     
-    movie = list2dict(sql_arr[0][0])
+    movie = sql_arr[0][0]
     #系列
     if movie['genre']:
-        movie['genre'] = movie['genre'].split('|')
+        movie['genre_list'] = movie['genre'].split('|')
     #演员
     if movie['stars_url']:
         sql = 'select linkid,name,headimg from av_stars where linkid in ("{}")'.format(
             movie['stars_url'].replace('|','","'))
-        stars_data = db_fetchall(sql)
-        movie['stars_data'] = []
-        for item in stars_data:
-            movie['stars_data'].append(
-                {
-                    'linkid':item[0],
-                    'name':item[1],
-                    'headimg': 'mono/actjpgs/nowprinting.gif' if item[2] == '' else item[2]
-                }
-            )
+        stars_data = querySql(sql)
+        movie['stars_data'] = stars_data
     #图片
     img = []
     if movie['image_len'] != '0':
@@ -165,22 +157,22 @@ def search(keyword='', pagenum = 1):
     result = sqliteSelect('*', 'av_list', where, (limit_start, PAGE_LIMIT))
 
     if function == 'stars':
-        keyword = db_fetchall(
-            'SELECT name FROM "av_stars" where linkid="{}";'.format(keyword))[0][0]
+        keyword = querySql(
+            'SELECT name FROM "av_stars" where linkid="{}";'.format(keyword))[0]['name']
     
     if function != 'genre' and function != 'stars':
         keyword = ''
 
-    return render_template('index.html', data=list_filter(result[0]), cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]), keyword=keyword)
+    return render_template('index.html', data=result[0], cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]), keyword=keyword)
 
 @app.route('/genre')
 def genre():
     result = sqliteSelect('name,title','av_genre',1,(0,500),'',subtitle=False)
     data = {}
     for item in result[0]:
-        if item[1] not in data:
-            data[item[1]] = []
-        data[item[1]].append(item)
+        if item['title'] not in data:
+            data[item['title']] = []
+        data[item['title']].append(item)
     data = list(data.values())
     return render_template('genre.html', data=data, cdn=CDN_SITE)
 
@@ -193,7 +185,16 @@ def like_add(data_type=None, data_val=None):
         DB['CUR'].execute(sqltext)
         DB['CONN'].commit()
         return 'ok'
-    return ''
+
+@app.route('/like/del/<data_type>/<data_val>')
+def like_del(data_type=None, data_val=None):
+    if data_type != None and data_val != None:
+        sqltext = 'DELETE FROM av_like WHERE type="{}" and val="{}"'.format(
+            data_type, data_val)
+        print(sqltext)
+        DB['CUR'].execute(sqltext)
+        DB['CONN'].commit()
+        return 'ok'
 
 @app.route('/like/movie')
 @app.route('/like/movie/page/<int:pagenum>')
@@ -205,7 +206,7 @@ def like_page(pagenum=1):
     result = sqliteSelect(column='*', table='av_list', limit=(limit_start, PAGE_LIMIT),
                           othertable=" JOIN av_like ON av_like.type='av_id' AND av_like.val = av_list.av_id ", order='av_like.time DESC')
 
-    return render_template('index.html', data=list_filter(result[0]), cdn=CDN_SITE, pageroot='/like/movie', page=pagination(pagenum, result[1]), keyword='')
+    return render_template('index.html', data=result[0], cdn=CDN_SITE, pageroot='/like/movie', page=pagination(pagenum, result[1]), keyword='收藏影片')
 
 @app.route('/like/<keyword>')
 def like_page_other(keyword=''):
@@ -218,14 +219,14 @@ def like_page_other(keyword=''):
     sqltext = "SELECT av_list.* FROM av_like JOIN (SELECT * FROM av_list GROUP BY {0}_url ORDER BY id DESC )av_list ON av_like.type='{0}' AND av_like.val=av_list.{0}_url".format(
         keyword
     )
-    result = db_fetchall(sqltext)
-    return render_template('like.html', data=list_filter(result), cdn=CDN_SITE, type_nick=map_[keyword], type_name=keyword, type_url=keyword + '_url')
+    result = querySql(sqltext)
+    return render_template('like.html', data=result, cdn=CDN_SITE, type_nick=map_[keyword], type_name=keyword, type_url=keyword + '_url', keyword='收藏'+map_[keyword])
 
 @app.route('/like/stars')
 def like_stars():
-    sqltext = 'SELECT s.linkid,s.name,s.headimg FROM "av_like" l join "av_stars" s on l.val=s.linkid where l.type="stars" order by l.time desc'
-    result = db_fetchall(sqltext)
-    return render_template('stars.html', data=result,cdn=CDN_SITE)
+    sqltext = 'SELECT s.linkid,s.name,s.headimg,l.time FROM "av_like" l join "av_stars" s on l.val=s.linkid where l.type="stars" order by l.time desc'
+    result = querySql(sqltext)
+    return render_template('stars.html', data=result, cdn=CDN_SITE, keyword='收藏明星')
 
 #暂时没用
 @app.route('/api/GetMagnet/<keyword>')
@@ -259,37 +260,6 @@ def get_magnet(keyword=''):
         ])
     return json.dumps(result)
 
-def list_filter(data):
-    result = []
-    for row in data:
-        tmp = list2dict(row)
-        tmp['smallimage'] = tmp['bigimage'].replace('pl.jpg', 'ps.jpg')
-        result.append(tmp)
-    return result
-
-def list2dict(row):
-    return {
-        'id' : row[0],
-        'linkid' : row[1],
-        'title' : row[2],
-        'av_id' : row[3],
-        'release_date' : row[4],
-        'len' : row[5],
-        'director' : row[6],
-        'studio' : row[7],
-        'label' : row[8],
-        'series' : row[9],
-        'genre' : row[10],
-        'stars' : row[11],
-        'director_url' : row[12],
-        'studio_url' : row[13],
-        'label_url' : row[14],
-        'series_url' : row[15],
-        'stars_url' : row[16],
-        'bigimage' : row[17],
-        'image_len' : row[18],
-        'sub_id' : row[19] if len(row)>19 else '',
-    }
 
 def pagination(pagenum, count):
     pagecount = math.ceil(count / PAGE_LIMIT)
@@ -350,26 +320,42 @@ def sqliteSelect(column='*', table='av_list', where='1', limit=(0, 30), order='i
         sqltext = 'SELECT {} FROM {} WHERE {} {}'.format(
             column, table, where, order)
     sqllimit = ' LIMIT {},{}'.format(limit[0], limit[1])
-    result = db_fetchall(sqltext + sqllimit)
-    res_count = db_fetchall('SELECT COUNT(1) AS count FROM ({})'.format(sqltext))
-    return (result, res_count[0][0])
+    result = querySql(sqltext + sqllimit)
+    res_count = querySql('SELECT COUNT(1) AS count FROM ({})'.format(sqltext))
+    # print(res_count)
+    return (result, res_count[0]['count'])
     
-def db_fetchall(sql):
-    #使用crc32作为key缓存sql结果
+def querySql(sql):
     cacheKey = (binascii.crc32(sql.encode()) & 0xffffffff)
-    if cacheKey not in SQL_CACHE.keys():
-        DB['CUR'].execute(sql)
-        SQL_CACHE[cacheKey] = DB['CUR'].fetchall()
-        print('SQL EXEC[{}]:'.format(cacheKey))
-        print(sql, '\n')
+    #是否有缓存
+    if cacheKey in SQL_CACHE.keys():
+        print('SQL CACHE[{}]'.format(cacheKey))
+        return SQL_CACHE[cacheKey][:]
     else:
-        print('SQL CACHE[{}]:'.format(cacheKey))
-        print(sql, '\n')
-    return SQL_CACHE[cacheKey]
+        print('SQL EXEC[{}]:\n{}'.format(cacheKey, sql))
+        DB['CUR'].execute(sql)
+        ret = DB['CUR'].fetchall()
+        # print(ret)
+        ret = showColumnname(ret, DB['CUR'].description)
+        # print(ret, DB['CUR'].description)
+        
+        if IF_USE_CACHE:
+            SQL_CACHE[cacheKey] = ret
+        return ret[:]
 
-    #DB['CUR'].execute(sql)
-    #return DB['CUR'].fetchall()
+def showColumnname(data, description):
+    result = []
+    for row in data:
+        row_dict = {}
+        for i in range(len(description)):
+            row_dict[description[i][0]] = row[i]
+        #图片地址
+        if 'bigimage' in row_dict.keys():
+            row_dict['smallimage'] = row_dict['bigimage'].replace('pl.jpg', 'ps.jpg')
+        result.append(row_dict)
+
+    return result
 
 if __name__ == '__main__':
     DB = conn()
-    app.run()
+    app.run(port = 5000)
