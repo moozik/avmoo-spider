@@ -30,25 +30,25 @@
             {% if data.director_url %}
                 <p>
                     <span class="header">导演:</span>
-                    <a class="like" data-type="director" data-val="{{data.director_url}}" href="/director/{{data.director_url}}">{{data.director}}</a>
+                    <a class="like" data-type="director_url" data-val="{{data.director_url}}" href="/director/{{data.director_url}}">{{data.director}}</a>
                 </p>
             {% endif %}
             {% if data.studio_url %}
                 <p class="header">制作商: </p>
                 <p>
-                    <a class="like" data-type="studio" data-val="{{data.studio_url}}" href="/studio/{{data.studio_url}}">{{data.studio}}</a>
+                    <a class="like" data-type="studio_url" data-val="{{data.studio_url}}" href="/studio/{{data.studio_url}}">{{data.studio}}</a>
                 </p>
             {% endif %}
             {% if data.label_url %}
                 <p class="header">发行商: </p>
                 <p>
-                    <a class="like" data-type="label" data-val="{{data.label_url}}" href="/label/{{data.label_url}}">{{data.label}}</a>
+                    <a class="like" data-type="label_url" data-val="{{data.label_url}}" href="/label/{{data.label_url}}">{{data.label}}</a>
                 </p>
             {% endif %}
             {% if data.series_url %}
                 <p class="header">系列:</p>
                 <p>
-                    <a class="like" data-type="series" data-val="{{data.series_url}}" href="/series/{{data.series_url}}">{{data.series}}</a>
+                    <a class="like" data-type="series_url" data-val="{{data.series_url}}" href="/series/{{data.series_url}}">{{data.series}}</a>
                 </p>
             {% endif %}
             {% if data.genre_list %}
@@ -90,7 +90,7 @@
     </style>
     <h4>资源</h4>
     <div class="row">
-        <a class="solink" href="https://alicili.xyz/list/{{data.av_id}}/1-0-0/" target="_blank">BT阿狸</a>
+        <a class="solink" href="https://alicili.org/list/{{data.av_id}}/1-0-0/" target="_blank">BT阿狸</a>
         <a class="solink" href="http://www.sosobt5.com/s/{{data.av_id}}" target="_blank">sosobt5</a>
         <a class="solink" href="http://btfuliba.org/search/{{data.av_id}}/0-0-1.html" target="_blank">bt福利吧</a>
         <!-- <a class="solink" href="http://cililianbt.com/search/{{data.av_id}}/0/0/1.html" target="_blank">磁力链</a> -->
@@ -156,14 +156,15 @@
 {% block javascript %}
 <script>
     $('.like').each(function () {
-        $(this).after('<span class="glyphicon glyphicon-star-empty stars-btn" style="padding: 2px;color: #FFC107;"></span>');
+        $(this).after('<span title="收藏" class="glyphicon glyphicon-star-empty stars-btn" style="padding: 2px;color: #FFC107;"></span>');
     });
     
     $('.stars-btn').click(function(){
         var data_type = $($(this)[0].previousElementSibling).data('type');
         var data_val = $($(this)[0].previousElementSibling).data('val');
         $.get("/like/add/" + data_type + '/'+ data_val,function(data){
-            alert('已添加')
+            $('#message_title').html(data);
+            $('#message').modal('show');
         });
     });
 </script>

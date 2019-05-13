@@ -24,6 +24,7 @@
     border-radius: 6px;
 }
 </style>
+{% block head %} {% endblock %}
 </head>
 
   <body>
@@ -81,6 +82,8 @@
                     </li>
                 </ul>
             </li>
+            <li><a href="javascript:;" style="color: burlywood;" class="catch_switch">缓存开关</a></li>
+            <li><a href="javascript:;" style="color: burlywood;" class="catch_delete">清空缓存</a></li>
         </ul>
         </div><!--/.nav-collapse -->
       </div>
@@ -165,7 +168,48 @@
     </nav>
     <div class="row overlay-close"><i class="glyphicon glyphicon-remove" style="color:#fff;font-size: 24px;margin:30px;"></i></div>
 </div>
+<div class="modal fade" id="message" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">
+                    &times;
+                </button>
+                <h4 class="modal-title" id="message_title">
+                    删除成功
+                </h4>
+            </div>
+            <!-- <div class="modal-body">
+                删除成功
+            </div> -->
+            <div class="modal-footer">
+                <!-- <button type="button" class="btn btn-default" data-dismiss="modal">关闭
+                </button> -->
+                <button type="button" class="btn btn-primary" id="confirm">
+                    确认
+                </button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal -->
+</div>
 <script src="{{url_for('static', filename='app.min.js')}}"></script>
+<script>
+    $('.catch_switch').click(function(){
+        $.get('/catch/switch',function(data){
+            $('#message_title').html(data);
+            $('#message').modal('show');
+        });
+    });
+    $('.catch_delete').click(function(){
+        $.get('/catch/delete', function (data) {
+            $('#message_title').html(data);
+            $('#message').modal('show');
+        });
+    });
+    $('#confirm').click(function(){
+        $('#message').modal('hide');
+    });
+</script>
 {% block javascript %} {% endblock %}
 </body>
 </html>

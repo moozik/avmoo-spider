@@ -37,9 +37,9 @@ class avmo:
         # self.site = 'avmoo.xyz'
 
         # 单页代理
-        self.site_url = 'https://moozik.cn/mousehole.php?url=https://avmoo.com/cn'
+        self.site_url = 'https://moozik.cn/mousehole.php?url=https://javzoo.com/cn'
         # 原网址
-        self.site_url = 'https://avmoo.xyz/cn'
+        self.site_url = 'https://javzoo.com/cn'
         
         #sqlite数据库地址
         if os.path.exists('avmoo_.db'):

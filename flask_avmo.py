@@ -67,7 +67,7 @@ def index(keyword = '', pagenum = 1):
                     like_dict[key_item],'","'.join(like_list))
                 continue
             if key_item == '收藏明星':
-                sql = 'SELECT val FROM av_like WHERE type="stars"'
+                sql = 'SELECT val FROM av_like WHERE type="stars_url"'
                 data = querySql(sql)
                 item_list = ['av_list.stars_url like "%{}%"'.format(x['val']) for x in data]
                 where += '({}) and'.format(' or '.join(item_list))
@@ -148,10 +148,12 @@ def search(keyword='', pagenum = 1):
     limit_start = (pagenum - 1) * PAGE_LIMIT
 
     function = request.path.split('/')[1]
-    if function == 'director' or function == 'studio' or function == 'label' or function == 'series' or function == 'stars':
+    if function == 'director' or function == 'studio' or function == 'label' or function == 'series':
         where = 'av_list.{}_url="{}"'.format(function, keyword)
     if function == 'genre':
         where = 'av_list.{} LIKE "%{}%"'.format(function, keyword)
+    if function == 'stars':
+        where = 'av_list.stars_url LIKE "%{}%"'.format(keyword)
 
     page_root = '/{}/{}'.format(function, keyword)
     result = sqliteSelect('*', 'av_list', where, (limit_start, PAGE_LIMIT))
@@ -184,7 +186,7 @@ def like_add(data_type=None, data_val=None):
             data_type, data_val, timetext)
         DB['CUR'].execute(sqltext)
         DB['CONN'].commit()
-        return 'ok'
+        return '已添加收藏'
 
 @app.route('/like/del/<data_type>/<data_val>')
 def like_del(data_type=None, data_val=None):
@@ -194,7 +196,7 @@ def like_del(data_type=None, data_val=None):
         print(sqltext)
         DB['CUR'].execute(sqltext)
         DB['CONN'].commit()
-        return 'ok'
+        return '已删除收藏'
 
 @app.route('/like/movie')
 @app.route('/like/movie/page/<int:pagenum>')
@@ -216,7 +218,7 @@ def like_page_other(keyword=''):
         'label':'发行',
         'series':'系列',
     }
-    sqltext = "SELECT av_list.* FROM av_like JOIN (SELECT * FROM av_list GROUP BY {0}_url ORDER BY id DESC )av_list ON av_like.type='{0}' AND av_like.val=av_list.{0}_url".format(
+    sqltext = "SELECT av_list.* FROM av_like JOIN (SELECT * FROM av_list GROUP BY {0}_url ORDER BY id DESC )av_list ON av_like.type='{0}_url' AND av_like.val=av_list.{0}_url".format(
         keyword
     )
     result = querySql(sqltext)
@@ -224,9 +226,25 @@ def like_page_other(keyword=''):
 
 @app.route('/like/stars')
 def like_stars():
-    sqltext = 'SELECT s.linkid,s.name,s.headimg,l.time FROM "av_like" l join "av_stars" s on l.val=s.linkid where l.type="stars" order by l.time desc'
+    sqltext = 'SELECT s.linkid,s.name,s.headimg,l.time FROM "av_like" l join "av_stars" s on l.val=s.linkid where l.type="stars_url" order by l.time desc'
     result = querySql(sqltext)
     return render_template('stars.html', data=result, cdn=CDN_SITE, keyword='收藏明星')
+
+@app.route('/catch/switch')
+def catch_switch():
+    global IF_USE_CACHE
+    if IF_USE_CACHE == True:
+        IF_USE_CACHE = False
+        return '已关闭缓存'
+    else:
+        IF_USE_CACHE = True
+        return '已打开缓存'
+
+@app.route('/catch/delete')
+def catch_delete():
+    global SQL_CACHE
+    SQL_CACHE = {}
+    return '已清空缓存'
 
 #暂时没用
 @app.route('/api/GetMagnet/<keyword>')
@@ -327,21 +345,29 @@ def sqliteSelect(column='*', table='av_list', where='1', limit=(0, 30), order='i
     
 def querySql(sql):
     cacheKey = (binascii.crc32(sql.encode()) & 0xffffffff)
-    #是否有缓存
-    if cacheKey in SQL_CACHE.keys():
-        print('SQL CACHE[{}]'.format(cacheKey))
-        return SQL_CACHE[cacheKey][:]
+    #是否使用缓存
+    if IF_USE_CACHE:
+        #是否有缓存
+        if cacheKey in SQL_CACHE.keys():
+            print('SQL CACHE[{}]'.format(cacheKey))
+            return SQL_CACHE[cacheKey][:]
+        else:
+            print('SQL EXEC[{}]:\n{}'.format(cacheKey, sql))
+            DB['CUR'].execute(sql)
+            ret = DB['CUR'].fetchall()
+            # print(ret)
+            ret = showColumnname(ret, DB['CUR'].description)
+            # print(ret, DB['CUR'].description)
+            
+            if IF_USE_CACHE:
+                SQL_CACHE[cacheKey] = ret
+            return ret[:]
     else:
-        print('SQL EXEC[{}]:\n{}'.format(cacheKey, sql))
+        print('SQL EXEC:\n{}'.format(sql))
         DB['CUR'].execute(sql)
         ret = DB['CUR'].fetchall()
-        # print(ret)
         ret = showColumnname(ret, DB['CUR'].description)
-        # print(ret, DB['CUR'].description)
-        
-        if IF_USE_CACHE:
-            SQL_CACHE[cacheKey] = ret
-        return ret[:]
+        return ret
 
 def showColumnname(data, description):
     result = []

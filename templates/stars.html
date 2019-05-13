@@ -36,8 +36,7 @@
                     </div>
                 </a>
                 <span>{{item.name}}</span>
-                <span class="glyphicon glyphicon-remove del-btn" data-val="{{item.linkid}}" data-toggle="modal" data-target="#myModal"
-                    style="padding: 2px;color: rgb(255, 127, 7);"></span>
+                <span class="glyphicon glyphicon-remove del-btn" data-val="{{item.linkid}}" style="padding: 2px;color: rgb(255, 127, 7);"></span>
             </div>
             {% endfor %}
         </div>
@@ -48,44 +47,15 @@
 {% block pagination %}
 {% endblock %}
 
-{% block other %}
-<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">
-                    &times;
-                </button>
-                <h4 class="modal-title" id="myModalLabel">
-                    删除成功
-                </h4>
-            </div>
-            <!-- <div class="modal-body">
-                删除成功
-            </div> -->
-            <div class="modal-footer">
-                <!-- <button type="button" class="btn btn-default" data-dismiss="modal">关闭
-                </button> -->
-                <button type="button" class="btn btn-primary">
-                    确认
-                </button>
-            </div>
-        </div><!-- /.modal-content -->
-    </div><!-- /.modal -->
-</div>
-{% endblock %}
-
-
 {% block javascript %}
 <script>
-    
     // $('#avatar-waterfall > div > span').each(function () {
     //     $(this).after('<span class="glyphicon glyphicon-remove del-btn" data-toggle="modal" data-target="#myModal" style="padding: 2px;color: #FFC107;"></span>');
     // });
-
     $('.del-btn').click(function () {
-        $.get("/like/del/stars/" + $(this).data('val'), function (data) {
-            // alert('已删除');
+        $.get("/like/del/stars_url/" + $(this).data('val'), function (data) {
+            $('#message_title').html(data);
+            $('#message').modal('show');
         });
     });
 </script>
