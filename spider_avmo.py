@@ -33,14 +33,9 @@ class avmo:
         
         #================主要配置================
 
-        #目标域名
-        # self.site = 'avmoo.xyz'
-
-        # 单页代理
-        self.site_url = 'https://moozik.cn/mousehole.php?url=https://javzoo.com/cn'
-        # 原网址
+        #目标网址
         self.site_url = 'https://javzoo.com/cn'
-        
+
         #sqlite数据库地址
         if os.path.exists('avmoo_.db'):
             self.sqlite_file = 'avmoo_.db'

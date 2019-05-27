@@ -1,12 +1,22 @@
+## 运行需求
+python3
+**第三方包**
+```
+pip install requests
+pip install lxml
+pip install flask
+```
+
 ## 本地web服务器
 
 ![running_flask](https://raw.githubusercontent.com/moozik/avmoo-spider/master/running_flask.png)
 
-- `pip install flask` 安装flask
 - `python flask_avmo.py` 启动本地web
 - 打开`http://127.0.0.1:5000`
 
 ## 爬虫
+
+目标在 https://tellme.pw/avmoo
 
 ![running_spider](https://raw.githubusercontent.com/moozik/avmoo-spider/master/running_spider.png)
 
@@ -22,7 +32,7 @@
 更新类别
 `spider_avmo.py -g`
 
-抓取字幕（抓取字幕目前不可用）
+抓取字幕（字幕网没了）
 `spider_avmo.py -u keyword`
 ```
 -h(-help):使用说明
@@ -30,7 +40,7 @@
     例如：'-s 0000' '-s 1ddd'
 -e(-end):结束id
     例如：'-e xxxx' '-e zzzz'
--a(-auto):(常用功能)获取当前数据库最新的一个id和网站最新的一个id，补全新增数据
+-a(-auto):(常用)获取当前数据库最新的一个id和网站最新的一个id，补全新增数据
 -r(-retry):重试错误链接
 -g(-genre):更新类别
 -t(-stars):更新演员
