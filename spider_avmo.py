@@ -39,7 +39,7 @@ class avmo:
         # 单页代理
         self.site_url = 'https://moozik.cn/mousehole.php?url=https://javzoo.com/cn'
         # 原网址
-        self.site_url = 'https://javzoo.com/cn'
+        self.site_url = 'https://avmoo.asia/cn'
         
         #sqlite数据库地址
         if os.path.exists('avmoo_.db'):
@@ -138,7 +138,8 @@ class avmo:
 
     #默认配置
     def config(self):
-
+        #延时防硬盘没准备好
+        time.sleep(5)
         #待insert数据
         self.insert_list = []
         #遍历linkid
@@ -385,7 +386,7 @@ class avmo:
             #从linkid获取id
             id_column = self.linkid2id(item)
             #输出当前进度
-            print(data[12].ljust(30), data[15].ljust(11), item.ljust(5), id_column)
+            print(data[12].ljust(15), data[15].ljust(11), item.ljust(5), id_column)
 
             self.insert_list.append(
                 "'{0}','{1}','{2}'".format(id_column, item, "','".join(data))
