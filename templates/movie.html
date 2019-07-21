@@ -88,9 +88,9 @@
     float: left;
         }
     </style>
-    <h4>资源</h4>
+    <h4>搜索资源</h4>
     <div class="row">
-        <a class="solink" href="https://alicilibt.net/list/{{data.av_id}}/1-0-0/" target="_blank">BT阿狸</a>
+        <a class="solink" href="https://alicili8.com/list/{{data.av_id}}/1-0-0/" target="_blank">BT阿狸</a>
         <a class="solink" href="https://www.cltt3.xyz/search/{{data.av_id}}_ctime_1.html" target="_blank">磁力天堂</a>
         <a class="solink" href="http://www.sosobt5.com/s/{{data.av_id}}" target="_blank">sosobt5</a>
         <a class="solink" href="http://btfuliba.org/search/{{data.av_id}}/0-0-1.html" target="_blank">bt福利吧</a>
@@ -114,12 +114,54 @@
     <div class="row" id="GetMagnet">
         <a class="solink" href="javascript:GetMagnet('{{data.av_id}}');" style="background:#CC0000;">GET Magnet</a>
     </div> -->
+    {% if data.magnet_data %}
+    <h4>已有资源</h4>
+    <div class="" style="padding:12px; margin-top:15px">
+        <table id="magnet-table" class="table table-condensed table-striped table-hover" style="margin-bottom:0;">
+            <tbody>
+                <tr style="font-weight:bold;">
+                    <td>磁力名稱 <span class="glyphicon glyphicon-magnet"></span></td>
+                    <td style="text-align:center;white-space:nowrap">檔案大小</td>
+                    <td style="text-align:center;white-space:nowrap">分享日期</td>
+                </tr>
+            </tbody>
+            {% for item in data.magnet_data %}
+            <tr onmouseover="this.style.backgroundColor='#F4F9FD';this.style.cursor='pointer';"
+                onmouseout="this.style.backgroundColor='#FFFFFF'" height="35px"
+                style="border-top: 1px solid rgb(221, 221, 221); background-color: rgb(255, 255, 255); cursor: pointer;">
+                <td width="70%"
+                    onclick="window.open('magnet:?xt=urn:btih:{{item.magnet_xt}}','_self')">
+                    <a style="color:#333" rel="nofollow" title="滑鼠右鍵點擊並選擇【複製連結網址】"
+                        href="magnet:?xt=urn:btih:{{item.magnet_xt}}">
+                        DTT-030.mp4 </a>
+                        {% if item.have_hd == 1 %}
+                        <a class="btn btn-mini-new btn-primary disabled" title="包含高清HD的磁力連結">高清</a>
+                        {% endif %}
+                        {% if item.have_sub == 1 %}
+                        <a class="btn btn-mini-new btn-warning disabled" title="包含字幕的磁力連結">字幕</a>
+                        {% endif %}
+                </td>
+                <td style="text-align:center;white-space:nowrap"
+                    onclick="window.open('magnet:?xt=urn:btih:{{item.magnet_xt}}','_self')">
+                    <a style="color:#333" rel="nofollow" title="滑鼠右鍵點擊並選擇【複製連結網址】"
+                        href="magnet:?xt=urn:btih:{{item.magnet_xt}}">{{item.magnet_type}} </a>
+                </td>
+                <td style="text-align:center;white-space:nowrap"
+                    onclick="window.open('magnet:?xt=urn:btih:{{item.magnet_xt}}','_self')">
+                    <a style="color:#333" rel="nofollow" title="滑鼠右鍵點擊並選擇【複製連結網址】"
+                        href="magnet:?xt=urn:btih:{{item.magnet_xt}}">{{item.magnet_date}} </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+    {% endif %}
 
     {% if data.stars_data %}
     <h4>演员</h4>
     <div id="avatar-waterfall">
         {% for item in data.stars_data %}
-        <a data-type="stars" data-val="{{item.linkid}}" class="avatar-box like" href="/stars/{{item.linkid}}">
+        <a data-type="stars_url" data-val="{{item.linkid}}" class="avatar-box like" href="/stars/{{item.linkid}}">
             <div class="photo-frame">
                 {% if item.headimg %}
                 <img src="{{cdn}}/{{item.headimg}}" title="">

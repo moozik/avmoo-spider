@@ -18,6 +18,8 @@ app = Flask(__name__)
 PAGE_LIMIT = 30
 CDN_SITE = '//jp.netcdn.space'
 CDN_SITE = '//pics.dmm.co.jp'
+#默认语言为中文
+DEFAULT_LANGUAGE = 'cn'
 #缓存
 SQL_CACHE = {}
 IF_USE_CACHE = True
@@ -48,11 +50,14 @@ def index(keyword = '', pagenum = 1):
             '收藏制作': 'studio_url',
             '收藏发行': 'label_url',
             '收藏系列': 'series_url',
-            # '收藏明星': 'stars_url'
+            '收藏明星': 'stars_url'
         }
         for key_item in key_list:
             if key_item == '字幕':
-                where += ' av_163sub.sub_id IS NOT NULL and'
+                where += ' sub.have_sub > 0 and'
+                continue
+            if key_item == '高清':
+                where += ' sub.have_hd > 0 and'
                 continue
             if key_item == '已发布':
                 date = time.strftime("%Y-%m-%d", time.localtime())
@@ -128,6 +133,11 @@ def movie(linkid=''):
     else:
         img = ''
     movie['imglist'] = img
+    #磁力
+    sql = 'select * from av_magnet where av_id="{}" or linkid = "{}"'.format(
+        movie['av_id'], movie['linkid'])
+    magnet_data = querySql(sql)
+    movie['magnet_data'] = magnet_data
     return render_template('movie.html', data=movie, cdn=CDN_SITE)
 
 @app.route('/director/<keyword>')
@@ -169,7 +179,8 @@ def search(keyword='', pagenum = 1):
 
 @app.route('/genre')
 def genre():
-    result = sqliteSelect('name,title','av_genre',1,(0,500),'',subtitle=False)
+    result = sqliteSelect('name,title', 'av_genre', "language='{}'".format(
+        DEFAULT_LANGUAGE), (0, 500), '', subtitle=False)
     data = {}
     for item in result[0]:
         if item['title'] not in data:
@@ -332,7 +343,7 @@ def sqliteSelect(column='*', table='av_list', where='1', limit=(0, 30), order='i
     #LEFT JOIN (SELECT av_id,sub_id FROM av_163sub GROUP BY av_id)av_163sub ON av_list.av_id=av_163sub.av_id
     #,av_163sub.sub_id
     if subtitle:
-        sqltext = 'SELECT av_list.{0} FROM av_list {3} WHERE {1} {2}'.format(
+        sqltext = 'SELECT av_list.{0},sub.have_hd,sub.have_sub FROM av_list LEFT JOIN (SELECT av_id,sum(have_hd) as have_hd,sum(have_sub) as have_sub FROM "av_magnet" group by av_id)AS sub ON av_list.av_id=sub.av_id {3} WHERE {1} {2}'.format(
             column, where, order, othertable)
     else:
         sqltext = 'SELECT {} FROM {} WHERE {} {}'.format(

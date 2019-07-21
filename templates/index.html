@@ -14,8 +14,15 @@
 演员:{{ item.stars }}">
 							</div>
 							<div class="photo-info">
-								{% if item.sub_id %}
+								{% if item.have_sub %}
+									{% if item.have_sub >0 %}
 									<span class="sub_title">字幕</span>
+									{% endif %}
+								{% endif %}
+								{% if item.have_hd %}
+									{% if item.have_hd >0 %}
+									<span class="sub_hd">高清</span>
+									{% endif %}
 								{% endif %}
 								<span>{{ item.title }}
 									<br>

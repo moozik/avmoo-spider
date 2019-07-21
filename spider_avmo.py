@@ -25,6 +25,9 @@ https://jp.netcdn.space/digital/video/miae00056/miae00056ps.jpg
 https://pics.javbus.info/thumb/{{linkid}}.jpg
 大封面:
 https://jp.netcdn.space/digital/video/miae00056/miae00056pl.jpg
+https://pics.javcdn.pw/cover/3tya_b.jpg
+https://pics.javcdn.pw/cover/{{linkid}}_b.jpg
+
 '''
 
 class avmo:
@@ -32,9 +35,10 @@ class avmo:
     def __init__(self):
         
         #================主要配置================
-
+        print('由于avmoo网站改变了排序策略，本程序暂时不再更新，只能访问历史数据，可查看md文档下载历史数据。')
+        exit()
         # 原网址
-        self.site_url = 'https://avmoo.asia/cn'
+        self.site_url = 'https://avmoo.asia'
 
         #sqlite数据库地址
         if os.path.exists('avmoo_.db'):
@@ -164,7 +168,6 @@ class avmo:
         #重试阈值
         self.retry_threshold = 5
 
-
         #主表
         self.table_main = 'av_list'
         #重试表
@@ -172,9 +175,16 @@ class avmo:
         self.table_genre = 'av_genre'
         self.table_stars = 'av_stars'
         #表结构
-        self.column = ['id', 'linkid', 'director', 'director_url', 'studio',
-                       'studio_url', 'label', 'label_url', 'series', 'series_url', 'image_len',
-                       'genre', 'len', 'stars', 'av_id', 'title', 'bigimage', 'release_date', 'stars_url']
+        self.column = [
+            'id', 'linkid',
+            'av_id',
+            'director', 'director_url',
+            'studio','studio_url',
+            'label', 'label_url',
+            'series', 'series_url',
+            'genre', 'genre_url',
+            'stars', 'stars_url',
+            'image_len', 'len', 'title', 'bigimage', 'release_date', ]
         #表结构str
         self.column_str = ",".join(self.column)
         #链接数据库
@@ -186,12 +196,10 @@ class avmo:
         #番号主页url
         self.movie_url = self.site_url+'/movie/'
         #导演 制作 发行 系列
-        self.director = self.site_url+'/director/'
-        self.studio = self.site_url+'/studio/'
-        self.label = self.site_url+'/label/'
-        self.series = self.site_url+'/series/'
-        self.genre_url = self.site_url+'/genre/'
-        self.star_url = self.site_url+'/star/'
+        self.director_url = self.get_url('cn','director','')
+        self.studio_url = self.get_url('cn','studio','')
+        self.label_url = self.get_url('cn','label','')
+        self.series_url = self.get_url('cn', 'series', '')
 
         #创建会话对象
         self.s = requests.Session()
@@ -204,6 +212,11 @@ class avmo:
         self.s.proxies = {
             #'https':'http://127.0.0.1:1080'
         }
+    
+    def get_url(self, country, pagetype, linkid):
+        # return self.site_url + '/' + country + 
+        return '{}/{}/{}/{}'.format(self.site_url, country, pagetype, linkid)
+
     #sqlite conn
     def conn(self):
         try:
@@ -357,7 +370,7 @@ class avmo:
     #主函数，抓取页面内信息
     def main(self, looplist):
         for item in looplist:
-            url = self.movie_url + item
+            url = self.get_url('cn', 'movie', item)
             time.sleep(self.main_sleep)
             try:
                 res = self.s.get(url)
@@ -381,7 +394,7 @@ class avmo:
             #从linkid获取id
             id_column = self.linkid2id(item)
             #输出当前进度
-            print(data[12].ljust(15), data[15].ljust(11), item.ljust(5), id_column)
+            print(data[0].ljust(15), data[17].ljust(11), item.ljust(5), id_column)
 
             self.insert_list.append(
                 "'{0}','{1}','{2}'".format(id_column, item, "','".join(data))
@@ -401,7 +414,7 @@ class avmo:
         res = self.CUR.fetchall()
         self.start_id = res[0][0]
         try:
-            response = self.s.get(self.site_url)
+            response = self.s.get(self.site_url + '/cn')
         except:
             print('timeout.')
             exit()
@@ -440,7 +453,7 @@ class avmo:
         if map_list == []:
             map_list = self.get_linkid()
         for linkid in map_list:
-            url = self.star_url + linkid
+            url = self.get_url('cn', 'star', linkid)
             sort_id = self.linkid2id(linkid)
             print(linkid, sort_id)
             data = {
@@ -546,18 +559,7 @@ class avmo:
                 data['hometown']
             )
             self.stars_save(data)
-            if data['cup'] == 'F':
-                time.sleep(5)
-            elif data['cup'] == 'E':
-                time.sleep(3)
-            elif data['cup'] == 'D':
-                time.sleep(2.5)
-            elif data['cup'] == 'C':
-                time.sleep(2)
-            elif data['cup'] == 'B':
-                time.sleep(1)
-            else:
-                time.sleep(1)
+            time.sleep(1)
     
     def stars_save(self, data):
         insert_sql = 'REPLACE INTO "{}" VALUES({},"{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}")'.format(
@@ -651,7 +653,7 @@ class avmo:
                 update_list = []
                 print('done 20.')
 
-            url = self.movie_url + retry_linkid
+            url = self.get_url('cn', 'movie', retry_linkid)
             try:
                 response = self.s.get(url)
                 html = etree.HTML(response.text)
@@ -692,10 +694,10 @@ class avmo:
             update_sql(update_list)
 
     def movie_page_data(self, html):
-        data = ['' for x in range(17)]
+        data = ['' for x in range(18)]
         #番号
         try:
-            data[12] = html.xpath('/html/body/div[2]/div[1]/div[2]/p[1]/span[2]/text()')[0]
+            data[0] = html.xpath('/html/body/div[2]/div[1]/div[2]/p[1]/span[2]/text()')[0]
         except:
             return data
         #获取：导演、制作商、发行商、系列
@@ -706,46 +708,57 @@ class avmo:
             tmp_text = i.text.replace("'", '"')
             tmp_href = i.attrib.get('href')
 
-            if self.director in tmp_href:
+            if self.director_url in tmp_href:
                 #导演
-                data[0] = tmp_text
-                data[1] = tmp_href.replace(self.director, '')
-            elif self.studio in tmp_href:
+                data[1] = tmp_text
+                data[2] = tmp_href.replace(self.director_url, '')
+            elif self.studio_url in tmp_href:
                 #制作商
-                data[2] = tmp_text
-                data[3] = tmp_href.replace(self.studio, '')
-            elif self.label in tmp_href:
+                data[3] = tmp_text
+                data[4] = tmp_href.replace(self.studio_url, '')
+            elif self.label_url in tmp_href:
                 #发行商
-                data[4] = tmp_text
-                data[5] = tmp_href.replace(self.label, '')
-            elif self.series in tmp_href:
+                data[5] = tmp_text
+                data[6] = tmp_href.replace(self.label_url, '')
+            elif self.series_url in tmp_href:
                 #系列
-                data[6] = tmp_text
-                data[7] = tmp_href.replace(self.series, '')
+                data[7] = tmp_text
+                data[8] = tmp_href.replace(self.series_url, '')
+
+        #获取类别列表genre 类别列表genre_url
+        data[9] = '|'.join(html.xpath(
+            '/html/body/div[2]/div[1]/div[2]/p/span/a/text()')).replace("'", '"')
+        genre_url_list = html.xpath(
+            '/html/body/div[2]/div[1]/div[2]/p/span/a/@href')
+        if genre_url_list != None and len(genre_url_list) != 0:
+            data[10] = '|' + '|'.join(
+                [re.findall('([a-z0-9]+)$', x)[0] for x in genre_url_list])
+        #演员stars
+        data[11] = '|'.join(html.xpath(
+            '//div[@id="avatar-waterfall"]/a/span/text()')).replace("'", '"')
+        if data[11] != '':
+            data[11] = '|' + data[11]
+        #stars_url
+        stars_url_list = html.xpath('//div[@id="avatar-waterfall"]/a/@href')
+        if stars_url_list != None and len(stars_url_list) != 0:
+            data[12] = '|' + '|'.join([re.findall('([a-z0-9]+)$', x)[0] for x in stars_url_list])
 
         #图片个数image_len
-        data[8] = str(len(html.xpath('//div[@id="sample-waterfall"]/a')))
-        #获取类别列表genre
-        data[9] = '|'.join(html.xpath('/html/body/div[2]/div[1]/div[2]/p/span/a/text()')).replace("'", '"')
+        data[13] = str(len(html.xpath('//div[@id="sample-waterfall"]/a')))
         #时长len
         lentext = html.xpath('/html/body/div[2]/div[1]/div[2]/p[3]/text()')
         if len(lentext) != 0 and '分钟' in lentext[0]:
-            data[10] = lentext[0].replace('分钟', '').strip()
+            data[14] = lentext[0].replace('分钟', '').strip()
         else:
-            data[10] = '0'
-        #演员stars
-        data[11] = '|'.join(html.xpath('//div[@id="avatar-waterfall"]/a/span/text()')).replace("'", '"')
+            data[14] = '0'
 
         #接取除了番号的标题
-        data[13] = html.xpath('/html/body/div[2]/h3/text()')[0][len(data[12]) + 1:].replace("'", '"')
+        data[15] = html.xpath('/html/body/div[2]/h3/text()')[0][len(data[12]) + 1:].replace("'", '"')
         #封面 截取域名之后的部分
-        data[14] = '/' + html.xpath('/html/body/div[2]/div[1]/div[1]/a/img/@src')[0].split('/',5)[5]
+        data[16] = '/' + html.xpath('/html/body/div[2]/div[1]/div[1]/a/img/@src')[0].split('/',5)[5]
         #发行时间
-        data[15] = html.xpath('/html/body/div[2]/div[1]/div[2]/p[2]/text()')[0].strip()
-        #stars_url
-        stars_url_list = html.xpath('//div[@id="avatar-waterfall"]/a/@href')
-        if stars_url_list != None and len(stars_url_list)!=0:
-            data[16] = '|'.join([re.findall('([a-z0-9]+)$',x)[0].rjust(4,'0') for x in stars_url_list])
+        data[17] = html.xpath('/html/body/div[2]/div[1]/div[2]/p[2]/text()')[0].strip()
+
         return data
     def abc_map(self):
         for i1 in self.abc_sequence:
@@ -799,28 +812,31 @@ class avmo:
 
     #获取所有类别
     def genre_update(self):
-        html = etree.HTML(self.s.get(self.genre_url).text)
-        insert_list = []
-        h4 = html.xpath('/html/body/div[2]/h4/text()')
-        div = html.xpath('/html/body/div[2]/div')
-        for div_item in range(len(div)):
-            g_title = h4[div_item]
-            a_list = div[div_item].xpath('a')
-            for a_item in a_list:
-                if a_item.text == None:
-                    continue
-                g_name = a_item.text#.replace('・','')
-                g_id = a_item.attrib.get('href').replace(self.genre_url,'')
-                insert_list.append("'{0}','{1}','{2}'".format(g_id,g_name,g_title))
-        
-        sql = "REPLACE INTO {} (id,name,title)VALUES({});".format(self.table_genre, "),(".join(insert_list))
-        self.CUR.execute(sql)
-        self.CONN.commit()
-        print('update record：{}'.format(len(insert_list)))
+        for country in ['en','ja','tw','cn']:
+            genre_url = self.get_url(country, 'genre', '')
+            html = etree.HTML(self.s.get(
+                genre_url).text)
+            insert_list = []
+            h4 = html.xpath('/html/body/div[2]/h4/text()')
+            div = html.xpath('/html/body/div[2]/div')
+            for div_item in range(len(div)):
+                g_title = h4[div_item]
+                a_list = div[div_item].xpath('a')
+                for a_item in a_list:
+                    if a_item.text == None:
+                        continue
+                    g_name = a_item.text#.replace('・','')
+                    g_id = a_item.attrib.get('href').replace(genre_url, '')
+                    insert_list.append("'{0}','{1}','{2}','{3}'".format(g_id, country, g_name, g_title))
+            sql = "REPLACE INTO {} (id,language,name,title)VALUES({});".format(self.table_genre, "),(".join(insert_list))
+            self.CUR.execute(sql)
+            self.CONN.commit()
+            print('genre[{}] update record：{}'.format(country, len(insert_list)))
+            time.sleep(3)
     
     #测试单个页面
     def test_page(self, linkid):
-        url = self.movie_url + linkid
+        url = self.get_url('cn','movie', linkid)
         res = self.s.get(url).text
         #解析页面内容
         data = self.movie_page_data(etree.HTML(res))
