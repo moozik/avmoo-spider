@@ -3,8 +3,7 @@ avmoo网站修改了排序策略，暂时不想改了，从 https://github.com/g
 在详情页可以直接看到当前可用的磁力链接。
 
 ## 下载链接
-https://pan.baidu.com/s/1L_ypdB8H_bWyo_f8BJYdYQ 
-提取码：jh6i 
+下载链接被和谐了
 
 ## 运行需求
 python3
