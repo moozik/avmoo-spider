@@ -1,6 +1,7 @@
-## 不再更新
-avmoo网站修改了排序策略，暂时不想改了，从 https://github.com/guyueyingmu/avbook 借用了magnet的数据，合并到了当前的数据库里面，这里放出来供大家下载，将下载的`avmoo_.db`直接放在根目录就可以使用。
-在详情页可以直接看到当前可用的磁力链接。
+## 重新更新
+添加了按照演员搜索的功能
+`python .\spider_avmo_new.py -s e4b7ae7e8b52c8ca`
+爬虫，和web展示功能已经修复
 
 ## 下载链接
 下载链接被和谐了
