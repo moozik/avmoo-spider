@@ -17,7 +17,7 @@ app = Flask(__name__)
 #每页展示的数量
 PAGE_LIMIT = 30
 CDN_SITE = '//jp.netcdn.space'
-CDN_SITE = '//pics.dmm.co.jp'
+# CDN_SITE = '//pics.dmm.co.jp'
 #默认语言为中文
 DEFAULT_LANGUAGE = 'cn'
 #缓存
@@ -134,10 +134,10 @@ def movie(linkid=''):
         img = ''
     movie['imglist'] = img
     #磁力
-    sql = 'select * from av_magnet where av_id="{}" or linkid = "{}"'.format(
-        movie['av_id'], movie['linkid'])
-    magnet_data = querySql(sql)
-    movie['magnet_data'] = magnet_data
+    # sql = 'select * from av_magnet where av_id="{}" or linkid = "{}"'.format(
+    #     movie['av_id'], movie['linkid'])
+    # magnet_data = querySql(sql)
+    # movie['magnet_data'] = magnet_data
     return render_template('movie.html', data=movie, cdn=CDN_SITE)
 
 @app.route('/director/<keyword>')
@@ -179,8 +179,7 @@ def search(keyword='', pagenum = 1):
 
 @app.route('/genre')
 def genre():
-    result = sqliteSelect('name,title', 'av_genre', "language='{}'".format(
-        DEFAULT_LANGUAGE), (0, 500), '', subtitle=False)
+    result = sqliteSelect('name,title', 'av_genre', '1', (0, 500), '')
     data = {}
     for item in result[0]:
         if item['title'] not in data:
@@ -229,7 +228,7 @@ def like_page_other(keyword=''):
         'label':'发行',
         'series':'系列',
     }
-    sqltext = "SELECT av_list.* FROM av_like JOIN (SELECT * FROM av_list GROUP BY {0}_url ORDER BY id DESC )av_list ON av_like.type='{0}_url' AND av_like.val=av_list.{0}_url".format(
+    sqltext = "SELECT av_list.* FROM av_like JOIN (SELECT * FROM av_list GROUP BY {0}_url ORDER BY linkid DESC )av_list ON av_like.type='{0}_url' AND av_like.val=av_list.{0}_url".format(
         keyword
     )
     result = querySql(sqltext)
@@ -333,21 +332,15 @@ def conn(dbfile= 'avmoo.db'):
         'CUR':CUR,
     }
 
-def sqliteSelect(column='*', table='av_list', where='1', limit=(0, 30), order='id DESC', subtitle = True, othertable = ''):
+def sqliteSelect(column='*', table='av_list', where='1', limit=(0, 30), order='linkid DESC', othertable = ''):
     #db = conn()
     if order.strip() == '':
         order = ''
     else:
         order = 'ORDER BY ' + order
-    #是否需要查询字幕
-    #LEFT JOIN (SELECT av_id,sub_id FROM av_163sub GROUP BY av_id)av_163sub ON av_list.av_id=av_163sub.av_id
-    #,av_163sub.sub_id
-    if subtitle:
-        sqltext = 'SELECT av_list.{0},sub.have_hd,sub.have_sub FROM av_list LEFT JOIN (SELECT av_id,sum(have_hd) as have_hd,sum(have_sub) as have_sub FROM "av_magnet" group by av_id)AS sub ON av_list.av_id=sub.av_id {3} WHERE {1} {2}'.format(
-            column, where, order, othertable)
-    else:
-        sqltext = 'SELECT {} FROM {} WHERE {} {}'.format(
-            column, table, where, order)
+
+    sqltext = 'SELECT {} FROM {} {} WHERE {} {}'.format(
+        column, table, othertable, where, order)
     sqllimit = ' LIMIT {},{}'.format(limit[0], limit[1])
     result = querySql(sqltext + sqllimit)
     res_count = querySql('SELECT COUNT(1) AS count FROM ({})'.format(sqltext))
