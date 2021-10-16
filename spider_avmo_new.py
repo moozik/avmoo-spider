@@ -44,7 +44,7 @@ class avmo:
         else:
             self.sqlite_file = 'avmoo.db'
         #主函数延时
-        self.main_sleep = 1
+        self.main_sleep = 0.3
         
         #其他配置初始化
         self.config()
@@ -206,8 +206,15 @@ class avmo:
     #主函数，抓取页面内信息
     def spider_by_stars(self, stars_id):
         self.stars_one(stars_id)
+        #查询db全集去重
+        self.CUR.execute("select linkid from av_list where stars_url LIKE '%{}%'".format(stars_id))
+        dbRes = self.CUR.fetchall()
+        movieIdExistList = [x[0] for x in dbRes]
 
         for item in self.linkid_general_by_stars(stars_id):
+            #过滤已存在影片
+            if item in movieIdExistList:
+                continue
             url = self.get_url('cn', 'movie', item)
             time.sleep(self.main_sleep)
             try:
