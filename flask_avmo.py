@@ -12,6 +12,7 @@ import re
 import math
 import os
 import binascii
+import config
 app = Flask(__name__)
 
 #每页展示的数量
@@ -322,10 +323,8 @@ def pagination(pagenum, count):
         'list': pagelist
     }
 
-def conn(dbfile= 'avmoo.db'):
-    if os.path.exists('avmoo_.db'):
-        dbfile = 'avmoo_.db'
-    CONN = sqlite3.connect(dbfile, check_same_thread=False)
+def conn():
+    CONN = sqlite3.connect(config.getDbFile(), check_same_thread=False)
     CUR = CONN.cursor()
     return {
         'CONN':CONN,

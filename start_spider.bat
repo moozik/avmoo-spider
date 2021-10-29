@@ -1,1 +1,0 @@
-python spider_avmo.py -a && python spider_avmo.py -t && python spider_avmo.py -g && python flask_avmo.py
