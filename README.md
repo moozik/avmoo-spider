@@ -23,8 +23,6 @@ pip install flask
 
 ![running_spider](https://raw.githubusercontent.com/moozik/avmoo-spider/master/running_spider.png)
 
-抓取演员所有影片
-`spider_avmo.py -s e4b7ae7e8b52c8ca`
-
-更新类别
-`spider_avmo.py -g`
+抓取指定演员所有影片
+`https://avmoo.casa/cn/star/1971f1973cf8172f`
+将`1971f1973cf8172f`放到本地web的搜索框，可以更新指定演员id的所有影片到本地数据库
