@@ -1,6 +1,6 @@
 {% extends "main.html" %}
 
-{% block title %} 我喜欢的{{type_nick}} - {% endblock %}
+{% block title %} 女优 {{type_nick}} - {% endblock %}
 {% block keyword %}{{keyword}}{% endblock %}
 {% block container %}
 <!-- <div class="container-fluid">
@@ -36,7 +36,7 @@
                     </div>
                 </a>
                 <span>{{item.name}}</span>
-                <span class="glyphicon glyphicon-remove del-btn" data-val="{{item.linkid}}" style="padding: 2px;color: rgb(255, 127, 7);"></span>
+                <span class="glyphicon glyphicon-refresh download-btn" title="更新影片" data-val="{{item.linkid}}" style="padding: 2px;color: rgb(255, 127, 7);"></span>
             </div>
             {% endfor %}
         </div>
@@ -49,11 +49,8 @@
 
 {% block javascript %}
 <script>
-    // $('#avatar-waterfall > div > span').each(function () {
-    //     $(this).after('<span class="glyphicon glyphicon-remove del-btn" data-toggle="modal" data-target="#myModal" style="padding: 2px;color: #FFC107;"></span>');
-    // });
-    $('.del-btn').click(function () {
-        $.get("/like/del/stars_url/" + $(this).data('val'), function (data) {
+    $('.download-btn').click(function () {
+        $.get("/action/download/" + $(this).data('val'), function (data) {
             $('#message_title').html(data);
             $('#message').modal('show');
         });

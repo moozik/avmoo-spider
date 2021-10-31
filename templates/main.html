@@ -46,9 +46,9 @@
         <div id="navbar" class="collapse navbar-collapse">
           <form class="navbar-form navbar-left fullsearch-form" action="/search" onsubmit="return false">
             <div class="input-group">
-              <input name="keyword" type="text" class="form-control" placeholder="搜寻 识别码, 影片, 演员" value="{% block keyword %}{% endblock %}">
+              <input name="keyword" type="text" class="form-control" placeholder="演员ID,类型,演员" value="{% block keyword %}{% endblock %}">
               <span class="input-group-btn">
-                <button class="btn btn-default" type="submit">搜寻</button>
+                <button class="btn btn-default" type="submit">查找或下载</button>
               </span>
             </div>
           </form>
@@ -57,7 +57,7 @@
             <li><a href="/">全部</a></li>
 			<li><a href="/search/已发布">已发布</a></li>
             <!-- <li><a href="/search/%E5%AD%97%E5%B9%95">字幕</a></li> -->
-            <!-- <li><a href="/actresses">女优</a></li> -->
+            <li><a href="/actresses">女优</a></li>
             <li><a href="/genre">类别</a></li>
           </ul>
 
@@ -71,9 +71,6 @@
                 <ul class="dropdown-menu" role="menu">
                     <li>
                         <a href="/like/movie">影片</a>
-                    </li>
-                    <li>
-                        <a href="/like/stars">明星</a>
                     </li>
                     <li>
                         <a href="/like/series">系列</a>
@@ -155,28 +152,6 @@
 
 <div class="visible-xs-block footer-bar-placeholder"></div>
 
-<!-- ////////////////////////////////////////////////// -->
-<div class="overlay overlay-contentscale">
-    <nav>
-        <ul>
-            <li>
-            <form class="fullsearch-form" action="/search" onsubmit="return false">
-               <div class="input-group col-xs-offset-2 col-xs-8">
-                  <input name="keyword" type="text" class="form-control" placeholder="搜寻 识别码, 影片, 演员">
-                  <span class="input-group-btn">
-                    <button class="btn btn-default" type="submit">搜寻</button>
-                  </span>
-               </div>
-            </form>
-            </li>
-            <li><a href="/released">已发布</a></li>
-            <!-- <li><a href="/popular">热门</a></li> -->
-            <!-- <li><a href="/actresses">女优</a></li> -->
-            <li><a href="/genre">类别</a></li>
-        </ul>
-    </nav>
-    <div class="row overlay-close"><i class="glyphicon glyphicon-remove" style="color:#fff;font-size: 24px;margin:30px;"></i></div>
-</div>
 <div class="modal fade" id="message" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">

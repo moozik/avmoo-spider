@@ -13,17 +13,20 @@ import math
 import os
 import binascii
 import config
+import spider_avmo
+import _thread
 app = Flask(__name__)
 
 #每页展示的数量
 PAGE_LIMIT = 30
 CDN_SITE = '//jp.netcdn.space'
-# CDN_SITE = '//pics.dmm.co.jp'
+CDN_SITE = '//pics.dmm.co.jp'
 #默认语言为中文
 DEFAULT_LANGUAGE = 'cn'
 #缓存
 SQL_CACHE = {}
 IF_USE_CACHE = True
+SPIDER_AVMO = spider_avmo.avmo()
 @app.route('/')
 @app.route('/page/<int:pagenum>')
 @app.route('/search/<keyword>')
@@ -33,6 +36,10 @@ def index(keyword = '', pagenum = 1):
         redirect(url_for('/'))
     limit_start = (pagenum -1) * PAGE_LIMIT
     keyword = keyword.replace("'",'').replace('"','').strip()
+
+    #识别linkid
+    if re.match('^[a-z0-9]{16}$', keyword):
+        return action_download(keyword)
 
     #识别番号
     if re.match('^[a-zA-Z0-9 \-]{4,14}$', keyword):
@@ -50,8 +57,7 @@ def index(keyword = '', pagenum = 1):
             '收藏导演': 'director_url',
             '收藏制作': 'studio_url',
             '收藏发行': 'label_url',
-            '收藏系列': 'series_url',
-            '收藏明星': 'stars_url'
+            '收藏系列': 'series_url'
         }
         for key_item in key_list:
             if key_item == '字幕':
@@ -71,12 +77,6 @@ def index(keyword = '', pagenum = 1):
                 like_list = [x['val'] for x in data]
                 where += ' av_list.{} in ("{}") and'.format(
                     like_dict[key_item],'","'.join(like_list))
-                continue
-            if key_item == '收藏明星':
-                sql = 'SELECT val FROM av_like WHERE type="stars_url"'
-                data = querySql(sql)
-                item_list = ['av_list.stars_url like "%{}%"'.format(x['val']) for x in data]
-                where += '({}) and'.format(' or '.join(item_list))
                 continue
             where += '''
             (av_list.title like "%{0}%" or
@@ -235,11 +235,11 @@ def like_page_other(keyword=''):
     result = querySql(sqltext)
     return render_template('like.html', data=result, cdn=CDN_SITE, type_nick=map_[keyword], type_name=keyword, type_url=keyword + '_url', keyword='收藏'+map_[keyword])
 
-@app.route('/like/stars')
+@app.route('/actresses')
 def like_stars():
-    sqltext = 'SELECT s.linkid,s.name,s.headimg,l.time FROM "av_like" l join "av_stars" s on l.val=s.linkid where l.type="stars_url" order by l.time desc'
+    sqltext = 'SELECT * FROM "av_stars"'
     result = querySql(sqltext)
-    return render_template('stars.html', data=result, cdn=CDN_SITE, keyword='收藏明星')
+    return render_template('stars.html', data=result, cdn=CDN_SITE)
 
 @app.route('/catch/switch')
 def catch_switch():
@@ -257,38 +257,11 @@ def catch_delete():
     SQL_CACHE = {}
     return '已清空缓存'
 
-#暂时没用
-@app.route('/api/GetMagnet/<keyword>')
-def get_magnet(keyword=''):
-    s = requests.Session()
-    s.headers = {
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36'
-    }
-    result = []
-    if keyword == '':
-        return '{}'
-    url = 'https://btso.pw/search/{}'.format(keyword)
-    main_html = s.get(url).text
-    print(url)
-    return main_html
-    main_tree = etree.HTML(main_html)
-    alist = main_tree.xpath('/html/body/div[2]/div[4]/div[2]/a')
-
-    for item in alist:
-        url = 'https:'+item.attrib.get('href')
-        item_html = s.get(url).text
-        print(url)
-        item_tree = etree.HTML(item_html)
-
-        magnet = re.findall('[A-Z0-9]+$', item.attrib.get('href'))[0]
-
-        print(magnet, item.attrib.get('href'))
-        result.append([
-            item.attrib.get('href'),
-            magnet,
-        ])
-    return json.dumps(result)
-
+@app.route('/action/download/<linkid>')
+def action_download(linkid=''):
+    global SPIDER_AVMO
+    _thread.start_new_thread(SPIDER_AVMO.spider_by_stars, (linkid,))
+    return '{},正在下载...'.format(linkid)
 
 def pagination(pagenum, count):
     pagecount = math.ceil(count / PAGE_LIMIT)
@@ -331,7 +304,7 @@ def conn():
         'CUR':CUR,
     }
 
-def sqliteSelect(column='*', table='av_list', where='1', limit=(0, 30), order='linkid DESC', othertable = ''):
+def sqliteSelect(column='*', table='av_list', where='1', limit=(0, 30), order='release_date DESC', othertable = ''):
     #db = conn()
     if order.strip() == '':
         order = ''

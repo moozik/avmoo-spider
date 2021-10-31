@@ -41,17 +41,7 @@ class avmo:
         #其他配置初始化
         self.config()
 
-        #================测试区间================
-        # self.main(sqlfun.return_dict())
-        # for item in self.linkid_general_by_stars('e4b7ae7e8b52c8ca'):
-        #     print(item)
-        # exit()
-        '''
-        #重试缺失地址
-        # self.data_check()
-        exit()
-        '''
-
+    def start_by_single(self):
         #================读取参数================
         try:
             opts, args = getopt.getopt(
@@ -80,7 +70,6 @@ class avmo:
                 opt_dict[opt_r[op]] = value
             else:
                 opt_dict[op] = value
-        print(opt_dict)
         if '-help' in opt_dict:
             self.usage()
             exit()
@@ -189,6 +178,7 @@ class avmo:
 
     #主函数，抓取页面内信息
     def spider_by_stars(self, stars_id):
+        print("spider_by_stars start:{}".format(stars_id))
         self.stars_one(stars_id)
         #查询db全集去重
         self.CUR.execute("select linkid from av_list where stars_url LIKE '%{}%'".format(stars_id))
@@ -230,6 +220,7 @@ class avmo:
                 self.movie_save()
         #插入剩余的数据
         self.movie_save()
+        print("spider_by_stars end:{}".format(stars_id))
 
     #获取一个明星的信息
     def stars_one(self, linkid):
@@ -448,4 +439,5 @@ class avmo:
         print('genre update record：{}'.format(len(insert_list)))
 
 if __name__ == '__main__':
-    avmo()
+    avmo = avmo()
+    avmo.start_by_single()
