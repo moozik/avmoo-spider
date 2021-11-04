@@ -25,7 +25,7 @@ CDN_SITE = '//pics.dmm.co.jp'
 DEFAULT_LANGUAGE = 'cn'
 #缓存
 SQL_CACHE = {}
-IF_USE_CACHE = True
+IF_USE_CACHE = False
 SPIDER_AVMO = spider_avmo.avmo()
 @app.route('/')
 @app.route('/page/<int:pagenum>')
@@ -117,7 +117,7 @@ def movie(linkid=''):
     #演员
     if movie['stars_url']:
         sql = 'select linkid,name,headimg from av_stars where linkid in ("{}")'.format(
-            movie['stars_url'].replace('|','","'))
+            movie['stars_url'].strip('|').replace('|','","'))
         stars_data = querySql(sql)
         movie['stars_data'] = stars_data
     #图片
@@ -134,11 +134,6 @@ def movie(linkid=''):
     else:
         img = ''
     movie['imglist'] = img
-    #磁力
-    # sql = 'select * from av_magnet where av_id="{}" or linkid = "{}"'.format(
-    #     movie['av_id'], movie['linkid'])
-    # magnet_data = querySql(sql)
-    # movie['magnet_data'] = magnet_data
     return render_template('movie.html', data=movie, cdn=CDN_SITE)
 
 @app.route('/director/<keyword>')
@@ -305,7 +300,6 @@ def conn():
     }
 
 def sqliteSelect(column='*', table='av_list', where='1', limit=(0, 30), order='release_date DESC', othertable = ''):
-    #db = conn()
     if order.strip() == '':
         order = ''
     else:
@@ -331,9 +325,7 @@ def querySql(sql):
             print('SQL EXEC[{}]:\n{}'.format(cacheKey, sql))
             DB['CUR'].execute(sql)
             ret = DB['CUR'].fetchall()
-            # print(ret)
             ret = showColumnname(ret, DB['CUR'].description)
-            # print(ret, DB['CUR'].description)
             
             if IF_USE_CACHE:
                 SQL_CACHE[cacheKey] = ret
