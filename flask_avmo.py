@@ -24,8 +24,8 @@ CDN_SITE = '//pics.dmm.co.jp'
 #默认语言为中文
 DEFAULT_LANGUAGE = 'cn'
 #缓存
-SQL_CACHE = {}
-IF_USE_CACHE = False
+# SQL_CACHE = {}
+# IF_USE_CACHE = False
 SPIDER_AVMO = spider_avmo.avmo()
 @app.route('/')
 @app.route('/page/<int:pagenum>')
@@ -124,8 +124,7 @@ def movie(linkid=''):
     img = []
     if movie['image_len'] != '0':
         count = int(movie['image_len'])
-        imgurl = CDN_SITE + '/digital/video' + \
-            movie['bigimage'].replace('pl.jpg', '')
+        imgurl = CDN_SITE + '/digital/video' + movie['bigimage'].replace('pl.jpg', '')
         for i in range(1, count+1):
             img.append({
                 'small':'{}-{}.jpg'.format(imgurl, i),
@@ -236,27 +235,53 @@ def like_stars():
     result = querySql(sqltext)
     return render_template('stars.html', data=result, cdn=CDN_SITE)
 
-@app.route('/catch/switch')
-def catch_switch():
-    global IF_USE_CACHE
-    if IF_USE_CACHE == True:
-        IF_USE_CACHE = False
-        return '已关闭缓存'
-    else:
-        IF_USE_CACHE = True
-        return '已打开缓存'
+# @app.route('/catch/switch')
+# def catch_switch():
+#     global IF_USE_CACHE
+#     if IF_USE_CACHE == True:
+#         IF_USE_CACHE = False
+#         return '已关闭缓存'
+#     else:
+#         IF_USE_CACHE = True
+#         return '已打开缓存'
 
-@app.route('/catch/delete')
-def catch_delete():
-    global SQL_CACHE
-    SQL_CACHE = {}
-    return '已清空缓存'
+# @app.route('/catch/delete')
+# def catch_delete():
+#     global SQL_CACHE
+#     SQL_CACHE = {}
+#     return '已清空缓存'
 
 @app.route('/action/download/<linkid>')
 def action_download(linkid=''):
     global SPIDER_AVMO
     _thread.start_new_thread(SPIDER_AVMO.spider_by_stars, (linkid,))
     return '{},正在下载...'.format(linkid)
+
+@app.route('/action/delete/movie/<linkid>')
+def action_delete_movie(linkid=''):
+    sqltext = 'DELETE FROM "av_list" WHERE linkid="{}"'.format(linkid)
+    DB['CUR'].execute(sqltext)
+    DB['CONN'].commit()
+    return 'movie已删除'
+
+@app.route('/action/delete/stars/<linkid>')
+def action_delete_stars(linkid=''):
+    star_movie = querySql('SELECT linkid,stars_url FROM av_list WHERE stars_url like "%|{}%"'.format(linkid))
+    for item in star_movie:
+        move_star_list = querySql('SELECT linkid FROM av_stars WHERE linkid in ("{}")'.format(
+            item['stars_url'].strip('|').replace('|','","')
+        ))
+        if len(move_star_list) == 1:
+            sqltext = 'DELETE FROM "av_list" WHERE linkid="{}"'.format(item['linkid'])
+            print(sqltext)
+            DB['CUR'].execute(sqltext)
+            DB['CONN'].commit()
+    sqltext = 'DELETE FROM "av_stars" WHERE linkid="{}"'.format(linkid)
+    print(sqltext)
+    DB['CUR'].execute(sqltext)
+    DB['CONN'].commit()
+    return 'stars已删除'
+
 
 def pagination(pagenum, count):
     pagecount = math.ceil(count / PAGE_LIMIT)
@@ -314,28 +339,28 @@ def sqliteSelect(column='*', table='av_list', where='1', limit=(0, 30), order='r
     return (result, res_count[0]['count'])
     
 def querySql(sql):
-    cacheKey = (binascii.crc32(sql.encode()) & 0xffffffff)
-    #是否使用缓存
-    if IF_USE_CACHE:
-        #是否有缓存
-        if cacheKey in SQL_CACHE.keys():
-            print('SQL CACHE[{}]'.format(cacheKey))
-            return SQL_CACHE[cacheKey][:]
-        else:
-            print('SQL EXEC[{}]:\n{}'.format(cacheKey, sql))
-            DB['CUR'].execute(sql)
-            ret = DB['CUR'].fetchall()
-            ret = showColumnname(ret, DB['CUR'].description)
+    # cacheKey = (binascii.crc32(sql.encode()) & 0xffffffff)
+    # #是否使用缓存
+    # if IF_USE_CACHE:
+    #     #是否有缓存
+    #     if cacheKey in SQL_CACHE.keys():
+    #         print('SQL CACHE[{}]'.format(cacheKey))
+    #         return SQL_CACHE[cacheKey][:]
+    #     else:
+    #         print('SQL EXEC[{}]:\n{}'.format(cacheKey, sql))
+    #         DB['CUR'].execute(sql)
+    #         ret = DB['CUR'].fetchall()
+    #         ret = showColumnname(ret, DB['CUR'].description)
             
-            if IF_USE_CACHE:
-                SQL_CACHE[cacheKey] = ret
-            return ret[:]
-    else:
-        print('SQL EXEC:\n{}'.format(sql))
-        DB['CUR'].execute(sql)
-        ret = DB['CUR'].fetchall()
-        ret = showColumnname(ret, DB['CUR'].description)
-        return ret
+    #         if IF_USE_CACHE:
+    #             SQL_CACHE[cacheKey] = ret
+    #         return ret[:]
+    # else:
+    print('SQL EXEC:\n{}'.format(sql))
+    DB['CUR'].execute(sql)
+    ret = DB['CUR'].fetchall()
+    ret = showColumnname(ret, DB['CUR'].description)
+    return ret
 
 def showColumnname(data, description):
     result = []

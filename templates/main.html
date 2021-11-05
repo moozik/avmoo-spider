@@ -56,7 +56,6 @@
               <!--  class="active" -->
             <li><a href="/">全部</a></li>
 			<li><a href="/search/已发布">已发布</a></li>
-            <!-- <li><a href="/search/%E5%AD%97%E5%B9%95">字幕</a></li> -->
             <li><a href="/actresses">女优</a></li>
             <li><a href="/genre">类别</a></li>
           </ul>
@@ -88,8 +87,10 @@
                     </li>
                 </ul>
             </li>
-            <li><a href="javascript:;" style="color: burlywood;" class="catch_switch">缓存开关</a></li>
-            <li><a href="javascript:;" style="color: burlywood;" class="catch_delete">清空缓存</a></li>
+            <!-- <li><a href="javascript:;" style="color: burlywood;" class="catch_switch">缓存开关</a></li>
+            <li><a href="javascript:;" style="color: burlywood;" class="catch_delete">清空缓存</a></li> -->
+            <li><a href="https://tellme.pw/avmoo" target="_blank">最新地址</a></li>
+            
         </ul>
         </div><!--/.nav-collapse -->
       </div>
@@ -146,7 +147,6 @@
 
 <footer class="footer hidden-xs">
 	<div class="container-fluid">
-<p><a href="/terms">Terms</a> / <a href="/privacy">Privacy</a> / <a href="/usc">2257</a> / <a href="http://www.rtalabel.org/" target="_blank" rel="external nofollow">RTA</a> / <a href="#advertisingModal" role="button" data-toggle="modal">Advertising</a> / <a class="contactus" href="javascript:;" role="button" data-toggle="modal">Contact</a> / <a href="https://tellme.pw/avmoo" target="_blank">Guide</a> | Links: <a href="https://javlog.com" target="_blank">AVMOO</a> / <a href="https://javfee.com" target="_blank">AVSOX</a> / <a href="https://avxo.pw" target="_blank">AVMEMO</a><br>Copyright © 2013 AVMOO. All Rights Reserved. All other trademarks and copyrights are the property of their respective holders. The reviews and comments expressed at or through this website are the opinions of the individual author and do not reflect the opinions or views of AVMOO. AVMOO is not responsible for the accuracy of any of the information supplied here.</p>
 	</div>
 </footer>
 
@@ -178,18 +178,18 @@
 </div>
 <script src="{{url_for('static', filename='app.min.js')}}"></script>
 <script>
-    $('.catch_switch').click(function(){
-        $.get('/catch/switch',function(data){
-            $('#message_title').html(data);
-            $('#message').modal('show');
-        });
-    });
-    $('.catch_delete').click(function(){
-        $.get('/catch/delete', function (data) {
-            $('#message_title').html(data);
-            $('#message').modal('show');
-        });
-    });
+    // $('.catch_switch').click(function(){
+    //     $.get('/catch/switch',function(data){
+    //         $('#message_title').html(data);
+    //         $('#message').modal('show');
+    //     });
+    // });
+    // $('.catch_delete').click(function(){
+    //     $.get('/catch/delete', function (data) {
+    //         $('#message_title').html(data);
+    //         $('#message').modal('show');
+    //     });
+    // });
     $('#confirm').click(function(){
         $('#message').modal('hide');
     });

@@ -36,7 +36,7 @@ class avmo:
         #sqlite数据库地址
         self.sqlite_file = config.getDbFile()
         #主函数延时
-        self.main_sleep = 0.3
+        self.main_sleep = 1
         
         #其他配置初始化
         self.config()
@@ -126,7 +126,7 @@ class avmo:
         #超时时间
         self.s.timeout = 3
         self.s.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36'
         }
         #代理
         self.s.proxies = {
@@ -160,7 +160,7 @@ class avmo:
         print(usage.replace('        ',''))
     
     def get_url(self, country, pagetype, linkid, pageNo = None): 
-        if pageNo == None :
+        if pageNo == None or pageNo == 1 :
             return '{}/{}/{}/{}'.format(self.site_url, country, pagetype, linkid)
         else:
             return '{}/{}/{}/{}/page/{}'.format(self.site_url, country, pagetype, linkid, pageNo)
@@ -169,6 +169,7 @@ class avmo:
         for pageNo in range(1,1000):
             url = self.get_url('cn','star', stars_id, pageNo)
             res = self.s.get(url)
+            print("url.get:{}\n".format(url))
             html = etree.HTML(res.text)
             movieIdList = html.xpath('//*[@id="waterfall"]/div/a/@href')
             if movieIdList == [] or movieIdList == None:

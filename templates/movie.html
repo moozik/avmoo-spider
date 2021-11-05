@@ -141,6 +141,7 @@
 
     {% if data.stars_data %}
     <h4>演员</h4>
+    <h5>{{data.stars}}</h5>
     <div id="avatar-waterfall">
         {% for item in data.stars_data %}
         <a data-type="stars_url" data-val="{{item.linkid}}" class="avatar-box" href="/stars/{{item.linkid}}">
