@@ -1,8 +1,8 @@
 {% extends "main.html" %}
-{% block title %}{{data.av_id}} {{data.title}} - {% endblock %}
+{% block title %}{{data.title}} - {% endblock %}
 {% block container %}
 <div class="container">
-    <h3>{{data.av_id}} {{data.title}}</h3>
+    <h3>{{data.title}}</h3>
     <div class="row movie">
         <div class="col-md-9 screencap">
             <a class="bigImage" href="{{cdn}}/digital/video{{data.bigimage}}" title="{{data.title}}">

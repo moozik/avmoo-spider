@@ -35,8 +35,8 @@ class avmo:
 
         #sqlite数据库地址
         self.sqlite_file = config.getDbFile()
-        #主函数延时
-        self.main_sleep = 1
+        #主函数延时 越慢越稳，请求过快会403
+        self.main_sleep = 1.5
         
         #其他配置初始化
         self.config()
