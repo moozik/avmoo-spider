@@ -44,7 +44,6 @@ def index(keyword='', pagenum=1):
     keyword = keyword.replace("'", '').replace('"', '').strip()
 
     where = []
-    other_where_list = []
 
     # 识别linkid
     if re.match('^[a-z0-9]{16}$', keyword):
@@ -59,15 +58,8 @@ def index(keyword='', pagenum=1):
             where.append('av_list.av_id like "%{}%"'.format(tmp))
     # 搜索
     elif keyword != '':
-
         key_list = keyword.split(' ')
-        like_dict = {
-            '收藏影片': 'av_id',
-            '收藏导演': 'director_url',
-            '收藏制作': 'studio_url',
-            '收藏发行': 'label_url',
-            '收藏系列': 'series_url'
-        }
+
         for key_item in key_list:
             if key_item == '已发布':
                 date = time.strftime("%Y-%m-%d", time.localtime())
@@ -75,17 +67,16 @@ def index(keyword='', pagenum=1):
                 continue
 
             if key_item == '已下载':
-                other_where_list.append('av_extend.val is not null')
+                where.append('av_extend.val is not null')
                 continue
 
-            if key_item in like_dict.keys():
-                sql = 'SELECT val FROM av_like WHERE type="{}"'.format(
-                    like_dict[key_item])
+            if key_item == '收藏影片':
+                sql = "SELECT val FROM av_like WHERE type='av_id'"
                 data = querySql(sql)
-                like_list = [x['val'] for x in data]
-                where.append('av_list.{} in ("{}")'.format(
-                    like_dict[key_item], '","'.join(like_list)))
+                where.append('av_list.av_id in ("{}")'.format(
+                    '","'.join([x['val'] for x in data])))
                 continue
+
             where.append('''
             (av_list.title like "%{0}%" or
             av_list.av_id like "%{0}%" or
@@ -96,10 +87,11 @@ def index(keyword='', pagenum=1):
             av_list.genre like "%{0}%" or
             av_list.stars like "%{0}%")and'''.format(key_item))
     elif keyword == '':
+        keyword = "主页"
         where = []
 
     result = selectAvList(column='av_list.*', av_list_where=where,
-                          limit=(limit_start, PAGE_LIMIT), other_where=other_where_list)
+                          limit=(limit_start, PAGE_LIMIT))
     if keyword != '':
         page_root = '/{}/{}'.format('search', keyword)
     else:
@@ -146,7 +138,7 @@ def movie(linkid=''):
         img = ''
     movie['imglist'] = img
     # 本地文件
-    movie['movie_local_path'] = selectExtendValue('movie_path', movie['av_id'])
+    movie['movie_resource_list'] = selectExtendValue('movie_res', movie['av_id'])
     return render_template('movie.html', data=movie, cdn=CDN_SITE)
 
 
@@ -232,32 +224,11 @@ def like_del(data_type=None, data_val=None):
 
 
 @app.route('/like/movie')
-@app.route('/like/movie/page/<int:pagenum>')
-def like_page(pagenum=1):
-    if pagenum < 1:
-        return redirect(url_for('index'), 404)
-    limit_start = (pagenum - 1) * PAGE_LIMIT
-
-    result = selectAvList(column='*', limit=(limit_start, PAGE_LIMIT),
+def like_page():
+    result = selectAvList(column='*', limit=(0, 2000),
                           othertable=" JOIN av_like ON av_like.type='av_id' AND av_like.val = av_list.av_id ", order='av_like.time DESC')
 
-    return render_template('index.html', data={'av_list': result[0]}, cdn=CDN_SITE, pageroot='/like/movie', page=pagination(pagenum, result[1]), keyword='收藏影片')
-
-
-@app.route('/like/<keyword>')
-def like_page_other(keyword=''):
-    map_ = {
-        'director': '导演',
-        'studio': '制作',
-        'label': '发行',
-        'series': '系列',
-    }
-    sqltext = "SELECT av_list.* FROM av_like JOIN (SELECT * FROM av_list GROUP BY {0}_url ORDER BY linkid DESC )av_list ON av_like.type='{0}_url' AND av_like.val=av_list.{0}_url".format(
-        keyword
-    )
-    result = querySql(sqltext)
-    return render_template('like.html', data=result, cdn=CDN_SITE, type_nick=map_[keyword], type_name=keyword, type_url=keyword + '_url', keyword='收藏'+map_[keyword])
-
+    return render_template('index.html', data={'av_list': result[0]}, cdn=CDN_SITE, pageroot='/like/movie', keyword='收藏影片')
 
 @app.route('/actresses')
 def like_stars():
@@ -279,24 +250,15 @@ def action_catch_switch():
         SQL_CACHE = {}
         return '已打开缓存'
 
-# 本地打开视频
-
-
 @app.route('/action/explorer/<movie_path>')
 def action_explorer(movie_path):
     os.system('explorer ' + movie_path)
     return 'ok'
 
-# 插入扩展信息
-
-
 @app.route('/action/extend/insert/<extend_name>/<key>/<val>')
 def action_extend_insert(extend_name, key, val):
     insertExtendValue(extend_name, key, val)
     return '扩展信息添加成功'
-
-# 删除扩展信息
-
 
 @app.route('/action/extend/delete/<extend_name>/<key>/<val>')
 def action_extend_delete(extend_name, key, val):
@@ -420,26 +382,20 @@ def conn():
     }
 
 
-def selectAvList(column='*', av_list_where=[], limit=(0, 30), order='release_date DESC', other_where=[], othertable = ''):
+def selectAvList(column='*', av_list_where=[], limit=(0, 30), order='release_date DESC', othertable=''):
     order = 'ORDER BY ' + order
 
-    where = []
-    where.extend(av_list_where)
-    where.extend(other_where)
     where_str = '1'
-    if where != []:
-        where_str = ' and '.join(where)
-    sqltext = "SELECT {},count(av_extend.val) as movie_path_count FROM av_list left join av_extend on av_extend.extend_name='movie_path' and av_list.av_id=av_extend.key {} WHERE {} group by av_list.linkid {}".format(
+    if av_list_where != []:
+        where_str = ' and '.join(av_list_where)
+    sqltext = "SELECT {},count(av_extend.val) as movie_res_count FROM av_list left join av_extend on av_extend.extend_name='movie_res' and av_list.av_id=av_extend.key {} WHERE {} group by av_list.linkid {}".format(
         column, othertable, where_str, order)
 
     sqllimit = ' LIMIT {},{}'.format(limit[0], limit[1])
     result = querySql(sqltext + sqllimit)
 
-    av_list_where_str = '1'
-    if av_list_where != []:
-        av_list_where_str = ' and '.join(av_list_where)
     res_count = querySql(
-        'SELECT COUNT(1) AS count FROM av_list where {}'.format(av_list_where_str))
+        'SELECT COUNT(1) AS count FROM ({})'.format(sqltext))
     return (result, res_count[0]['count'])
 
 

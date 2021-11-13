@@ -1,6 +1,6 @@
 {% extends "main.html" %}
 
-{% block title %}{{keyword}} 第{{page.now}}页 - {% endblock %}
+{% block title %}{{keyword}} - {% endblock %}
 {% block keyword %}{{keyword}}{% endblock %}
 {% block container %}
 <div class="container-fluid">
@@ -40,8 +40,8 @@
 演员:{{ item.stars }}">
 							</div>
 							<div class="photo-info">
-								{% if item.movie_path_count %}
-								<span class="sub_title">已下载</span>
+								{% if item.movie_res_count %}
+								<span class="sub_title">有资源</span>
 								{% endif %}
 								<span>{{ item.title }}
 									<br>

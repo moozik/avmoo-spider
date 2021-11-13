@@ -27,25 +27,25 @@
             {% if data.director_url %}
                 <p>
                     <span class="header">导演:</span>
-                    <a class="like" data-type="director_url" data-val="{{data.director_url}}" href="/director/{{data.director_url}}">{{data.director}}</a>
+                    <a data-type="director_url" data-val="{{data.director_url}}" href="/director/{{data.director_url}}">{{data.director}}</a>
                 </p>
             {% endif %}
             {% if data.studio_url %}
                 <p class="header">制作商: </p>
                 <p>
-                    <a class="like" data-type="studio_url" data-val="{{data.studio_url}}" href="/studio/{{data.studio_url}}">{{data.studio}}</a>
+                    <a data-type="studio_url" data-val="{{data.studio_url}}" href="/studio/{{data.studio_url}}">{{data.studio}}</a>
                 </p>
             {% endif %}
             {% if data.label_url %}
                 <p class="header">发行商: </p>
                 <p>
-                    <a class="like" data-type="label_url" data-val="{{data.label_url}}" href="/label/{{data.label_url}}">{{data.label}}</a>
+                    <a data-type="label_url" data-val="{{data.label_url}}" href="/label/{{data.label_url}}">{{data.label}}</a>
                 </p>
             {% endif %}
             {% if data.series_url %}
                 <p class="header">系列:</p>
                 <p>
-                    <a class="like" data-type="series_url" data-val="{{data.series_url}}" href="/series/{{data.series_url}}">{{data.series}}</a>
+                    <a data-type="series_url" data-val="{{data.series_url}}" href="/series/{{data.series_url}}">{{data.series}}</a>
                 </p>
             {% endif %}
             {% if data.genre_list %}
@@ -87,13 +87,13 @@
         <a class="solink" href="https://btsow.rest/search/{{data.av_id}}" target="_blank">BTSO</a>
     </div>
 
-    <h4>本地影片</h4>
+    <h4>影片资源</h4>
     <div class="row">
-        <input id="movie_local_file" type="text" class="form-control" style="max-width: 400px;" placeholder="本地完整路径" />
+        <input id="movie_resource" type="text" class="form-control" style="max-width: 400px;" placeholder="磁力链接 | 本地路径 | 在线地址" />
         <button class="btn btn-default insert-movie-local" type="submit">保存</button>
         <ul>
-        {% for movie_path in data.movie_local_path %}
-            <li>{{movie_path}} <button class="btn btn-default delete-movie-local" data-val="{{movie_path}}" type="submit">删除记录</button> <button class="btn btn-default execute-movie-local" data-val="{{movie_path}}" type="submit">本地打开</button></li>
+        {% for movie_resource in data.movie_resource_list %}
+            <li><a href="{{movie_resource}}" target="_blank">{{movie_resource}}</a> <button class="btn btn-default delete-movie-local" data-val="{{movie_resource}}" type="submit">删除记录</button> <button class="btn btn-default execute-movie-local" data-val="{{movie_resource}}" type="submit">本地打开</button></li>
         {% endfor %}
         </ul>
     </div>
@@ -153,12 +153,12 @@
         });
     });
     $('.insert-movie-local').click(function(){
-        $.get("/action/extend/insert/movie_path/{{data.av_id}}/" + encodeURIComponent($('#movie_local_file').val()),function(data){
+        $.get("/action/extend/insert/movie_res/{{data.av_id}}/" + encodeURIComponent($('#movie_resource').val()),function(data){
             location.reload();
         });
     });
     $('.delete-movie-local').click(function(){
-        $.get("/action/extend/delete/movie_path/{{data.av_id}}/" + encodeURIComponent($(this).data('val')),function(data){
+        $.get("/action/extend/delete/movie_res/{{data.av_id}}/" + encodeURIComponent($(this).data('val')),function(data){
             location.reload();
         });
     });

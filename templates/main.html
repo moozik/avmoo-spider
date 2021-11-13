@@ -62,7 +62,7 @@
           </ul>
 
         <ul class="nav navbar-nav navbar-right">
-            <li class="dropdown">
+            <!-- <li class="dropdown">
                 <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
                     <span class="glyphicon glyphicon-star" style="font-size:12px;"></span>
                     <span class="hidden-sm">收藏列表</span>
@@ -87,7 +87,8 @@
                         <a href="/like/label">发行</a>
                     </li>
                 </ul>
-            </li>
+            </li> -->
+            <li><a href="/like/movie">收藏影片</a></li>
             <li><a href="javascript:;" class="catch_switch">缓存开关</a></li>
             <li><a href="https://tellme.pw/avmoo" target="_blank">最新地址</a></li>
             
@@ -112,8 +113,8 @@
 {% endblock %}
 
 {% block pagination %}
+    {% if page %}
 	<div class="text-center hidden-xs mtb-20">
-
 		<ul class="pagination pagination-lg mtb-0">
             {% if page.left>0 %}
             <li>
@@ -141,6 +142,7 @@
             {% endif %}
 		</ul>
   </div>
+  {% endif %}
 {% endblock %}
 
 {% block other %}{% endblock %}
