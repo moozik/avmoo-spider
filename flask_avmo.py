@@ -66,7 +66,7 @@ def index(keyword='', pagenum=1):
                 where.append('av_list.release_date <= "{}"'.format(date))
                 continue
 
-            if key_item == '已下载':
+            if key_item == '有资源':
                 where.append('av_extend.val is not null')
                 continue
 
@@ -85,9 +85,8 @@ def index(keyword='', pagenum=1):
             av_list.label like "%{0}%" or
             av_list.series like "%{0}%" or
             av_list.genre like "%{0}%" or
-            av_list.stars like "%{0}%")and'''.format(key_item))
+            av_list.stars like "%{0}%")'''.format(key_item))
     elif keyword == '':
-        keyword = "主页"
         where = []
 
     result = selectAvList(column='av_list.*', av_list_where=where,
@@ -138,7 +137,8 @@ def movie(linkid=''):
         img = ''
     movie['imglist'] = img
     # 本地文件
-    movie['movie_resource_list'] = selectExtendValue('movie_res', movie['av_id'])
+    movie['movie_resource_list'] = selectExtendValue(
+        'movie_res', movie['av_id'])
     return render_template('movie.html', data=movie, cdn=CDN_SITE)
 
 
@@ -230,6 +230,7 @@ def like_page():
 
     return render_template('index.html', data={'av_list': result[0]}, cdn=CDN_SITE, pageroot='/like/movie', keyword='收藏影片')
 
+
 @app.route('/actresses')
 def like_stars():
     sqltext = 'select av_stars.*,count(distinct av_list.linkid) as movie_count from av_stars LEFT JOIN av_list on instr(av_list.stars_url, av_stars.linkid) > 0 group by av_stars.linkid'
@@ -250,15 +251,18 @@ def action_catch_switch():
         SQL_CACHE = {}
         return '已打开缓存'
 
+
 @app.route('/action/explorer/<movie_path>')
 def action_explorer(movie_path):
     os.system('explorer ' + movie_path)
     return 'ok'
 
+
 @app.route('/action/extend/insert/<extend_name>/<key>/<val>')
 def action_extend_insert(extend_name, key, val):
     insertExtendValue(extend_name, key, val)
     return '扩展信息添加成功'
+
 
 @app.route('/action/extend/delete/<extend_name>/<key>/<val>')
 def action_extend_delete(extend_name, key, val):

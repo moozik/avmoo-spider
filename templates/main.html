@@ -5,7 +5,7 @@
 <meta http-equiv="x-dns-prefetch-control" content="on">
 <meta name="renderer" content="webkit">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %} {% endblock %}AV2099 塑料袋之歌</title>
+<title>{% block title %} {% endblock %} -avmoo-spider</title>
 <meta name="author" content="AVMOO">
 <meta name="keywords" content="">
 <meta name="description" content="AVMOO - 你的线上日本成人影片情报站。管理你的影片并分享你的想法。">
@@ -14,24 +14,14 @@
 <link rel="dns-prefetch" href="https://jp.netcdn.space">
 <link rel="stylesheet" type="text/css" href="{{url_for('static', filename='app.min.css')}}">
 <style>
-    /*字幕标签*/
 .sub_title{
     border: 1px solid #eea236;
-    background: #eb9316;
+    background-color: #ff0000;
     color: white;
     font-size: 8px;
     padding: 3px;
     border-radius: 6px;
 }
-.sub_hd{
-    border: 1px solid #2e6da4;
-    background: #265a88;
-    color: white;
-    font-size: 8px;
-    padding: 3px;
-    border-radius: 6px;
-}
-
 </style>
 {% block head %} {% endblock %}
 </head>
@@ -39,10 +29,6 @@
   <body>
     <nav class="navbar navbar-default navbar-fixed-top top-bar">
       <div class="container">
-        <div class="navbar-header">
-        	<a href="/" class="logo"></a>
-        </div>
-
         <div id="navbar" class="collapse navbar-collapse">
           <form class="navbar-form navbar-left fullsearch-form" action="/search" onsubmit="return false">
             <div class="input-group">
@@ -53,47 +39,20 @@
             </div>
           </form>
           <ul class="nav navbar-nav">
-              <!--  class="active" -->
             <li><a href="/">全部</a></li>
 			<li><a href="/search/已发布">已发布</a></li>
-			<li><a href="/search/已下载">已下载</a></li>
+			<li><a href="/search/有资源">有资源</a></li>
             <li><a href="/actresses">女优</a></li>
             <li><a href="/genre">类别</a></li>
+            <li><a href="/like/movie">收藏影片</a></li>
           </ul>
 
         <ul class="nav navbar-nav navbar-right">
-            <!-- <li class="dropdown">
-                <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
-                    <span class="glyphicon glyphicon-star" style="font-size:12px;"></span>
-                    <span class="hidden-sm">收藏列表</span>
-                    <span class="caret"></span>
-                </a>
-                <ul class="dropdown-menu" role="menu">
-                    <li>
-                        <a href="/like/movie">影片</a>
-                    </li>
-                    <li>
-                        <a href="/like/series">系列</a>
-                    </li>
-                    <li>
-                        <a href="/like/director">导演</a>
-                    </li>
-                    </li>
-                    <li>
-                        <a href="/like/studio">制作</a>
-                    </li>
-                    </li>
-                    <li>
-                        <a href="/like/label">发行</a>
-                    </li>
-                </ul>
-            </li> -->
-            <li><a href="/like/movie">收藏影片</a></li>
             <li><a href="javascript:;" class="catch_switch">缓存开关</a></li>
-            <li><a href="https://tellme.pw/avmoo" target="_blank">最新地址</a></li>
-            
+            <li><a href="https://tellme.pw/avmoo" target="_blank">avmoo最新地址</a></li>
+            <li><a class="glyphicon glyphicon-thumbs-up" href="https://github.com/moozik/avmoo-spider" target="_blank">本程序源码</a></li>
         </ul>
-        </div><!--/.nav-collapse -->
+        </div>
       </div>
     </nav>
 <div class="row visible-xs-inline footer-bar">
@@ -169,14 +128,12 @@
                 删除成功
             </div> -->
             <div class="modal-footer">
-                <!-- <button type="button" class="btn btn-default" data-dismiss="modal">关闭
-                </button> -->
                 <button type="button" class="btn btn-primary" id="confirm">
                     确认
                 </button>
             </div>
-        </div><!-- /.modal-content -->
-    </div><!-- /.modal -->
+        </div>
+    </div>
 </div>
 <script src="{{url_for('static', filename='app.min.js')}}"></script>
 <script>

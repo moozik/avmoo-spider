@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-#-*- coding:utf-8 -*-
-
 def buildSqliteDb(conn, cur):
     cur.execute('''
 CREATE TABLE IF NOT EXISTS "av_genre" (
