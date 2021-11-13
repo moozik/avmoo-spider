@@ -3,7 +3,7 @@
 
 def buildSqliteDb(conn, cur):
     cur.execute('''
-CREATE TABLE "av_genre" (
+CREATE TABLE IF NOT EXISTS "av_genre" (
   "linkid" TEXT(16) NOT NULL,
   "name" TEXT,
   "title" TEXT,
@@ -12,7 +12,7 @@ CREATE TABLE "av_genre" (
     ''')
 
     cur.execute('''
-CREATE TABLE "av_like" (
+CREATE TABLE IF NOT EXISTS "av_like" (
   "type" TEXT(20) NOT NULL,
   "val" TEXT(300) NOT NULL,
   "time" TEXT(50),
@@ -21,7 +21,7 @@ CREATE TABLE "av_like" (
     ''')
 
     cur.execute('''
-CREATE TABLE "av_list" (
+CREATE TABLE IF NOT EXISTS "av_list" (
   "linkid" TEXT(16) NOT NULL,
   "title" TEXT(500),
   "av_id" TEXT(50),
@@ -45,7 +45,7 @@ CREATE TABLE "av_list" (
     ''')
 
     cur.execute('''
-CREATE TABLE "av_stars" (
+CREATE TABLE IF NOT EXISTS "av_stars" (
   "linkid" TEXT(16) NOT NULL,
   "name" TEXT(50),
   "name_history" TEXT(50),
@@ -61,4 +61,13 @@ CREATE TABLE "av_stars" (
   PRIMARY KEY ("linkid")
 );
     ''')
+    cur.execute('''
+CREATE TABLE IF NOT EXISTS "av_extend" (
+  "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  "extend_name" TEXT(20) NOT NULL,
+  "key" TEXT(20) NOT NULL,
+  "val" TEXT(500) NOT NULL
+);
+    ''')
+
     conn.commit()

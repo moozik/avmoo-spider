@@ -12,9 +12,6 @@
         <div class="col-md-3 info">
             <p>
                 <span class="header">识别码:</span>
-                {% if data.sub_id %}
-                <span class="sub_title"><a href="http://163sub.org/LinkInfo/{{data.sub_id}}" target="_blank">字幕</a></span>
-                {% endif %}
                 <span class="like" data-type="av_id" data-val="{{data.av_id}}" style="color:#CC0000;">{{data.av_id}}</span>
             </p>
             {% if data.release_date %}
@@ -69,9 +66,6 @@
     </div>
 
     <style>
-        a.solink:hover{
-            color:#e2ff00;
-        }
         .solink {
     width: 100px;
     height: 35px;
@@ -92,52 +86,17 @@
     <div class="row">
         <a class="solink" href="https://btsow.rest/search/{{data.av_id}}" target="_blank">BTSO</a>
     </div>
-    <!-- <h4>磁力链接</h4>
-    <div class="row" id="GetMagnet">
-        <a class="solink" href="javascript:GetMagnet('{{data.av_id}}');" style="background:#CC0000;">GET Magnet</a>
-    </div> -->
-    {% if data.magnet_data %}
-    <h4>已有资源</h4>
-    <div class="" style="padding:12px; margin-top:15px">
-        <table id="magnet-table" class="table table-condensed table-striped table-hover" style="margin-bottom:0;">
-            <tbody>
-                <tr style="font-weight:bold;">
-                    <td>磁力名稱 <span class="glyphicon glyphicon-magnet"></span></td>
-                    <td style="text-align:center;white-space:nowrap">檔案大小</td>
-                    <td style="text-align:center;white-space:nowrap">分享日期</td>
-                </tr>
-            </tbody>
-            {% for item in data.magnet_data %}
-            <tr onmouseover="this.style.backgroundColor='#F4F9FD';this.style.cursor='pointer';"
-                onmouseout="this.style.backgroundColor='#FFFFFF'" height="35px"
-                style="border-top: 1px solid rgb(221, 221, 221); background-color: rgb(255, 255, 255); cursor: pointer;">
-                <td width="70%"
-                    onclick="window.open('magnet:?xt=urn:btih:{{item.magnet_xt}}','_self')">
-                    <a style="color:#333" rel="nofollow" title="滑鼠右鍵點擊並選擇【複製連結網址】"
-                        href="magnet:?xt=urn:btih:{{item.magnet_xt}}">
-                        DTT-030.mp4 </a>
-                        {% if item.have_hd == 1 %}
-                        <a class="btn btn-mini-new btn-primary disabled" title="包含高清HD的磁力連結">高清</a>
-                        {% endif %}
-                        {% if item.have_sub == 1 %}
-                        <a class="btn btn-mini-new btn-warning disabled" title="包含字幕的磁力連結">字幕</a>
-                        {% endif %}
-                </td>
-                <td style="text-align:center;white-space:nowrap"
-                    onclick="window.open('magnet:?xt=urn:btih:{{item.magnet_xt}}','_self')">
-                    <a style="color:#333" rel="nofollow" title="滑鼠右鍵點擊並選擇【複製連結網址】"
-                        href="magnet:?xt=urn:btih:{{item.magnet_xt}}">{{item.magnet_type}} </a>
-                </td>
-                <td style="text-align:center;white-space:nowrap"
-                    onclick="window.open('magnet:?xt=urn:btih:{{item.magnet_xt}}','_self')">
-                    <a style="color:#333" rel="nofollow" title="滑鼠右鍵點擊並選擇【複製連結網址】"
-                        href="magnet:?xt=urn:btih:{{item.magnet_xt}}">{{item.magnet_date}} </a>
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
+
+    <h4>本地影片</h4>
+    <div class="row">
+        <input id="movie_local_file" type="text" class="form-control" style="max-width: 400px;" placeholder="本地完整路径" />
+        <button class="btn btn-default insert-movie-local" type="submit">保存</button>
+        <ul>
+        {% for movie_path in data.movie_local_path %}
+            <li>{{movie_path}} <button class="btn btn-default delete-movie-local" data-val="{{movie_path}}" type="submit">删除记录</button> <button class="btn btn-default execute-movie-local" data-val="{{movie_path}}" type="submit">本地打开</button></li>
+        {% endfor %}
+        </ul>
     </div>
-    {% endif %}
 
     {% if data.stars_data %}
     <h4>演员</h4>
@@ -192,6 +151,19 @@
             $('#message_title').html(data);
             $('#message').modal('show');
         });
+    });
+    $('.insert-movie-local').click(function(){
+        $.get("/action/extend/insert/movie_path/{{data.av_id}}/" + encodeURIComponent($('#movie_local_file').val()),function(data){
+            location.reload();
+        });
+    });
+    $('.delete-movie-local').click(function(){
+        $.get("/action/extend/delete/movie_path/{{data.av_id}}/" + encodeURIComponent($(this).data('val')),function(data){
+            location.reload();
+        });
+    });
+    $('.execute-movie-local').click(function(){
+        $.get("/action/explorer/" + encodeURIComponent($(this).data('val')));
     });
 </script>
 {% endblock %}

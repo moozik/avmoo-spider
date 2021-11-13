@@ -41,9 +41,6 @@
 
 {% block javascript %} 
 <script>
-	// $('#avatar-waterfall > div > span').each(function () {
-	//     $(this).after('<span class="glyphicon glyphicon-remove del-btn" data-toggle="modal" data-target="#myModal" style="padding: 2px;color: #FFC107;"></span>');
-	// });
 	$('.del-btn').click(function () {
 		$.get("/like/del/{{type_url}}/" + $(this).data('val'), function (data) {
 			$('#message_title').html(data);

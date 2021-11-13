@@ -56,6 +56,7 @@
               <!--  class="active" -->
             <li><a href="/">全部</a></li>
 			<li><a href="/search/已发布">已发布</a></li>
+			<li><a href="/search/已下载">已下载</a></li>
             <li><a href="/actresses">女优</a></li>
             <li><a href="/genre">类别</a></li>
           </ul>
@@ -87,8 +88,7 @@
                     </li>
                 </ul>
             </li>
-            <!-- <li><a href="javascript:;" style="color: burlywood;" class="catch_switch">缓存开关</a></li>
-            <li><a href="javascript:;" style="color: burlywood;" class="catch_delete">清空缓存</a></li> -->
+            <li><a href="javascript:;" class="catch_switch">缓存开关</a></li>
             <li><a href="https://tellme.pw/avmoo" target="_blank">最新地址</a></li>
             
         </ul>
@@ -178,20 +178,20 @@
 </div>
 <script src="{{url_for('static', filename='app.min.js')}}"></script>
 <script>
-    // $('.catch_switch').click(function(){
-    //     $.get('/catch/switch',function(data){
-    //         $('#message_title').html(data);
-    //         $('#message').modal('show');
-    //     });
-    // });
-    // $('.catch_delete').click(function(){
-    //     $.get('/catch/delete', function (data) {
-    //         $('#message_title').html(data);
-    //         $('#message').modal('show');
-    //     });
-    // });
+    $('.catch_switch').click(function(){
+        $.get('/action/catch/switch',function(data){
+            $('#message_title').html(data);
+            $('#message').modal('show');
+        });
+    });
     $('#confirm').click(function(){
         $('#message').modal('hide');
+    });
+    $('.star-download-btn').click(function () {
+        $.get("/action/download/star/" + $(this).data('val'), function (data) {
+            $('#message_title').html(data);
+            $('#message').modal('show');
+        });
     });
 </script>
 {% block javascript %} {% endblock %}

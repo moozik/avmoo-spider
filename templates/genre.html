@@ -1,6 +1,7 @@
 {% extends "main.html" %}
 {% block container %}
 <div class="container-fluid pt-10">
+    <button class="genre-download-btn">更新类目</button>
     {% for item in data %}
     <h4>{{item.0.title}}</h4>
     <div class="row genre-box">
@@ -12,4 +13,15 @@
 </div>
 {% endblock %}
 {% block pagination %}
+{% endblock %}
+
+{% block javascript %}
+<script>
+$('.genre-download-btn').click(function () {
+    $.get("/action/download/genre", function (data) {
+        $('#message_title').html('正在更新类目。。。');
+        $('#message').modal('show');
+    });
+});
+</script>
 {% endblock %}

@@ -28,7 +28,7 @@ https://pics.javcdn.pw/cover/{{linkid}}_b.jpg
 class avmo:
  
     def __init__(self):
-        
+        print('avmo.init')
         #================主要配置================
         # 原网址
         self.site_url = config.getAvmooUrl()
@@ -87,6 +87,7 @@ class avmo:
 
     #默认配置
     def config(self):
+        print('avmo.config')
         #待insert数据
         self.insert_list = []
 
@@ -135,20 +136,11 @@ class avmo:
     
     #sqlite conn
     def conn(self):
-        existDb = os.path.exists(self.sqlite_file)
-        try:
-            #链接sqlite
-            self.CONN = sqlite3.connect(self.sqlite_file, check_same_thread=False)
-            self.CUR = self.CONN.cursor()
-            if not existDb:
-                print("未发现db文件，正在创建\n")
-                #如果不存在则新建表
-                buildSqliteDb(self.CONN, self.CUR)
-                #更新类别
-                self.genre_update()
-        except:
-            print('connect database fail.')
-            sys.exit()
+        #链接sqlite
+        self.CONN = sqlite3.connect(self.sqlite_file, check_same_thread=False)
+        self.CUR = self.CONN.cursor()
+        #如果不存在则新建表
+        buildSqliteDb(self.CONN, self.CUR)
 
     #写出命令行格式
     def usage(self):
@@ -225,9 +217,13 @@ class avmo:
 
     #获取一个明星的信息
     def stars_one(self, linkid):
+        self.CUR.execute("select linkid from av_stars where linkid='{}'".format(linkid))
+        starsRes = self.CUR.fetchall()
+        if len(starsRes) == 1:
+            print('演员已存在\n')
+            return
         def get_val(str):
             return str.split(':')[1].strip()
-        page_404_count = 0
     
         url = self.get_url('cn', 'star', linkid)
         print(linkid)
@@ -259,8 +255,6 @@ class avmo:
             exit()
         if response.status_code == 404:
             return False
-
-        page_404_count = 0
 
         try:
             data['name'] = html.xpath(
