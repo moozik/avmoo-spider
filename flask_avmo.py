@@ -22,6 +22,7 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 # 每页展示的数量
 PAGE_LIMIT = 30
+#图片服务器，图片慢可以尝试换另一个
 CDN_SITE = '//jp.netcdn.space'
 CDN_SITE = '//pics.dmm.co.jp'
 # 默认语言为中文
@@ -95,7 +96,7 @@ def index(keyword='', pagenum=1):
         page_root = '/{}/{}'.format('search', keyword)
     else:
         page_root = ''
-    return render_template('index.html', data={'av_list': result[0]}, cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]), keyword=keyword)
+    return render_template('index.html', data={'av_list': result[0]}, cdn=CDN_SITE, page=pagination(pagenum, result[1], page_root), keyword=keyword)
 
 
 @app.route('/movie/<linkid>')
@@ -186,7 +187,7 @@ def search(keyword='', pagenum=1):
     if function != 'genre' and function != 'stars':
         keyword = ''
 
-    return render_template('index.html', data={'av_list': result[0], 'av_stars': starsData}, cdn=CDN_SITE, pageroot=page_root, page=pagination(pagenum, result[1]), keyword=keyword)
+    return render_template('index.html', data={'av_list': result[0], 'av_stars': starsData}, cdn=CDN_SITE, page=pagination(pagenum, result[1], page_root), keyword=keyword)
 
 
 @app.route('/genre')
@@ -230,12 +231,15 @@ def like_page():
 
     return render_template('index.html', data={'av_list': result[0]}, cdn=CDN_SITE, pageroot='/like/movie', keyword='收藏影片')
 
-
 @app.route('/actresses')
-def like_stars():
-    sqltext = 'select av_stars.*,count(distinct av_list.linkid) as movie_count from av_stars LEFT JOIN av_list on instr(av_list.stars_url, av_stars.linkid) > 0 group by av_stars.linkid'
+@app.route('/actresses/page/<int:pagenum>')
+def like_stars(pagenum = 1):
+    limit_start = (pagenum - 1) * PAGE_LIMIT
+    sqltext = 'select av_stars.*,count(distinct av_list.linkid) as movie_count,av_list.release_date from av_stars LEFT JOIN av_list on instr(av_list.stars_url, av_stars.linkid) > 0 group by av_stars.linkid order by av_list.release_date desc limit {},{}'.format(limit_start, PAGE_LIMIT)
     result = querySql(sqltext)
-    return render_template('actresses.html', data=result, cdn=CDN_SITE)
+    
+    res_count = querySql('SELECT COUNT(1) AS count FROM av_stars')
+    return render_template('actresses.html', data=result, cdn=CDN_SITE, page=pagination(pagenum, res_count[0]['count'], "/actresses"))
 
 
 @app.route('/action/catch/switch')
@@ -342,8 +346,8 @@ def deleteExtendValue(extend_name, key, val):
     DB['CUR'].execute(sqltext)
     DB['CONN'].commit()
 
-
-def pagination(pagenum, count):
+#分页
+def pagination(pagenum, count, pageroot):
     pagecount = math.ceil(count / PAGE_LIMIT)
     if pagecount <= 15:
         p1 = 1
@@ -373,7 +377,8 @@ def pagination(pagenum, count):
         'now': pagenum,
         'left': pageleft,
         'right': pageright,
-        'list': pagelist
+        'list': pagelist,
+        'pageroot':pageroot
     }
 
 
