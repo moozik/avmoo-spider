@@ -233,7 +233,7 @@ def like_page():
 
 @app.route('/actresses')
 def like_stars():
-    sqltext = 'select av_stars.*,count(distinct av_list.linkid) as movie_count from av_stars LEFT JOIN av_list on instr(av_list.stars_url, av_stars.linkid) > 0 group by av_stars.linkid'
+    sqltext = 'select av_stars.*,count(distinct av_list.linkid) as movie_count,av_list.release_date from av_stars LEFT JOIN av_list on instr(av_list.stars_url, av_stars.linkid) > 0 group by av_stars.linkid'
     result = querySql(sqltext)
     return render_template('actresses.html', data=result, cdn=CDN_SITE)
 
@@ -275,6 +275,14 @@ def action_download_star(linkid=''):
     global SPIDER_AVMO
     _thread.start_new_thread(SPIDER_AVMO.spider_by_stars, (linkid,))
     return '{},正在下载...'.format(linkid)
+
+
+@app.route('/action/download/star/all/')
+def action_download_star_all():
+    global SPIDER_AVMO
+    star_list = querySql("select linkid from av_stars")
+    _thread.start_new_thread(SPIDER_AVMO.spider_by_stars_list, ([x['linkid'] for x in star_list],))
+    return '正在下载所有...'
 
 
 @app.route('/action/download/genre')

@@ -170,6 +170,11 @@ class avmo:
             for item in movieIdList:
                 yield item[-16:]
 
+    # 根据列表抓取
+    def spider_by_stars_list(self, stars_id_list):
+        for stars in stars_id_list:
+            self.spider_by_stars(stars)
+
     # 主函数，抓取页面内信息
     def spider_by_stars(self, stars_id):
         print("spider_by_stars start:{}".format(stars_id))
@@ -183,7 +188,8 @@ class avmo:
         for item in self.linkid_general_by_stars(stars_id):
             # 过滤已存在影片
             if item in movieIdExistList:
-                continue
+                #有相同则跳出
+                break
             url = self.get_url('cn', 'movie', item)
             time.sleep(self.main_sleep)
             try:
@@ -223,7 +229,6 @@ class avmo:
             "select linkid from av_stars where linkid='{}'".format(linkid))
         starsRes = self.CUR.fetchall()
         if len(starsRes) == 1:
-            print('演员已存在\n')
             return
 
         def get_val(str):

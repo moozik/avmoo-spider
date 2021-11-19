@@ -5,7 +5,18 @@
 {% block container %}
 <div class="container-fluid">
     <div class="row">
-        <div id="avatar-waterfall" style="margin: 70px 70px;">
+        <div style="width: 400px;margin-left: 60px;">
+            <div class="input-group" style="margin-top:20px;">
+                <input type="text" class="form-control" id="stars_linkid" placeholder="演员ID,例:09206c6bbe8d918f" value="">
+                <span class="input-group-btn">
+                    <button class="btn btn-default">下载</button>
+                    <button class="btn btn-default star-download-all-btn">更新所有影片</button>
+                </span>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div id="avatar-waterfall" style="margin: 20px 60px;">
             {% for item in data %}
             <div class="avatar-box">
                 <a class="" href="/stars/{{item.linkid}}" title="{{item.time}}">
@@ -19,12 +30,30 @@
                 </a>
                 <span>{{item.name}}</span>
                 <span>影片数量:{{item.movie_count}}</span>
-                <span><button class="star-download-btn" data-val="{{item.linkid}}">更新影片</button></span>
+                <span>日期:{{item.release_date}}</span>
+                <span><button class="btn btn-default star-download-btn" data-val="{{item.linkid}}">更新影片</button></span>
             </div>
             {% endfor %}
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+$('.star-download-btn').click(function () {
+    $.get("/action/download/star/" + $(this).data('val'), function (data) {
+        $('#message_title').html(data);
+        $('#message').modal('show');
+    });
+});
+$('.star-download-all-btn').click(function () {
+    $.get("/action/download/star/all/", function (data) {
+        $('#message_title').html(data);
+        $('#message').modal('show');
+    });
+});
+</script>
 {% endblock %}
 
 {% block pagination %}

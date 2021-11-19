@@ -146,12 +146,6 @@
     $('#confirm').click(function(){
         $('#message').modal('hide');
     });
-    $('.star-download-btn').click(function () {
-        $.get("/action/download/star/" + $(this).data('val'), function (data) {
-            $('#message_title').html(data);
-            $('#message').modal('show');
-        });
-    });
 </script>
 {% block javascript %} {% endblock %}
 </body>

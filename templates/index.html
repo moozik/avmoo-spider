@@ -19,7 +19,7 @@
 							<div class="photo-info">
 								<span class="pb-10">{{ data.av_stars.name }}</span>
 								{% if data.av_stars.birthday %}<p>生日: {{ data.av_stars.birthday }}</p>{% endif %}
-								{% if data.av_stars.age %}<p>年龄: {{ data.av_stars.age }}</p>{% endif %}
+								{% if data.av_stars.age %}<p>年龄: {{ data.av_stars.age }}岁</p>{% endif %}
 								{% if data.av_stars.height %}<p>身高: {{ data.av_stars.height }}</p>{% endif %}
 								{% if data.av_stars.cup %}<p>罩杯: {{ data.av_stars.cup }}</p>{% endif %}
 								{% if data.av_stars.bust %}<p>胸围: {{ data.av_stars.bust }}</p>{% endif %}
@@ -27,7 +27,7 @@
 								{% if data.av_stars.hips %}<p>臀围: {{ data.av_stars.hips }}</p>{% endif %}
 								{% if data.av_stars.hometown %}<p>出生地: {{ data.av_stars.hometown }}</p>{% endif %}
 								{% if data.av_stars.hobby %}<p>爱好: {{ data.av_stars.hobby }}</p>{% endif %}
-								<p><button class="star-download-btn" data-val="{{data.av_stars.linkid}}">更新影片列表</button></p>
+								<p><button class="btn btn-default star-download-btn" data-val="{{data.av_stars.linkid}}">更新影片列表</button></p>
 							</div>
 						</div>
 					</div>
