@@ -178,7 +178,7 @@ class avmo:
     # 主函数，抓取页面内信息
     def spider_by_stars(self, stars_id):
         print("spider_by_stars start:{}".format(stars_id))
-        self.stars_one(stars_id)
+        flagStarExist = self.stars_one(stars_id)
         # 查询db全集去重
         self.CUR.execute(
             "select linkid from av_list where stars_url LIKE '%{}%'".format(stars_id))
@@ -188,8 +188,12 @@ class avmo:
         for item in self.linkid_general_by_stars(stars_id):
             # 过滤已存在影片
             if item in movieIdExistList:
-                #有相同则跳出
-                break
+                if flagStarExist:
+                    #演员存在有相同则跳出
+                    break
+                else:
+                    #演员不存在，有相同继续尝试，可能有合作影片
+                    continue
             url = self.get_url('cn', 'movie', item)
             time.sleep(self.main_sleep)
             try:
@@ -229,7 +233,7 @@ class avmo:
             "select linkid from av_stars where linkid='{}'".format(linkid))
         starsRes = self.CUR.fetchall()
         if len(starsRes) == 1:
-            return
+            return True
 
         def get_val(str):
             return str.split(':')[1].strip()
@@ -316,6 +320,7 @@ class avmo:
             data['hometown']
         )
         self.stars_save(data)
+        return False
 
     def stars_save(self, data):
         insert_sql = 'REPLACE INTO "{}" VALUES("{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}")'.format(

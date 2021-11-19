@@ -46,10 +46,6 @@ def index(keyword='', pagenum=1):
 
     where = []
 
-    # 识别linkid
-    if re.match('^[a-z0-9]{16}$', keyword):
-        return action_download_star(keyword)
-
     # 识别番号
     if re.match('^[a-zA-Z0-9 \-]{4,14}$', keyword):
         tmp = keyword.replace(' ', '-').upper()
@@ -235,7 +231,7 @@ def like_page():
 @app.route('/actresses/page/<int:pagenum>')
 def like_stars(pagenum = 1):
     limit_start = (pagenum - 1) * PAGE_LIMIT
-    sqltext = 'select av_stars.*,count(distinct av_list.linkid) as movie_count,av_list.release_date from av_stars LEFT JOIN av_list on instr(av_list.stars_url, av_stars.linkid) > 0 group by av_stars.linkid order by av_list.release_date desc limit {},{}'.format(limit_start, PAGE_LIMIT)
+    sqltext = 'select av_stars.*,count(distinct av_list.release_date) as movie_count,av_list.release_date from av_stars LEFT JOIN (select release_date,stars_url from av_list order by release_date desc)av_list on instr(av_list.stars_url, av_stars.linkid) > 0 group by av_stars.linkid order by av_list.release_date desc limit {},{}'.format(limit_start, PAGE_LIMIT)
     result = querySql(sqltext)
     
     res_count = querySql('SELECT COUNT(1) AS count FROM av_stars')
@@ -258,6 +254,7 @@ def action_catch_switch():
 
 @app.route('/action/explorer/<movie_path>')
 def action_explorer(movie_path):
+    # 打开指定路径
     os.system('explorer ' + movie_path)
     return 'ok'
 
@@ -277,16 +274,16 @@ def action_extend_delete(extend_name, key, val):
 @app.route('/action/download/star/<linkid>')
 def action_download_star(linkid=''):
     global SPIDER_AVMO
+
+    if linkid == 'all':
+        star_list = querySql("select linkid from av_stars")
+        _thread.start_new_thread(SPIDER_AVMO.spider_by_stars_list, ([x['linkid'] for x in star_list],))
+        return '正在下载所有...'
+
+    if not isLinkId(linkid):
+        return 'id格式不正确'
     _thread.start_new_thread(SPIDER_AVMO.spider_by_stars, (linkid,))
     return '{},正在下载...'.format(linkid)
-
-
-@app.route('/action/download/star/all/')
-def action_download_star_all():
-    global SPIDER_AVMO
-    star_list = querySql("select linkid from av_stars")
-    _thread.start_new_thread(SPIDER_AVMO.spider_by_stars_list, ([x['linkid'] for x in star_list],))
-    return '正在下载所有...'
 
 
 @app.route('/action/download/genre')
@@ -324,6 +321,9 @@ def action_delete_stars(linkid=''):
     DB['CONN'].commit()
     return 'stars已删除'
 
+def isLinkId(linkid = ''):
+    # 识别linkid
+    return re.match('^[a-z0-9]{16}$', linkid)
 
 def insertExtendValue(extend_name, key, val):
     sqltext = "INSERT INTO av_extend (extend_name,key,val) values ('{}','{}','{}')".format(

@@ -9,8 +9,8 @@
             <div class="input-group" style="margin-top:20px;">
                 <input type="text" class="form-control" id="stars_linkid" placeholder="演员ID,例:09206c6bbe8d918f" value="">
                 <span class="input-group-btn">
-                    <button class="btn btn-default">下载</button>
-                    <button class="btn btn-default star-download-all-btn">更新所有影片</button>
+                    <button class="btn btn-default" onclick='downloadStar(document.querySelector("#stars_linkid").value)'>下载</button>
+                    <button class="btn btn-default" onclick="downloadStar('all')">更新所有影片</button>
                 </span>
             </div>
         </div>
@@ -29,9 +29,9 @@
                     </div>
                 </a>
                 <span>{{item.name}}</span>
-                <span>影片数量:{{item.movie_count}}</span>
-                <span>日期:{{item.release_date}}</span>
-                <span><button class="btn btn-default star-download-btn" data-val="{{item.linkid}}">更新影片</button></span>
+                <span>作品 <b style="color:red;">{{item.movie_count}}</b></span>
+                <span>最新 <b style="color:red;">{{item.release_date}}</b></span>
+                <span><button class="btn btn-default" onclick="downloadStar('{{item.linkid}}')">更新影片</button></span>
             </div>
             {% endfor %}
         </div>
@@ -41,20 +41,11 @@
 
 {% block javascript %}
 <script>
-$('.star-download-btn').click(function () {
-    $.get("/action/download/star/" + $(this).data('val'), function (data) {
+function downloadStar(linkid){
+    $.get("/action/download/star/" + linkid, function (data) {
         $('#message_title').html(data);
         $('#message').modal('show');
     });
-});
-$('.star-download-all-btn').click(function () {
-    $.get("/action/download/star/all/", function (data) {
-        $('#message_title').html(data);
-        $('#message').modal('show');
-    });
-});
+}
 </script>
-{% endblock %}
-
-{% block pagination %}
 {% endblock %}
