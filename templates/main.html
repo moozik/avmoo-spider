@@ -77,25 +77,25 @@
 		<ul class="pagination pagination-lg mtb-0">
             {% if page.left>0 %}
             <li>
-                <a name="prepage" href="{{pageroot}}/page/{{page.left}}">
+                <a name="prepage" href="{{page.pageroot}}/page/{{page.left}}">
                     <span class="glyphicon glyphicon-chevron-left"></span> 上一页</a>
             </li>
             {% endif %}
             {% for item in page.list %}
                 {% if page.now == item %}
                     <li class="active">
-                        <a name="numbar" href="{{pageroot}}/page/{{item}}">{{item}}</a>
+                        <a name="numbar" href="{{page.pageroot}}/page/{{item}}">{{item}}</a>
                     </li>
                 {% else %}
                     <li>
-                        <a name="numbar" href="{{pageroot}}/page/{{item}}">{{item}}</a>
+                        <a name="numbar" href="{{page.pageroot}}/page/{{item}}">{{item}}</a>
                     </li>
                 {% endif %}
             {% endfor %}
 
              {% if page.right>0 %}
             <li>
-                <a name="nextpage" href="{{pageroot}}/page/{{page.right}}">
+                <a name="nextpage" href="{{page.pageroot}}/page/{{page.right}}">
                     <span class="glyphicon glyphicon-chevron-right"></span> 下一页</a>
             </li>
             {% endif %}
