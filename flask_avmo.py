@@ -33,6 +33,17 @@ SQL_CACHE = {}
 IF_USE_CACHE = True
 SPIDER_AVMO = spider_avmo.avmo()
 
+#文件类型与判定
+FILE_TAIL = {
+    'mp4':"\.(mp4|mkv|flv|avi|rm|rmvb|mpg|mpeg|mpe|m1v|mov|3gp|m4v|m3p|wmv|wmp|wm|ts)$",
+    'jpg':"\.(jpg|png|gif|jpeg|bmp|ico)$",
+    'mp3':"\.(mp3|wav|wmv|mpa|mp2|ogg|m4a|aac)$",
+    'torrent':"\.torrent$",
+    'zip':"\.(zip|rar|gz|7z)$",
+    'doc':"\.(xls|xlsx|doc|docx|ppt|pptx|csv|pdf|html|txt)$",
+}
+
+AV_FILE_REG = "[a-zA-Z]{3,5}-\d{3,4}"
 
 @app.route('/')
 @app.route('/page/<int:pagenum>')
@@ -221,11 +232,13 @@ def like_del(data_type=None, data_val=None):
 
 
 @app.route('/like/movie')
-def like_page():
-    result = selectAvList(column='*', limit=(0, 2000),
+@app.route('/like/movie/page/<int:pagenum>')
+def like_page(pagenum = 1):
+    limit_start = (pagenum - 1) * PAGE_LIMIT
+    result = selectAvList(column='*', limit=(limit_start, PAGE_LIMIT),
                           othertable=" JOIN av_like ON av_like.type='av_id' AND av_like.val = av_list.av_id ", order='av_like.time DESC')
 
-    return render_template('index.html', data={'av_list': result[0]}, cdn=CDN_SITE, pageroot='/like/movie', keyword='收藏影片')
+    return render_template('index.html', data={'av_list': result[0]}, cdn=CDN_SITE, page=pagination(pagenum, result[1], '/like/movie'), keyword='收藏影片')
 
 @app.route('/actresses')
 @app.route('/actresses/page/<int:pagenum>')
@@ -236,6 +249,48 @@ def like_stars(pagenum = 1):
     
     res_count = querySql('SELECT COUNT(1) AS count FROM av_stars')
     return render_template('actresses.html', data=result, cdn=CDN_SITE, page=pagination(pagenum, res_count[0]['count'], "/actresses"))
+
+
+@app.route('/action/scandisk')
+def action_scandisk():
+    if 'path_target' not in request.values or 'file_target' not in request.values:
+        return render_template('scandisk.html')
+
+    path_target = request.values['path_target']
+    if not os.path.exists(path_target):
+        return render_template('scandisk.html')
+
+    file_target = request.values['file_target']
+    reg = FILE_TAIL[file_target]
+    av_file_res = []
+    file_res = []
+    extend_list = {}
+    if file_target == "mp4":
+        sqltext = 'select key,val from "av_extend" where extend_name="movie_res" and val not like "magnet%" and val not like "http%"'
+        DB['CUR'].execute(sqltext)
+        ret = DB['CUR'].fetchall()
+        for row in ret:
+            extend_list[row[0]] = row[1]
+    for root,dirs,files in os.walk(path_target):
+        for file in files:
+            if re.search(reg, file):
+                nowPath = os.path.join(root, file)
+                if file_target != "mp4":
+                    file_res.append(nowPath)
+                    continue
+                
+                av_check = re.search(AV_FILE_REG, file)
+                if not av_check:
+                    file_res.append(nowPath)
+                    continue
+                #格式化avid
+                av_id = av_check.group(0).upper()
+                av_file_res.append({
+                    'file_path':nowPath,
+                    'av_id':av_id,
+                    'exist':(av_id in extend_list and extend_list[av_id] == nowPath),
+                })
+    return render_template('scandisk.html', file_res=file_res, av_file_res=av_file_res, path_target=path_target, avmoo_url=config.getAvmooUrl())
 
 
 @app.route('/action/catch/switch')
@@ -255,7 +310,7 @@ def action_catch_switch():
 @app.route('/action/explorer/<movie_path>')
 def action_explorer(movie_path):
     # 打开指定路径
-    os.system('explorer ' + movie_path)
+    os.system('explorer "{}"'.format(movie_path))
     return 'ok'
 
 

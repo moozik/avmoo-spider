@@ -48,9 +48,10 @@
           </ul>
 
         <ul class="nav navbar-nav navbar-right">
+            <li><a href="/action/scandisk" style="font-weight: bold;">扫描文件</a></li>
             <li><a href="javascript:;" class="catch_switch">缓存开关</a></li>
-            <li><a href="https://tellme.pw/avmoo" target="_blank">avmoo最新地址</a></li>
-            <li><a class="glyphicon glyphicon-thumbs-up" href="https://github.com/moozik/avmoo-spider" target="_blank">本程序源码</a></li>
+            <li><a href="https://tellme.pw/avmoo" target="_blank">最新地址</a></li>
+            <li><a class="glyphicon glyphicon-thumbs-up" href="https://github.com/moozik/avmoo-spider" target="_blank">本程序</a></li>
         </ul>
         </div>
       </div>
@@ -145,6 +146,9 @@
     });
     $('#confirm').click(function(){
         $('#message').modal('hide');
+    });
+    $('.execute-movie-local').click(function(){
+        $.get("/action/explorer/" + encodeURIComponent($(this).data('val')));
     });
 </script>
 {% block javascript %} {% endblock %}

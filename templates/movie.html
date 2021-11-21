@@ -140,41 +140,9 @@
 
 {% block javascript %}
 <script>
-    document.querySelector('#movie_resource').ondrop = function(ev){
-        var oFile = ev.dataTransfer.files[0];
-        console.log(oFile);return;
-        var reader = new FileReader();
-        //读取成功
-        reader.onload = function(){
-        console.log(reader);
-        };
-        reader.onloadstart = function(){
-        alert('读取开始');
-        };
-        reader.onloadend = function(){
-        alert('读取结束');
-        };
-        reader.onabort = function(){
-        alert('中断');
-        };
-        reader.onerror = function(){
-        alert('读取失败');
-        };
-        reader.onprogress = function(ev){
-        var scale = ev.loaded/ev.total;
-        if(scale>=0.5){
-        alert(1);
-        reader.abort();
-        }
-        oM.value = scale*100;
-        };
-        reader.readAsDataURL(oFile,'base64');
-        return false;
-    };
     $('.like').each(function () {
         $(this).after('<span title="收藏" class="glyphicon glyphicon-star-empty stars-btn" style="padding: 2px;color: #FFC107;"></span>');
     });
-    
     $('.stars-btn').click(function(){
         var data_type = $($(this)[0].previousElementSibling).data('type');
         var data_val = $($(this)[0].previousElementSibling).data('val');
@@ -192,9 +160,6 @@
         $.get("/action/extend/delete/movie_res/{{data.av_id}}/" + encodeURIComponent($(this).data('val')),function(data){
             location.reload();
         });
-    });
-    $('.execute-movie-local').click(function(){
-        $.get("/action/explorer/" + encodeURIComponent($(this).data('val')));
     });
 </script>
 {% endblock %}

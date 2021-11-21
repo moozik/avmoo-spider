@@ -1,0 +1,57 @@
+{% extends "main.html" %}
+{% block title %}扫描硬盘{% endblock %}
+{% block container %}
+<div class="container-fluid">
+    <div class="row">
+        <div style="width: 500px;margin-left: 60px;">
+            <div class="input-group" style="margin-top:20px;">
+                <form action="/action/scandisk" method="get">
+                    <p>
+                        扫描本地磁盘中目标文件，自动识别番号文件名，可直接搜索，或打开。
+                    </p>
+                    <p>
+                        建议选较为精准的目录。
+                    </p>
+                    <input type="text" class="form-control" name="path_target" placeholder="扫描路径,例:d:\download" value="{{path_target}}" />
+                    <select class="form-control" name="file_target">
+                        <option value="mp4">视频 (mp4|mkv|flv|avi|rm|rmvb)</option>
+                        <option value="jpg">图片 (jpg|png|gif|jpeg|bmp)</option>
+                        <option value="mp3">音乐 (mp3|wav|wmv|aac)</option>
+                        <option value="torrent">种子 (torrent)</option>
+                        <option value="zip">压缩包 (zip|rar|gz|7z)</option>
+                        <option value="doc">文档 ((xls|doc|ppt|pdf|txt)</option>
+                    </select>
+                    <span class="input-group-btn">
+                        <button class="btn btn-default" type="submit">扫描文件</button>
+                    </span>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    
+    <div class="row">
+        <ul>
+            {% for resource in av_file_res %}
+                <li>
+                    <span style="color: coral;">{{resource.file_path}}</span>
+                    {% if resource.exist %}
+                        <a class="btn btn-default" href="/search/{{resource.av_id}}" target="_blank">{{resource.av_id}}</a>
+                    {% else %}
+                        <a class="btn btn-default" href="/search/{{resource.av_id}}" target="_blank">搜索</a>
+                        <a class="btn btn-default" href="{{avmoo_url}}/cn/search/{{resource.av_id}}" target="_blank">原站搜索</a>
+                        <button class="btn btn-default execute-movie-local" data-val="{{resource.file_path}}">本地打开</button>
+                    {% endif %}
+                </li>
+            {% endfor %}
+
+            {% for resource in file_res %}
+                <li>
+                    <span>{{resource}}</span>
+                    <button class="btn btn-default execute-movie-local" data-val="{{resource}}">本地打开</button>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}
