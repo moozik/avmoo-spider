@@ -6,16 +6,21 @@ pip install requests
 pip install lxml
 pip install flask
 ```
+## 功能
 
-## 使用方法
+### 爬虫
+- 打开`http://127.0.0.1:5000/actresses`添加演员id，查询名下所有影片
+- 举例:`https://avmoo.casa/cn/star/1971f1973cf8172f`，演员id为`1971f1973cf8172f`
 
-### 1)
-`python flask_avmo.py` 启动本地web(首次打开会创建db)
-打开`http://127.0.0.1:5000`
+### 仿站
 
-### 2)
-抓取指定演员所有影片
+- 多关键字搜索
+- 影片收藏管理
+- 本地视频路径绑定到番号，在网页中点击打开本地视频
+- 扫描本地硬盘视频文件
 
-举例链接`https://avmoo.casa/cn/star/1971f1973cf8172f`
+方便管理影片信息和视频文件
 
-将`1971f1973cf8172f`放到本地web的搜索框，可以更新指定演员id的所有影片到本地数据库
+## 打开方法
+命令行运行`python flask_avmo.py`或者`start_web.bat` 启动本地web(首次打开会创建db)
+打开`http://127.0.0.1:5000`即可看到主页
