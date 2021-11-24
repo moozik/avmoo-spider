@@ -75,7 +75,7 @@ def index(keyword='', pagenum=1):
                 continue
 
             if key_item == '有资源':
-                where.append('av_extend.val is not null')
+                where.append('av_id in (select distinct key from av_extend where extend_name="movie_res")')
                 continue
 
             if key_item == '收藏影片':
@@ -460,16 +460,43 @@ def selectAvList(column='*', av_list_where=[], limit=(0, 30), order='release_dat
     where_str = '1'
     if av_list_where != []:
         where_str = ' and '.join(av_list_where)
-    sqltext = "SELECT {},count(av_extend.val) as movie_res_count FROM av_list left join av_extend on av_extend.extend_name='movie_res' and av_list.av_id=av_extend.key {} WHERE {} group by av_list.linkid {}".format(
+    sqltext = "SELECT {} FROM av_list {} WHERE {} group by av_list.linkid {}".format(
         column, othertable, where_str, order)
+    result = querySql(sqltext + ' LIMIT {},{}'.format(limit[0], limit[1]))
 
-    sqllimit = ' LIMIT {},{}'.format(limit[0], limit[1])
-    result = querySql(sqltext + sqllimit)
-
-    res_count = querySql(
-        'SELECT COUNT(1) AS count FROM ({})'.format(sqltext))
+    # 扩展信息
+    extendList = selectExtendByKey([x["av_id"] for x in result])
+    for i in range(len(result)):
+        # 图片地址
+        result[i]['smallimage'] = result[i]['bigimage'].replace(
+            'pl.jpg', 'ps.jpg')
+        # 扩展信息
+        if result[i]['av_id'] not in extendList or 'movie_res' not in extendList[result[i]['av_id']]:
+            continue
+        for extend in extendList[result[i]['av_id']]['movie_res']:
+            if extend[:6] == "magnet" or extend[:3] == "115":
+                result[i]['magnet'] = 1
+                continue
+            if extend[:4] == "http":
+                result[i]['http'] = 1
+                continue
+            result[i]['file'] = 1
+    res_count = querySql('SELECT COUNT(1) AS count FROM ({})'.format(sqltext))
     return (result, res_count[0]['count'])
 
+# 获取指定key的扩展信息
+def selectExtendByKey(keyList):
+    sqltext = "select key,extend_name,val from av_extend where key in ('{}')".format("','".join(keyList))
+    result = querySql(sqltext)
+    ret = {}
+    for extend in result:
+        if extend['key'] not in ret:
+            ret[extend['key']] = {}
+        
+        if extend['extend_name'] not in ret[extend['key']]:
+            ret[extend['key']][extend['extend_name']] = []
+        ret[extend['key']][extend['extend_name']].append(extend['val'])
+    return ret
 
 def querySql(sql):
     cacheKey = (binascii.crc32(sql.encode()) & 0xffffffff)
@@ -502,10 +529,6 @@ def showColumnname(data, description):
         row_dict = {}
         for i in range(len(description)):
             row_dict[description[i][0]] = row[i]
-        # 图片地址
-        if 'bigimage' in row_dict.keys():
-            row_dict['smallimage'] = row_dict['bigimage'].replace(
-                'pl.jpg', 'ps.jpg')
         result.append(row_dict)
 
     return result

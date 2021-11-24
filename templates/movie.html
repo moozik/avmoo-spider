@@ -152,7 +152,7 @@
         });
     });
     $('.insert-movie-local').click(function(){
-        $.get("/action/extend/insert/movie_res/{{data.av_id}}/" + encodeURIComponent($('#movie_resource').val()),function(data){
+        $.get("/action/extend/insert/movie_res/{{data.av_id}}/" + encodeURIComponent($('#movie_resource').val().replace(/\//g,'\\')),function(data){
             location.reload();
         });
     });

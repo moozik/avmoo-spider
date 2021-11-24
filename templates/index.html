@@ -40,8 +40,14 @@
 演员:{{ item.stars }}">
 							</div>
 							<div class="photo-info">
-								{% if item.movie_res_count %}
-								<span class="sub_title">有资源</span>
+								{% if item.file %}
+								<span class="sub_title">文件</span>
+								{% endif %}
+								{% if item.http %}
+								<span class="sub_title">网址</span>
+								{% endif %}
+								{% if item.magnet %}
+								<span class="sub_title">磁力</span>
 								{% endif %}
 								<span>{{ item.title }}
 									<br>
