@@ -79,18 +79,16 @@ def index(keyword='', pagenum=1):
                 continue
 
             if key_item == '收藏影片':
-                sql = "SELECT val FROM av_like WHERE type='av_id'"
-                data = querySql(sql)
+                data = querySql("SELECT val FROM av_like WHERE type='av_id'")
                 where.append('av_list.av_id in ("{}")'.format(
                     '","'.join([x['val'] for x in data])))
                 continue
 
             where.append('''
             (av_list.title like "%{0}%" or
-            av_list.av_id like "%{0}%" or
             av_list.director = "{0}" or
             av_list.studio = "{0}" or
-            av_list.label like "%{0}%" or
+            av_list.label = "{0}" or
             av_list.series like "%{0}%" or
             av_list.genre like "%{0}%" or
             av_list.stars like "%{0}%")'''.format(key_item))
@@ -180,7 +178,7 @@ def search(keyword='', pagenum=1):
                           av_list_where=where, limit=(limit_start, PAGE_LIMIT))
 
     starsData = None
-    if function == 'stars':
+    if function == 'stars' and pagenum == 1:
         starsData = querySql(
             'SELECT * FROM "av_stars" where linkid="{}";'.format(keyword))[0]
         # 计算年龄
@@ -225,7 +223,6 @@ def like_del(data_type=None, data_val=None):
     if data_type != None and data_val != None:
         sqltext = 'DELETE FROM av_like WHERE type="{}" and val="{}"'.format(
             data_type, data_val)
-        print(sqltext)
         DB['CUR'].execute(sqltext)
         DB['CONN'].commit()
         return '已删除收藏'
@@ -530,7 +527,6 @@ def showColumnname(data, description):
         for i in range(len(description)):
             row_dict[description[i][0]] = row[i]
         result.append(row_dict)
-
     return result
 
 
