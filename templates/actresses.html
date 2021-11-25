@@ -38,14 +38,3 @@
     </div>
 </div>
 {% endblock %}
-
-{% block javascript %}
-<script>
-function downloadStar(linkid){
-    $.get("/action/download/star/" + linkid, function (data) {
-        $('#message_title').html(data);
-        $('#message').modal('show');
-    });
-}
-</script>
-{% endblock %}

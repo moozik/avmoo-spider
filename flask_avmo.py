@@ -101,7 +101,7 @@ def index(keyword='', pagenum=1):
         page_root = '/{}/{}'.format('search', keyword)
     else:
         page_root = ''
-    return render_template('index.html', data={'av_list': result[0]}, cdn=CDN_SITE, page=pagination(pagenum, result[1], page_root), keyword=keyword)
+    return render_template('index.html', data={'av_list': result[0]}, cdn=CDN_SITE, page=pagination(pagenum, result[1], page_root, PAGE_LIMIT), keyword=keyword)
 
 
 @app.route('/movie/<linkid>')
@@ -192,7 +192,7 @@ def search(keyword='', pagenum=1):
     if function != 'genre' and function != 'stars':
         keyword = ''
 
-    return render_template('index.html', data={'av_list': result[0], 'av_stars': starsData}, cdn=CDN_SITE, page=pagination(pagenum, result[1], page_root), keyword=keyword)
+    return render_template('index.html', data={'av_list': result[0], 'av_stars': starsData}, cdn=CDN_SITE, page=pagination(pagenum, result[1], page_root, PAGE_LIMIT), keyword=keyword)
 
 
 @app.route('/genre')
@@ -204,7 +204,7 @@ def genre():
             data[item['title']] = []
         data[item['title']].append(item)
     data = list(data.values())
-    return render_template('genre.html', data=data, cdn=CDN_SITE)
+    return render_template('genre.html', data=data, cdn=CDN_SITE, page={'pageroot':"/genre",'count':len(result)})
 
 
 @app.route('/like/add/<data_type>/<data_val>')
@@ -235,17 +235,18 @@ def like_page(pagenum = 1):
     result = selectAvList(column='*', limit=(limit_start, PAGE_LIMIT),
                           othertable=" JOIN av_like ON av_like.type='av_id' AND av_like.val = av_list.av_id ", order='av_like.time DESC')
 
-    return render_template('index.html', data={'av_list': result[0]}, cdn=CDN_SITE, page=pagination(pagenum, result[1], '/like/movie'), keyword='收藏影片')
+    return render_template('index.html', data={'av_list': result[0]}, cdn=CDN_SITE, page=pagination(pagenum, result[1], '/like/movie', PAGE_LIMIT), keyword='收藏影片')
 
 @app.route('/actresses')
 @app.route('/actresses/page/<int:pagenum>')
 def like_stars(pagenum = 1):
-    limit_start = (pagenum - 1) * PAGE_LIMIT
-    sqltext = 'select av_stars.*,count(distinct av_list.release_date) as movie_count,av_list.release_date from av_stars LEFT JOIN (select release_date,stars_url from av_list order by release_date desc)av_list on instr(av_list.stars_url, av_stars.linkid) > 0 group by av_stars.linkid order by av_list.release_date desc limit {},{}'.format(limit_start, PAGE_LIMIT)
+    pageLimit = 36
+    sqltext = 'select av_stars.*,count(distinct av_list.release_date) as movie_count,av_list.release_date from av_stars LEFT JOIN (select release_date,stars_url from av_list order by release_date desc)av_list on instr(av_list.stars_url, av_stars.linkid) > 0 group by av_stars.linkid order by av_list.release_date desc limit {},{}'.format(
+        (pagenum - 1) * pageLimit, pageLimit)
     result = querySql(sqltext)
     
     res_count = querySql('SELECT COUNT(1) AS count FROM av_stars')
-    return render_template('actresses.html', data=result, cdn=CDN_SITE, page=pagination(pagenum, res_count[0]['count'], "/actresses"))
+    return render_template('actresses.html', data=result, cdn=CDN_SITE, page=pagination(pagenum, res_count[0]['count'], "/actresses", pageLimit))
 
 
 @app.route('/action/scandisk')
@@ -407,8 +408,8 @@ def deleteExtendValue(extend_name, key, val):
     DB['CONN'].commit()
 
 #分页
-def pagination(pagenum, count, pageroot):
-    pagecount = math.ceil(count / PAGE_LIMIT)
+def pagination(pagenum, count, pageroot, pagelimit):
+    pagecount = math.ceil(count / pagelimit)
     if pagecount <= 15:
         p1 = 1
         p2 = pagecount
@@ -438,7 +439,8 @@ def pagination(pagenum, count, pageroot):
         'left': pageleft,
         'right': pageright,
         'list': pagelist,
-        'pageroot':pageroot
+        'pageroot':pageroot,
+        'count':count
     }
 
 

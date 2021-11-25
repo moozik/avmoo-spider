@@ -27,7 +27,8 @@
 								{% if data.av_stars.hips %}<p>臀围: {{ data.av_stars.hips }}</p>{% endif %}
 								{% if data.av_stars.hometown %}<p>出生地: {{ data.av_stars.hometown }}</p>{% endif %}
 								{% if data.av_stars.hobby %}<p>爱好: {{ data.av_stars.hobby }}</p>{% endif %}
-								<p><button class="btn btn-default star-download-btn" data-val="{{data.av_stars.linkid}}">更新影片列表</button></p>
+								<p>影片数量: <b style="color:red;">{{page.count}}</b></p>
+								<p><button class="btn btn-default" onclick="downloadStar('{{data.av_stars.linkid}}')">更新影片列表</button></p>
 							</div>
 						</div>
 					</div>
