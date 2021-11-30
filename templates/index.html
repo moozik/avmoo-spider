@@ -29,6 +29,7 @@
 								{% if data.av_stars.hobby %}<p>爱好: {{ data.av_stars.hobby }}</p>{% endif %}
 								<p>影片数量: <b style="color:red;">{{page.count}}</b></p>
 								<p><button class="btn btn-default" onclick="downloadStar('{{data.av_stars.linkid}}')">更新影片列表</button></p>
+								<p><a class="btn btn-default" href="{{avmoo_url}}/cn/star/{{data.av_stars.linkid}}" target="_blank">源站链接</a></p>
 							</div>
 						</div>
 					</div>

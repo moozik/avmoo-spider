@@ -79,9 +79,7 @@ def index(keyword='', pagenum=1):
                 continue
 
             if key_item == '收藏影片':
-                data = querySql("SELECT val FROM av_like WHERE type='av_id'")
-                where.append('av_list.av_id in ("{}")'.format(
-                    '","'.join([x['val'] for x in data])))
+                where.append("av_list.av_id in (SELECT val FROM av_like WHERE type='av_id')")
                 continue
 
             where.append('''
@@ -145,7 +143,7 @@ def movie(linkid=''):
     # 本地文件
     movie['movie_resource_list'] = selectExtendValue(
         'movie_res', movie['av_id'])
-    return render_template('movie.html', data=movie, cdn=CDN_SITE)
+    return render_template('movie.html', data=movie, cdn=CDN_SITE, avmoo_url=config.getAvmooUrl())
 
 
 @app.route('/director/<keyword>')
@@ -192,7 +190,7 @@ def search(keyword='', pagenum=1):
     if function != 'genre' and function != 'stars':
         keyword = ''
 
-    return render_template('index.html', data={'av_list': result[0], 'av_stars': starsData}, cdn=CDN_SITE, page=pagination(pagenum, result[1], page_root, PAGE_LIMIT), keyword=keyword)
+    return render_template('index.html', data={'av_list': result[0], 'av_stars': starsData}, cdn=CDN_SITE, page=pagination(pagenum, result[1], page_root, PAGE_LIMIT), keyword=keyword, avmoo_url=config.getAvmooUrl())
 
 
 @app.route('/genre')
@@ -227,7 +225,7 @@ def like_del(data_type=None, data_val=None):
         DB['CONN'].commit()
         return '已删除收藏'
 
-
+#废弃
 @app.route('/like/movie')
 @app.route('/like/movie/page/<int:pagenum>')
 def like_page(pagenum = 1):
