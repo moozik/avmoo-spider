@@ -7,6 +7,7 @@ from flask import redirect
 from flask import url_for
 import sqlite3
 import datetime
+import requests
 import time
 import re
 import os
@@ -371,6 +372,21 @@ def action_delete_stars(linkid=''):
     DB['CUR'].execute(sqltext)
     DB['CONN'].commit()
     return 'stars已删除'
+
+@app.route('/action/translate/<data>')
+def action_translate(data = ''):
+    tmp = data.split(' ')
+    tmp.pop(0)
+    inputtext = ''.join(tmp)
+
+    res = requests.post('http://wap.youdao.com/translate',data={'inputtext':inputtext,'type':'JA2ZH_CN'})
+    if res.status_code != 200 or len(res.text) < 20000:
+        return "出现错误.." + inputtext
+    tt = re.findall('<ul id="translateResult">(.*?)<\/ul>',res.text,re.DOTALL)
+    if tt == []:
+        return "出现错误.." + inputtext
+    return tt[0].strip()[4:-5]
+
 
 def isLinkId(linkid = ''):
     # 识别linkid

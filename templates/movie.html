@@ -2,7 +2,9 @@
 {% block title %}{{data.title}} - {% endblock %}
 {% block container %}
 <div class="container">
-    <h3>{{data.title}}</h3>
+    <h3 id="av_title">{{data.title}}</h3>
+    <button class="btn btn-default" onclick="translateTitle('{{data.av_id}}')">翻译</button>
+    <a class="btn btn-default" href="{{avmoo_url}}/cn/movie/{{data.linkid}}" target="_blank">源站链接</a>
     <div class="row movie">
         <div class="col-md-9 screencap">
             <a class="bigImage" href="{{cdn}}/digital/video{{data.bigimage}}" title="{{data.title}}">
@@ -58,14 +60,7 @@
                  {% endfor %}
             </p>
             {% endif %}
-            <p>
-                <a class="btn btn-default" href="{{avmoo_url}}/cn/movie/{{data.linkid}}" target="_blank">源站链接</a>
-            </p>
         </div>
-    </div>
-
-    <div class="visible-xs-block pt-10 text-center">
-        <div type="text/data-position" style="display:none" id="j_M_300x100-1">W3siaWQiOiJidHNfal9NXzMwMHgxMDAiLCJhZHNwb3QiOiJqX01fMzAweDEwMCIsIndlaWdodCI6IjEiLCJmY2FwIjpmYWxzZSwic2NoZWR1bGUiOmZhbHNlLCJtYXhXaWR0aCI6Ijc2OCIsIm1pbldpZHRoIjpmYWxzZSwidGltZXpvbmUiOmZhbHNlLCJleGNsdWRlIjpmYWxzZSwiZG9tYWluIjpmYWxzZSwiY29kZSI6IjxhIGhyZWY9XCJodHRwczpcL1wvYnRzby5wd1wvdmlkZW9cLyVFNSU4RCU5MSVFNyU4QyVBNSVFMyU4MSVBQSVFNSU4OCVCNiVFNiU5QyU4RCVFNiU4MCVBNyVFNCVCQSVBNCUyMCVFNiVCNSU4NSVFOSVBNiU5OSVFOCU5OCVBRFwiIHRhcmdldD1cIl9ibGFua1wiPjxpbWcgc3JjPVwiXC9hcHBcL2J0c1wvVmlld1wvaW1nXC9wMzAwMTAwLnBuZ1wiPjxcL2E+In0seyJpZCI6ImV4b2Nfal9NXzMwMHgxMDAiLCJhZHNwb3QiOiJqX01fMzAweDEwMCIsIndlaWdodCI6IjMiLCJmY2FwIjpmYWxzZSwic2NoZWR1bGUiOmZhbHNlLCJtYXhXaWR0aCI6Ijc2OCIsIm1pbldpZHRoIjpmYWxzZSwidGltZXpvbmUiOmZhbHNlLCJleGNsdWRlIjpmYWxzZSwiZG9tYWluIjpmYWxzZSwiY29kZSI6IjxzY3JpcHQ+XHJcbmFkX2lkem9uZSA9IFwiMTAyNjMxMFwiO1xyXG5hZF93aWR0aCA9IFwiMzAwXCI7XHJcbmFkX2hlaWdodCA9IFwiMTAwXCI7XHJcbmlmKHRvcD09PXNlbGYpIHZhciBwPWRvY3VtZW50LlVSTDsgZWxzZSB2YXIgcD1kb2N1bWVudC5yZWZlcnJlcjt2YXIgZHQ9bmV3IERhdGUoKS5nZXRUaW1lKCk7XHJcbnZhciBleG9Eb2N1bWVudFByb3RvY29sID0gKGRvY3VtZW50LmxvY2F0aW9uLnByb3RvY29sICE9IFwiaHR0cHM6XCIgJiYgZG9jdW1lbnQubG9jYXRpb24ucHJvdG9jb2wgIT0gXCJodHRwOlwiKSA/IFwiaHR0cHM6XCIgOiBkb2N1bWVudC5sb2NhdGlvbi5wcm90b2NvbDtcclxuaWYodHlwZW9mKGFkX3N1YikgPT0gJ3VuZGVmaW5lZCcpIHZhciBhZF9zdWIgPSBcIlwiO1xyXG5pZih0eXBlb2YoYWRfdGFncykgPT0gJ3VuZGVmaW5lZCcpIHZhciBhZF90YWdzID0gXCJcIjtcclxudmFyIGFkX3R5cGUgPSBhZF93aWR0aCArICd4JyArIGFkX2hlaWdodDtcclxuaWYoYWRfd2lkdGggPT0gJzEwMCUnICYmIGFkX2hlaWdodCA9PSAnMTAwJScpIGFkX3R5cGUgPSAnYXV0byc7XHJcbnZhciBhZF9zY3JlZW5fcmVzb2x1dGlvbiA9IHNjcmVlbi53aWR0aCArICd4JyArIHNjcmVlbi5oZWlnaHQ7XHJcbmRvY3VtZW50LndyaXRlKCc8aWZyYW1lIGZyYW1lYm9yZGVyPVwiMFwiIHNjcm9sbGluZz1cIm5vXCIgd2lkdGg9XCInICsgYWRfd2lkdGggKyAnXCIgaGVpZ2h0PVwiJyArIGFkX2hlaWdodCArICdcIiBzcmM9XCInICsgZXhvRG9jdW1lbnRQcm90b2NvbCArICdcL1wvc3luZGljYXRpb24uZXhvY2xpY2suY29tXC9hZHMtaWZyYW1lLWRpc3BsYXkucGhwP2lkem9uZT0nICsgYWRfaWR6b25lICsgJyZ0eXBlPScgKyBhZF90eXBlICsgJyZwPScgKyBlc2NhcGUocCkgKyAnJmR0PScgKyBkdCArICcmc3ViPScgKyBhZF9zdWIgKyAnJnRhZ3M9JyArIGFkX3RhZ3MgKyAnJnNjcmVlbl9yZXNvbHV0aW9uPScgKyBhZF9zY3JlZW5fcmVzb2x1dGlvbiArICdcIj48XC9pZnJhbWU+Jyk7XHJcbjxcL3NjcmlwdD4ifSx7ImlkIjoiamF2dV9qX01fMzAweDEwMCIsImFkc3BvdCI6ImpfTV8zMDB4MTAwIiwid2VpZ2h0IjoiMiIsImZjYXAiOmZhbHNlLCJzY2hlZHVsZSI6ZmFsc2UsIm1heFdpZHRoIjoiNzY4IiwibWluV2lkdGgiOmZhbHNlLCJ0aW1lem9uZSI6ZmFsc2UsImV4Y2x1ZGUiOmZhbHNlLCJkb21haW4iOmZhbHNlLCJjb2RlIjoiPGEgaHJlZj1cImh0dHBzOlwvXC9qYXZmZWUuY29tXCIgdGFyZ2V0PVwiX2JsYW5rXCI+PGltZyBzcmM9XCJcL2FwcFwvamF2dVwvVmlld1wvaW1nXC9iYW5uZXIuNjAweDEwMC5qcGdcIiB3aWR0aD1cIjMwMFwiIGhlaWdodD1cIjUwXCI+PFwvYT4ifSx7ImlkIjoianVpY19qX01fMzAweDEwMCIsImFkc3BvdCI6ImpfTV8zMDB4MTAwIiwid2VpZ2h0IjoiNSIsImZjYXAiOmZhbHNlLCJzY2hlZHVsZSI6ZmFsc2UsIm1heFdpZHRoIjoiNzY4IiwibWluV2lkdGgiOmZhbHNlLCJ0aW1lem9uZSI6ZmFsc2UsImV4Y2x1ZGUiOmZhbHNlLCJkb21haW4iOmZhbHNlLCJjb2RlIjoiPGlmcmFtZSBib3JkZXI9MCBmcmFtZWJvcmRlcj0wIG1hcmdpbmhlaWdodD0wIG1hcmdpbndpZHRoPTAgd2lkdGg9MzAwIGhlaWdodD0xMDAgc2Nyb2xsaW5nPW5vIGFsbG93dHJhbnNwYXJlbmN5PXRydWUgc3JjPVwvXC9hZHNlcnZlci5qdWljeWFkcy5jb21cL2Fkc2hvdy5waHA/YWR6b25lPTQ1MTczOT48XC9pZnJhbWU+In0seyJpZCI6Indhdl9qX01fMzAweDEwMCIsImFkc3BvdCI6ImpfTV8zMDB4MTAwIiwid2VpZ2h0IjoiMiIsImZjYXAiOmZhbHNlLCJzY2hlZHVsZSI6ZmFsc2UsIm1heFdpZHRoIjoiNzY4IiwibWluV2lkdGgiOmZhbHNlLCJ0aW1lem9uZSI6ZmFsc2UsImV4Y2x1ZGUiOmZhbHNlLCJkb21haW4iOmZhbHNlLCJjb2RlIjoiPGEgaHJlZj1cImh0dHBzOlwvXC9hdnhvLmNsdWJcL1wiIHRhcmdldD1cIl9ibGFua1wiPjxpbWcgc3JjPVwiXC9hcHBcL3dhdlwvVmlld1wvaW1nXC9iYW5uZXIuNjAweDEwMC5qcGdcIiB3aWR0aD1cIjMwMFwiIGhlaWdodD1cIjUwXCI+PFwvYT4ifV0=</div>
     </div>
 
     <style>
@@ -88,6 +83,7 @@
     <h4>搜索资源</h4>
     <div class="row">
         <a class="solink" href="https://btsow.rest/search/{{data.av_id}}" target="_blank">BTSO</a>
+        <a class="solink" href="http://www.haociso.top/s/{{data.av_id}}" target="_blank">haociso</a>
     </div>
 
     <h4>影片资源</h4>
@@ -164,5 +160,10 @@
             location.reload();
         });
     });
+    function translateTitle(avid){
+        $.get("/action/translate/" + encodeURIComponent(document.querySelector("#av_title").innerText),function(data){
+            document.querySelector("#av_title").innerText = avid + ' ' + data;
+        });
+    }
 </script>
 {% endblock %}
