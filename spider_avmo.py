@@ -26,16 +26,16 @@ https://pics.javcdn.pw/cover/{{linkid}}_b.jpg
 '''
 
 
-class avmo:
+class Avmo:
 
     def __init__(self):
         print('avmo.init')
         # ================主要配置================
         # 原网址
-        self.site_url = config.getAvmooUrl()
+        self.site_url = config.get_avmoo_url()
 
         # sqlite数据库地址
-        self.sqlite_file = config.getDbFile()
+        self.sqlite_file = config.get_db_file()
         # 主函数延时 越慢越稳，请求过快会403
         self.main_sleep = 1.5
 
@@ -83,15 +83,12 @@ class avmo:
             exit()
 
         if '-stars' in opt_dict:
-            self.spider_by_stars(opt_dict['-stars'])
+            self.spider_by_stars(opt_dict['-stars'], False)
             exit()
 
     # 默认配置
     def config(self):
         print('avmo.config')
-        # 待insert数据
-        self.insert_list = []
-
         # 插入阈值
         self.insert_threshold = 10
 
@@ -152,20 +149,25 @@ class avmo:
         '''
         print(usage.replace('        ', ''))
 
-    def get_url(self, country, pagetype, linkid, pageNo=None):
-        if pageNo == None or pageNo == 1:
+    def get_url(self, country, pagetype, linkid, page_no=None):
+        if page_no == None or page_no == 1:
             return '{}/{}/{}/{}'.format(self.site_url, country, pagetype, linkid)
         else:
-            return '{}/{}/{}/{}/page/{}'.format(self.site_url, country, pagetype, linkid, pageNo)
+            return '{}/{}/{}/{}/page/{}'.format(self.site_url, country, pagetype, linkid, page_no)
 
     def linkid_general_by_stars(self, stars_id):
-        for pageNo in range(1, 1000):
-            url = self.get_url('cn', 'star', stars_id, pageNo)
+        for page_no in range(1, 1000):
+            url = self.get_url('cn', 'star', stars_id, page_no)
+            time.sleep(500)
             res = self.s.get(url)
-            print("url.get:{}\n".format(url))
+            if res.status_code != 200:
+                print("get:{},status_code:{}".format(url, res.status_code))
+                break
             html = etree.HTML(res.text)
+            print("get:{},page_length:{}".format(url, len(res.text)))
             movieIdList = html.xpath('//*[@id="waterfall"]/div/a/@href')
             if movieIdList == [] or movieIdList == None:
+                print("page empty break")
                 break
             for item in movieIdList:
                 yield item[-16:]
@@ -173,28 +175,33 @@ class avmo:
     # 根据列表抓取
     def spider_by_stars_list(self, stars_id_list):
         for stars in stars_id_list:
-            self.spider_by_stars(stars)
+            # 全集搜索，碰到相同就跳出
+            self.spider_by_stars(stars, False)
 
     # 主函数，抓取页面内信息
-    def spider_by_stars(self, stars_id):
+    def spider_by_stars(self, stars_id, is_increment):
         print("spider_by_stars start:{}".format(stars_id))
-        flagStarExist = self.stars_one(stars_id)
+        flag_star_exist = self.stars_one(stars_id)
         # 查询db全集去重
         self.CUR.execute(
             "select linkid from av_list where stars_url LIKE '%{}%'".format(stars_id))
-        dbRes = self.CUR.fetchall()
-        movieIdExistList = [x[0] for x in dbRes]
-
+        db_res = self.CUR.fetchall()
+        movie_id_exist_list = [x[0] for x in db_res]
+        # 待插入
+        insert_list = []
+        skip_count = 0
+        insert_count = 0
         for item in self.linkid_general_by_stars(stars_id):
             # 过滤已存在影片
-            if item in movieIdExistList:
-                if flagStarExist:
-                    #演员存在有相同则跳出
-                    break
-                else:
-                    #演员不存在，有相同继续尝试，可能有合作影片
-                    continue
             url = self.get_url('cn', 'movie', item)
+            if item in movie_id_exist_list:
+                skip_count += 1
+                if not flag_star_exist:
+                    continue
+                # 如果为增量更新，碰到相同就跳出
+                if is_increment:
+                    break
+                continue
             time.sleep(self.main_sleep)
             try:
                 res = self.s.get(url)
@@ -212,19 +219,22 @@ class avmo:
 
             # 解析页面内容
             data = self.movie_page_data(html)
-            # 从linkid获取id
-            # id_column = self.linkid2id(item)
             # 输出当前进度
             print(data[0].ljust(15), data[16].ljust(11), item.ljust(5))
 
-            self.insert_list.append(
+            insert_list.append(
                 "'{0}','{1}'".format(item, "','".join(data))
             )
             # 存储数据
-            if len(self.insert_list) == self.insert_threshold:
-                self.movie_save()
+            if len(insert_list) == self.insert_threshold:
+                self.movie_save(insert_list)
+                insert_count += len(insert_list)
+                insert_list = []
         # 插入剩余的数据
-        self.movie_save()
+        self.movie_save(insert_list)
+        insert_count += len(insert_list)
+        print("stars:{},insert_count:{},skip_count:{}".format(
+            stars_id, insert_count, skip_count))
         print("spider_by_stars end:{}".format(stars_id))
 
     # 获取一个明星的信息
@@ -342,19 +352,14 @@ class avmo:
         self.CONN.commit()
 
     # 插入数据库
-    def movie_save(self):
-        if len(self.insert_list) == 0:
+    def movie_save(self, insert_list):
+        if len(insert_list) == 0:
+            print("insert_list empty!")
             return
-
-        self.replace_sql(self.table_main, self.column_str,
-                         "),(".join(self.insert_list))
-        print('INSERT:', len(self.insert_list))
-        self.insert_list = []
-
-    def replace_sql(self, table, column, data):
         self.CUR.execute(
-            "REPLACE INTO {0}({1})VALUES({2});".format(table, column, data))
+            "REPLACE INTO {0}({1})VALUES({2});".format(self.table_main, self.column_str, "),(".join(insert_list)))
         self.CONN.commit()
+        print('INSERT:', len(insert_list))
 
     def movie_page_data(self, html):
         data = ['' for x in range(17)]
@@ -457,5 +462,5 @@ class avmo:
 
 
 if __name__ == '__main__':
-    avmo = avmo()
+    avmo = Avmo()
     avmo.start_by_single()
