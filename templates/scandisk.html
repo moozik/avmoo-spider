@@ -38,9 +38,9 @@
                     {% if resource.exist %}
                         <a class="btn btn-default" href="/search/{{resource.av_id}}" target="_blank">{{resource.av_id}}</a>
                     {% else %}
+                        <button class="btn btn-default explorer-local" data-val="{{resource.file_path}}">播放</button>
                         <a class="btn btn-default" href="/search/{{resource.av_id}}" target="_blank">搜索</a>
                         <a class="btn btn-default" href="{{avmoo_url}}/cn/search/{{resource.av_id}}" target="_blank">原站搜索</a>
-                        <button class="btn btn-default execute-movie-local" data-val="{{resource.file_path}}">本地打开</button>
                     {% endif %}
                 </li>
             {% endfor %}
@@ -48,7 +48,7 @@
             {% for resource in file_res %}
                 <li>
                     <span>{{resource}}</span>
-                    <button class="btn btn-default execute-movie-local" data-val="{{resource}}">本地打开</button>
+                    <button class="btn btn-default explorer-local" data-val="{{resource}}">本地打开</button>
                 </li>
             {% endfor %}
         </ul>

@@ -396,7 +396,6 @@ def insert_extend_value(extend_name, key, val):
     sqltext = "INSERT INTO av_extend (extend_name,key,val) values ('{}','{}','{}')".format(
         extend_name, key, val
     )
-    print(sqltext)
     DB['CUR'].execute(sqltext)
     DB['CONN'].commit()
 
