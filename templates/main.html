@@ -28,7 +28,7 @@
 
   <body>
     <nav class="navbar navbar-default navbar-fixed-top top-bar">
-      <div class="container">
+      <div class="container" style="width: 1500px;">
         <div id="navbar" class="collapse navbar-collapse">
           <form class="navbar-form navbar-left fullsearch-form" action="/search" onsubmit="return false">
             <div class="input-group">
@@ -42,9 +42,10 @@
             <li><a>{% if page and page.count %}总数:(<b style="color:red;">{{page.count}}</b>){% endif %}</a></li>
             <li><a href="/">全部</a></li>
             <li><a href="/search/已发布">已发布</a></li>
+            <li><a href="/search/已下载">已下载</a></li>
             <li><a href="/search/有资源">有资源</a></li>
             <li><a href="/actresses">女优</a></li>
-            <li><a href="/search/收藏影片">收藏影片</a></li>
+            <li><a href="/search/收藏影片">收藏</a></li>
             <li><a href="/genre">类别</a></li>
           </ul>
 
@@ -155,6 +156,22 @@
             $('#message').modal('show');
         });
     }
+    function downloadMovie(linkid){
+        $.get("/action/download/movie/" + linkid, function (data) {
+            $('#message_title').html(data);
+            $('#message').modal('show');
+        });
+    }
+    function insertMovieRes(av_id, movie_res){
+        $.get("/action/extend/insert/movie_res/"+av_id+"/" + encodeURIComponent(movie_res.replace(/\//g,'\\')),function(data){
+            $('#message_title').html(data);
+            $('#message').modal('show');
+        });
+    }
+    $('.insert_movie_res').click(function(){
+        insertMovieRes($(this).data('key'), $(this).data('val'));
+        $(this)[0].style.display = "none";
+    });
 </script>
 {% block javascript %} {% endblock %}
 </body>

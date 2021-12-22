@@ -42,50 +42,6 @@ class Avmo:
         # 其他配置初始化
         self.config()
 
-    def start_by_single(self):
-        # ================读取参数================
-        try:
-            opts, args = getopt.getopt(
-                sys.argv[1:],
-                "hp:gs:",
-                ['help', 'proxies', 'genre', 'stars']
-            )
-        except:
-            self.usage()
-            exit()
-
-        # 展示说明
-        if len(sys.argv) == 1:
-            self.usage()
-            exit()
-
-        opt_dict = {}
-        opt_r = {
-            '-h': '-help',
-            '-p': '-proxies',
-            '-g': '-genre',
-            '-s': '-stars',
-        }
-        for op, value in opts:
-            if op in opt_r:
-                opt_dict[opt_r[op]] = value
-            else:
-                opt_dict[op] = value
-        if '-help' in opt_dict:
-            self.usage()
-            exit()
-
-        if '-proxies' in opt_dict:
-            self.s.proxies['https'] = opt_dict['-proxies']
-
-        if '-genre' in opt_dict:
-            self.genre_update()
-            exit()
-
-        if '-stars' in opt_dict:
-            self.spider_by_stars(opt_dict['-stars'], False)
-            exit()
-
     # 默认配置
     def config(self):
         print('avmo.config')
@@ -125,7 +81,7 @@ class Avmo:
         # 超时时间
         self.s.timeout = 3
         self.s.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36',
         }
         # 代理
         self.s.proxies = {
@@ -140,15 +96,6 @@ class Avmo:
         # 如果不存在则新建表
         buildSqliteDb(self.CONN, self.CUR)
 
-    # 写出命令行格式
-    def usage(self):
-        usage = '''
-        -h(-help):使用说明
-        -g(-genre):更新类别
-        -s(-stars):更新演员
-        '''
-        print(usage.replace('        ', ''))
-
     def get_url(self, country, pagetype, linkid, page_no=None):
         if page_no == None or page_no == 1:
             return '{}/{}/{}/{}'.format(self.site_url, country, pagetype, linkid)
@@ -158,7 +105,7 @@ class Avmo:
     def linkid_general_by_stars(self, stars_id):
         for page_no in range(1, 1000):
             url = self.get_url('cn', 'star', stars_id, page_no)
-            time.sleep(500)
+            # time.sleep(500)
             res = self.s.get(url)
             if res.status_code != 200:
                 print("get:{},status_code:{}".format(url, res.status_code))
@@ -178,20 +125,36 @@ class Avmo:
             # 全集搜索，碰到相同就跳出
             self.spider_by_stars(stars, False)
 
+    # 抓取指定影片
+    def spider_by_movie(self, movie_linkid):
+        url = self.get_url('cn', 'movie', movie_linkid)
+        res = self.s.get(url)
+        try:
+            html = etree.HTML(res.text)
+        except:
+            print(url, 'etree.HTML error')
+            return
+
+        # 解析页面内容
+        data = self.movie_page_data(html)
+        self.movie_save(["'{0}','{1}'".format(movie_linkid, "','".join(data))])
+        print("影片{}抓取完成".format(movie_linkid))
+    
     # 主函数，抓取页面内信息
-    def spider_by_stars(self, stars_id, is_increment):
-        print("spider_by_stars start:{}".format(stars_id))
-        flag_star_exist = self.stars_one(stars_id)
+    def spider_by_stars(self, stars_linkid, is_increment):
+        print("spider_by_stars start:{}".format(stars_linkid))
+        flag_star_exist = self.stars_one(stars_linkid)
         # 查询db全集去重
         self.CUR.execute(
-            "select linkid from av_list where stars_url LIKE '%{}%'".format(stars_id))
+            "SELECT linkid from av_list where stars_url LIKE '%{}%'".format(stars_linkid))
         db_res = self.CUR.fetchall()
         movie_id_exist_list = [x[0] for x in db_res]
+        print("已存在影片数量,{}".format(len(movie_id_exist_list)))
         # 待插入
         insert_list = []
         skip_count = 0
         insert_count = 0
-        for item in self.linkid_general_by_stars(stars_id):
+        for item in self.linkid_general_by_stars(stars_linkid):
             # 过滤已存在影片
             url = self.get_url('cn', 'movie', item)
             if item in movie_id_exist_list:
@@ -234,13 +197,13 @@ class Avmo:
         self.movie_save(insert_list)
         insert_count += len(insert_list)
         print("stars:{},insert_count:{},skip_count:{}".format(
-            stars_id, insert_count, skip_count))
-        print("spider_by_stars end:{}".format(stars_id))
+            stars_linkid, insert_count, skip_count))
+        print("spider_by_stars end:{}".format(stars_linkid))
 
     # 获取一个明星的信息
     def stars_one(self, linkid):
         self.CUR.execute(
-            "select linkid from av_stars where linkid='{}'".format(linkid))
+            "SELECT linkid from av_stars where linkid='{}'".format(linkid))
         starsRes = self.CUR.fetchall()
         if len(starsRes) == 1:
             return True
@@ -458,9 +421,8 @@ class Avmo:
             self.table_genre, "),(".join(insert_list))
         self.CUR.execute(sql)
         self.CONN.commit()
-        print('genre update record：{}'.format(len(insert_list)))
+        print('genre update record:{}'.format(len(insert_list)))
 
 
 if __name__ == '__main__':
-    avmo = Avmo()
-    avmo.start_by_single()
+    pass

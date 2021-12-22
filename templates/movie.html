@@ -89,7 +89,7 @@
     <h4>影片资源</h4>
     <div class="row">
         <input id="movie_resource" type="text" class="form-control" style="max-width: 400px;" placeholder="磁力链接 | 本地路径 | 在线地址" />
-        <button class="btn btn-default insert-movie-local" type="submit">保存</button>
+        <button class="btn btn-default insert-movie-local" type="submit" onclick="insertMovieRes('{{data.av_id}}', document.querySelector('#movie_resource').value)">保存</button>
         <ul>
         {% for movie_resource in data.movie_resource_list %}
             <li><a href="{{movie_resource}}" target="_blank">{{movie_resource}}</a> <button class="btn btn-default delete-movie-local" data-val="{{movie_resource}}" type="submit">删除记录</button> <button class="btn btn-default explorer-local" data-val="{{movie_resource}}" type="submit">本地打开</button></li>
@@ -97,7 +97,7 @@
         </ul>
     </div>
 
-    {% if data.stars_data %}
+    {% if data.stars %}
     <h4>演员</h4>
     <h5>{{data.stars}}</h5>
     <div id="avatar-waterfall">
@@ -145,14 +145,9 @@
     $('.stars-btn').click(function(){
         var data_type = $($(this)[0].previousElementSibling).data('type');
         var data_val = $($(this)[0].previousElementSibling).data('val');
-        $.get("/like/add/" + data_type + '/'+ data_val,function(data){
+        $.get("/action/extend/insert/like/" + data_type + '/'+ data_val,function(data){
             $('#message_title').html(data);
             $('#message').modal('show');
-        });
-    });
-    $('.insert-movie-local').click(function(){
-        $.get("/action/extend/insert/movie_res/{{data.av_id}}/" + encodeURIComponent($('#movie_resource').val().replace(/\//g,'\\')),function(data){
-            location.reload();
         });
     });
     $('.delete-movie-local').click(function(){

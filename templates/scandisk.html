@@ -31,27 +31,62 @@
 
     
     <div class="row">
-        <ul>
-            {% for resource in av_file_res %}
-                <li>
-                    <span style="color: coral;">{{resource.file_path}}</span>
-                    {% if resource.exist %}
-                        <a class="btn btn-default" href="/search/{{resource.av_id}}" target="_blank">{{resource.av_id}}</a>
-                    {% else %}
-                        <button class="btn btn-default explorer-local" data-val="{{resource.file_path}}">播放</button>
-                        <a class="btn btn-default" href="/search/{{resource.av_id}}" target="_blank">搜索</a>
-                        <a class="btn btn-default" href="{{avmoo_url}}/cn/search/{{resource.av_id}}" target="_blank">原站搜索</a>
+        <style>
+            td {
+                border-style: groove;
+            }
+        </style>
+        <table>
+            <tr>
+                <th style="width: 500px">路径</th>
+                <th style="width: 80px">打开</th>
+                {% if file_target == "mp4" %}
+                <th style="width: 600px">信息</th>
+                {% endif %}
+            </tr>
+            {% if file_target == "mp4" %}
+                {% for resource in file_res %}
+                    {% if resource.av_id and av_data_map[resource.av_id] %}
+                        <tr>
+                            <!-- 视频文件 命中avid 有页面 -->
+                            <td><span style="color: coral;">{{resource.file_path}}</span></td>
+                            <td><button class="btn btn-default explorer-local" data-val="{{resource.file_path}}">播放</button></td>
+                            <td><a href="/search/{{resource.av_id}}" target="_blank">{{resource.av_id}}</a> {{resource.info|safe}} {{av_data_map[resource.av_id].stars}} <button data-val="{{resource.file_path}}" data-key="{{resource.av_id}}" class="insert_movie_res">添加到资源</button></td>
+                        </tr>
                     {% endif %}
-                </li>
-            {% endfor %}
+                {% endfor %}
+                {% for resource in file_res %}
+                    {% if resource.av_id and not av_data_map[resource.av_id] %}
+                        <tr>
+                            <!-- 视频文件 命中avid 无页面 -->
+                            <td><span style="color: coral;">{{resource.file_path}}</span></td>
+                            <td><button class="btn btn-default explorer-local" data-val="{{resource.file_path}}">播放</button></td>
+                            <td><a href="{{avmoo_url}}/cn/search/{{resource.av_id}}" target="_blank">{{resource.av_id}}</a>|{{resource.info|safe}}</td>
+                        </tr>
+                    {% endif %}
+                {% endfor %}
+                {% for resource in file_res %}
+                    {% if not resource.av_id %}
+                        <tr>
+                            <!-- 视频文件 未命中avid -->
+                            <td>{{resource.file_path}}</td>
+                            <td><button class="btn btn-default explorer-local" data-val="{{resource.file_path}}">播放</button></td>
+                            <td></td>
+                        </tr>
+                    {% endif %}
+                {% endfor %}
+                
+            {% else %}
+                {% for resource in file_res %}
+                    <tr>
+                        <!-- 其他文件 -->
+                        <td>{{resource.file_path}}</td>
+                        <td><button class="btn btn-default explorer-local" data-val="{{resource.file_path}}">本地打开</button></td>
+                    </tr>
+                {% endfor %}
+            {% endif %}
 
-            {% for resource in file_res %}
-                <li>
-                    <span>{{resource}}</span>
-                    <button class="btn btn-default explorer-local" data-val="{{resource}}">本地打开</button>
-                </li>
-            {% endfor %}
-        </ul>
+        </table>
     </div>
 </div>
 {% endblock %}

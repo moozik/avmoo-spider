@@ -12,9 +12,15 @@
     <div class="row">
         <div style="width: 400px;margin-left: 60px;">
             <div class="input-group" style="margin-top:20px;">
+                <input type="text" class="form-control" id="movie_linkid" placeholder="影片ID,例:f979b8b2a02901dd" value="">
+                <span class="input-group-btn">
+                    <button class="btn btn-default" onclick='downloadMovie(document.querySelector("#movie_linkid").value)'>下载指定影片</button>
+                </span>
+            </div>
+            <div class="input-group" style="margin-top:20px;">
                 <input type="text" class="form-control" id="stars_linkid" placeholder="演员ID,例:09206c6bbe8d918f" value="">
                 <span class="input-group-btn">
-                    <button class="btn btn-default" onclick='downloadStar(document.querySelector("#stars_linkid").value)'>下载</button>
+                    <button class="btn btn-default" onclick='downloadStar(document.querySelector("#stars_linkid").value)'>下载指定演员</button>
                 </span>
             </div>
             <button class="btn btn-default" onclick="downloadStar('all')">更新所有影片</button>

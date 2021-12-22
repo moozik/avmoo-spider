@@ -1,5 +1,5 @@
 def get_avmoo_url():
-    return 'https://avmoo.casa'
+    return 'https://avmoo.monster'
 
 def get_db_file():
     return 'avmoo.db'
