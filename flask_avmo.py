@@ -13,7 +13,7 @@ import re
 import os
 import math
 import binascii
-import config
+import common
 import spider_avmo
 import _thread
 import html
@@ -155,7 +155,7 @@ def movie(linkid=''):
     # 本地文件
     movie['movie_resource_list'] = select_extend_value(
         'movie_res', movie['av_id'])
-    return render_template('movie.html', data=movie, cdn=CDN_SITE, avmoo_url=config.get_avmoo_url())
+    return render_template('movie.html', data=movie, cdn=CDN_SITE, avmoo_url=SPIDER_AVMO.get_avmoo_site())
 
 
 @app.route('/director/<keyword>')
@@ -188,7 +188,7 @@ def search(keyword='', pagenum=1):
                             av_list_where=where, limit=(limit_start, PAGE_LIMIT))
 
     starsData = None
-    if function == 'stars' and pagenum == 1:
+    if function == 'stars':
         starsData = query_sql(
             "SELECT * FROM av_stars WHERE linkid='{}';".format(keyword))[0]
         # 计算年龄
@@ -202,7 +202,7 @@ def search(keyword='', pagenum=1):
     if function != 'genre' and function != 'stars':
         keyword = ''
 
-    return render_template('index.html', data={'av_list': result[0], 'av_stars': starsData}, cdn=CDN_SITE, page=pagination(pagenum, result[1], page_root, PAGE_LIMIT), keyword=keyword, avmoo_url=config.get_avmoo_url())
+    return render_template('index.html', data={'av_list': result[0], 'av_stars': starsData}, cdn=CDN_SITE, page=pagination(pagenum, result[1], page_root, PAGE_LIMIT), keyword=keyword, avmoo_url=SPIDER_AVMO.get_avmoo_site())
 
 
 @app.route('/genre')
@@ -322,7 +322,7 @@ def action_scandisk():
                 file_res[i]['info'] += spanColor("[影片未抓取]", "red")
         file_res[i]['info'] = file_res[i]['info'].strip(',')
 
-    return render_template('scandisk.html', file_res=file_res, av_data_map=av_data_map, file_target=file_target, path_target=path_target, avmoo_url=config.get_avmoo_url())
+    return render_template('scandisk.html', file_res=file_res, av_data_map=av_data_map, file_target=file_target, path_target=path_target, avmoo_url=SPIDER_AVMO.get_avmoo_site())
 
 # 遍历文件
 
@@ -410,8 +410,6 @@ def action_download_genre():
     return '正在下载...'
 
 # 仅限手动调用
-
-
 @app.route('/action/delete/movie/<linkid>')
 def action_delete_movie(linkid=''):
     sqltext = "DELETE FROM av_list WHERE linkid='{}'".format(linkid)
@@ -419,8 +417,6 @@ def action_delete_movie(linkid=''):
     return 'movie已删除'
 
 # 仅限手动调用
-
-
 @app.route('/action/delete/stars/<linkid>')
 def action_delete_stars(linkid=''):
     star_movie = query_sql(
@@ -521,7 +517,7 @@ def pagination(pagenum, count, pageroot, pagelimit):
 
 
 def conn():
-    CONN = sqlite3.connect(config.get_db_file(), check_same_thread=False)
+    CONN = sqlite3.connect(common.get_db_file(), check_same_thread=False)
     CUR = CONN.cursor()
     return {
         'CONN': CONN,
@@ -560,8 +556,6 @@ def select_av_list(column='*', av_list_where=[], limit=(0, 30), order='release_d
     return (result, res_count[0]['count'])
 
 # 获取指定key的扩展信息
-
-
 def select_extend_by_key(keyList):
     if len(keyList) == 0:
         return {}
@@ -595,30 +589,13 @@ def query_sql(sql, ifCache=True) -> list:
             return SQL_CACHE[cacheKey][:]
         else:
             print('SQL EXEC[{}]:\n{}'.format(cacheKey, sql))
-            DB['CUR'].execute(sql)
-            ret = DB['CUR'].fetchall()
-            ret = show_column_name(ret, DB['CUR'].description)
-
+            ret = common.fetchall(DB['CUR'], sql)
             if IF_USE_CACHE:
                 SQL_CACHE[cacheKey] = ret
             return ret[:]
     else:
         print('SQL EXEC:\n{}'.format(sql))
-        DB['CUR'].execute(sql)
-        ret = DB['CUR'].fetchall()
-        ret = show_column_name(ret, DB['CUR'].description)
-        return ret
-
-
-def show_column_name(data, description) -> list:
-    result = []
-    for row in data:
-        row_dict = {}
-        for i in range(len(description)):
-            row_dict[description[i][0]] = row[i]
-        result.append(row_dict)
-    return result
-
+        return common.fetchall(DB['CUR'], sql)
 
 if __name__ == '__main__':
     DB = conn()

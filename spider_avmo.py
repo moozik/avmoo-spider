@@ -10,13 +10,13 @@ import re
 import os
 from lxml import etree
 from install import buildSqliteDb
-import config
+import common
 '''
-图片服务器：
+图片服务器:
 https://jp.netcdn.space/digital/video/miae00056/miae00056jp-10.jpg
 https://pics.dmm.co.jp/digital/video/miae00056/miae00056jp-10.jpg
 https://pics.dmm.com/digital/video/miae00056/miae00056jp-10.jpg
-小封面：
+小封面:
 https://jp.netcdn.space/digital/video/miae00056/miae00056ps.jpg
 https://pics.javbus.info/thumb/{{linkid}}.jpg
 大封面:
@@ -31,11 +31,9 @@ class Avmo:
     def __init__(self):
         print('avmo.init')
         # ================主要配置================
-        # 原网址
-        self.site_url = config.get_avmoo_url()
 
         # sqlite数据库地址
-        self.sqlite_file = config.get_db_file()
+        self.sqlite_file = common.get_db_file()
         # 主函数延时 越慢越稳，请求过快会403
         self.main_sleep = 1.5
 
@@ -68,14 +66,6 @@ class Avmo:
         # 链接数据库
         self.conn()
 
-        # 番号主页url
-        self.movie_url = self.site_url+'/movie/'
-        # 导演 制作 发行 系列
-        self.director_url = self.get_url('cn', 'director', '')
-        self.studio_url = self.get_url('cn', 'studio', '')
-        self.label_url = self.get_url('cn', 'label', '')
-        self.series_url = self.get_url('cn', 'series', '')
-
         # 创建会话对象
         self.s = requests.Session()
         # 超时时间
@@ -87,6 +77,13 @@ class Avmo:
         self.s.proxies = {
             # 'https':'http://127.0.0.1:1080'
         }
+        # 番号主页url
+        self.movie_url = self.get_avmoo_site() + '/movie/'
+        # 导演 制作 发行 系列
+        self.director_url = self.get_url('cn', 'director', '')
+        self.studio_url = self.get_url('cn', 'studio', '')
+        self.label_url = self.get_url('cn', 'label', '')
+        self.series_url = self.get_url('cn', 'series', '')
 
     # sqlite conn
     def conn(self):
@@ -95,12 +92,23 @@ class Avmo:
         self.CUR = self.CONN.cursor()
         # 如果不存在则新建表
         buildSqliteDb(self.CONN, self.CUR)
+    
+    def get_avmoo_site(self):
+        if hasattr(self, 'site_url') and self.site_url != None:
+            return self.site_url
+        
+        res = self.s.get('https://tellme.pw/avmoo')
+        html = etree.HTML(res.text)
+        avmoUrl = html.xpath('/html/body/div[1]/div[2]/div/div[2]/h4[1]/strong/a/@href')[0]
+        print("newUrl:{}".format(avmoUrl))
+        self.site_url = avmoUrl
+        return avmoUrl
 
     def get_url(self, country, pagetype, linkid, page_no=None):
         if page_no == None or page_no == 1:
-            return '{}/{}/{}/{}'.format(self.site_url, country, pagetype, linkid)
+            return '{}/{}/{}/{}'.format(self.get_avmoo_site(), country, pagetype, linkid)
         else:
-            return '{}/{}/{}/{}/page/{}'.format(self.site_url, country, pagetype, linkid, page_no)
+            return '{}/{}/{}/{}/page/{}'.format(self.get_avmoo_site(), country, pagetype, linkid, page_no)
 
     def linkid_general_by_stars(self, stars_id):
         for page_no in range(1, 1000):
@@ -123,7 +131,7 @@ class Avmo:
     def spider_by_stars_list(self, stars_id_list):
         for stars in stars_id_list:
             # 全集搜索，碰到相同就跳出
-            self.spider_by_stars(stars, False)
+            self.spider_by_stars(stars, True)
 
     # 抓取指定影片
     def spider_by_movie(self, movie_linkid):
@@ -142,8 +150,8 @@ class Avmo:
     
     # 主函数，抓取页面内信息
     def spider_by_stars(self, stars_linkid, is_increment):
-        print("spider_by_stars start:{}".format(stars_linkid))
-        flag_star_exist = self.stars_one(stars_linkid)
+        starsData = self.stars_one(stars_linkid)
+        print("[{}] spider_by_stars start".format(starsData['name']))
         # 查询db全集去重
         self.CUR.execute(
             "SELECT linkid from av_list where stars_url LIKE '%{}%'".format(stars_linkid))
@@ -159,8 +167,6 @@ class Avmo:
             url = self.get_url('cn', 'movie', item)
             if item in movie_id_exist_list:
                 skip_count += 1
-                if not flag_star_exist:
-                    continue
                 # 如果为增量更新，碰到相同就跳出
                 if is_increment:
                     break
@@ -183,7 +189,7 @@ class Avmo:
             # 解析页面内容
             data = self.movie_page_data(html)
             # 输出当前进度
-            print(data[0].ljust(15), data[16].ljust(11), item.ljust(5))
+            print(data[0].ljust(15), data[16].ljust(11), data[10])
 
             insert_list.append(
                 "'{0}','{1}'".format(item, "','".join(data))
@@ -197,16 +203,14 @@ class Avmo:
         self.movie_save(insert_list)
         insert_count += len(insert_list)
         print("stars:{},insert_count:{},skip_count:{}".format(
-            stars_linkid, insert_count, skip_count))
-        print("spider_by_stars end:{}".format(stars_linkid))
+            starsData['name'], insert_count, skip_count))
+        print("[{}] spider_by_stars end".format(starsData['name']))
 
     # 获取一个明星的信息
     def stars_one(self, linkid):
-        self.CUR.execute(
-            "SELECT linkid from av_stars where linkid='{}'".format(linkid))
-        starsRes = self.CUR.fetchall()
+        starsRes = common.fetchall(self.CUR, "SELECT * from av_stars where linkid='{}'".format(linkid))
         if len(starsRes) == 1:
-            return True
+            return starsRes[0]
 
         def get_val(str):
             return str.split(':')[1].strip()
@@ -293,7 +297,7 @@ class Avmo:
             data['hometown']
         )
         self.stars_save(data)
-        return False
+        return data
 
     def stars_save(self, data):
         insert_sql = 'REPLACE INTO "{}" VALUES("{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}")'.format(
@@ -360,8 +364,8 @@ class Avmo:
         # 获取类别列表genre 类别列表genre_url
         data[9] = '|'.join(html.xpath(
             '/html/body/div[2]/div[1]/div[2]/p/span/a/text()')).replace("'", '"')
-        genre_url_list = html.xpath(
-            '/html/body/div[2]/div[1]/div[2]/p/span/a/@href')
+        # genre_url_list = html.xpath(
+        #     '/html/body/div[2]/div[1]/div[2]/p/span/a/@href')
         # if genre_url_list != None and len(genre_url_list) != 0:
         #     data[10] = '|' + '|'.join(
         #         [re.findall('([a-z0-9]+)$', x)[0] for x in genre_url_list])
