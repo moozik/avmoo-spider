@@ -1,6 +1,9 @@
 def get_db_file():
     return 'avmoo.db'
 
+def get_country():
+    return 'cn'
+
 def show_column_name(data, description) -> list:
     result = []
     for row in data:

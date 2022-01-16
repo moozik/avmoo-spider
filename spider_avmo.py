@@ -80,10 +80,10 @@ class Avmo:
         # 番号主页url
         self.movie_url = self.get_avmoo_site() + '/movie/'
         # 导演 制作 发行 系列
-        self.director_url = self.get_url('cn', 'director', '')
-        self.studio_url = self.get_url('cn', 'studio', '')
-        self.label_url = self.get_url('cn', 'label', '')
-        self.series_url = self.get_url('cn', 'series', '')
+        self.director_url = self.get_url('director', '')
+        self.studio_url = self.get_url('studio', '')
+        self.label_url = self.get_url('label', '')
+        self.series_url = self.get_url('series', '')
 
     # sqlite conn
     def conn(self):
@@ -104,15 +104,15 @@ class Avmo:
         self.site_url = avmoUrl
         return avmoUrl
 
-    def get_url(self, country, pagetype, linkid, page_no=None):
+    def get_url(self, pagetype, linkid, page_no=None):
         if page_no == None or page_no == 1:
-            return '{}/{}/{}/{}'.format(self.get_avmoo_site(), country, pagetype, linkid)
+            return '{}/{}/{}/{}'.format(self.get_avmoo_site(), common.get_country(), pagetype, linkid)
         else:
-            return '{}/{}/{}/{}/page/{}'.format(self.get_avmoo_site(), country, pagetype, linkid, page_no)
+            return '{}/{}/{}/{}/page/{}'.format(self.get_avmoo_site(), common.get_country(), pagetype, linkid, page_no)
 
     def linkid_general_by_stars(self, stars_id):
         for page_no in range(1, 1000):
-            url = self.get_url('cn', 'star', stars_id, page_no)
+            url = self.get_url('star', stars_id, page_no)
             # time.sleep(500)
             res = self.s.get(url)
             if res.status_code != 200:
@@ -135,7 +135,7 @@ class Avmo:
 
     # 抓取指定影片
     def spider_by_movie(self, movie_linkid):
-        url = self.get_url('cn', 'movie', movie_linkid)
+        url = self.get_url('movie', movie_linkid)
         res = self.s.get(url)
         try:
             html = etree.HTML(res.text)
@@ -145,7 +145,8 @@ class Avmo:
 
         # 解析页面内容
         data = self.movie_page_data(html)
-        self.movie_save(["'{0}','{1}'".format(movie_linkid, "','".join(data))])
+        data['linkid'] = movie_linkid
+        self.movie_save([tuple(data.values())])
         print("影片{}抓取完成".format(movie_linkid))
     
     # 主函数，抓取页面内信息
@@ -164,7 +165,7 @@ class Avmo:
         insert_count = 0
         for item in self.linkid_general_by_stars(stars_linkid):
             # 过滤已存在影片
-            url = self.get_url('cn', 'movie', item)
+            url = self.get_url('movie', item)
             if item in movie_id_exist_list:
                 skip_count += 1
                 # 如果为增量更新，碰到相同就跳出
@@ -188,12 +189,11 @@ class Avmo:
 
             # 解析页面内容
             data = self.movie_page_data(html)
+            data['linkid'] = item
             # 输出当前进度
-            print(data[0].ljust(15), data[16].ljust(11), data[10])
+            print(data['av_id'].ljust(15), data['release_date'].ljust(11), data['stars'])
 
-            insert_list.append(
-                "'{0}','{1}'".format(item, "','".join(data))
-            )
+            insert_list.append(tuple(data.values()))
             # 存储数据
             if len(insert_list) == self.insert_threshold:
                 self.movie_save(insert_list)
@@ -215,10 +215,9 @@ class Avmo:
         def get_val(str):
             return str.split(':')[1].strip()
 
-        url = self.get_url('cn', 'star', linkid)
+        url = self.get_url('star', linkid)
         print(linkid)
         data = {
-            # 'id': sort_id,
             'linkid': linkid,
             'name': '',
             'name_history': '',
@@ -258,28 +257,28 @@ class Avmo:
         for item_p in html.xpath('//*[@id="waterfall"]/div[1]/div/div[2]/p'):
             if item_p.text == None:
                 continue
-            if '生日' in item_p.text:
+            if '生日:' in item_p.text or 'Birthday:' in item_p.text:
                 data['birthday'] = get_val(item_p.text)
                 continue
-            if '身高' in item_p.text:
+            if '身高:' in item_p.text or 'Height:' in item_p.text:
                 data['height'] = get_val(item_p.text)
                 continue
-            if '罩杯' in item_p.text:
+            if '罩杯:' in item_p.text or 'Cup:' in item_p.text:
                 data['cup'] = get_val(item_p.text)
                 continue
-            if '胸围' in item_p.text:
+            if '胸围:' in item_p.text or 'Bust:' in item_p.text:
                 data['bust'] = get_val(item_p.text)
                 continue
-            if '腰围' in item_p.text:
+            if '腰围:' in item_p.text or 'Waist:' in item_p.text:
                 data['waist'] = get_val(item_p.text)
                 continue
-            if '臀围' in item_p.text:
+            if '臀围:' in item_p.text or 'Hips:' in item_p.text:
                 data['hips'] = get_val(item_p.text)
                 continue
-            if '出生地' in item_p.text:
+            if '出生地:' in item_p.text or 'Hometown:' in item_p.text:
                 data['hometown'] = get_val(item_p.text)
                 continue
-            if '爱好' in item_p.text:
+            if '爱好:' in item_p.text or 'Hobby:' in item_p.text:
                 data['hobby'] = get_val(item_p.text)
                 continue
         # 讲括号中的名字记录为曾用名
@@ -300,22 +299,10 @@ class Avmo:
         return data
 
     def stars_save(self, data):
-        insert_sql = 'REPLACE INTO "{}" VALUES("{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}")'.format(
-            self.table_stars,
-            data['linkid'],
-            data['name'],
-            data['name_history'],
-            data['birthday'],
-            data['height'],
-            data['cup'],
-            data['bust'],
-            data['waist'],
-            data['hips'],
-            data['hometown'],
-            data['hobby'],
-            data['headimg']
+        insert_sql = 'REPLACE INTO {} VALUES(?,?,?,?,?,?,?,?,?,?,?,?);'.format(
+            self.table_stars
         )
-        self.CUR.execute(insert_sql)
+        self.CUR.execute(insert_sql, tuple(data.values()))
         self.CONN.commit()
 
     # 插入数据库
@@ -323,16 +310,35 @@ class Avmo:
         if len(insert_list) == 0:
             print("insert_list empty!")
             return
-        self.CUR.execute(
-            "REPLACE INTO {0}({1})VALUES({2});".format(self.table_main, self.column_str, "),(".join(insert_list)))
+        insertSql = 'REPLACE INTO {0}({1})VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);'.format(self.table_main, self.column_str)
+        self.CUR.executemany(insertSql, insert_list)
         self.CONN.commit()
         print('INSERT:', len(insert_list))
 
     def movie_page_data(self, html):
-        data = ['' for x in range(17)]
+        data = {
+            'linkid':'',
+            'av_id':'',
+            'director':'',
+            'director_url':'',
+            'studio':'',
+            'studio_url':'',
+            'label':'',
+            'label_url':'',
+            'series':'',
+            'series_url':'',
+            'genre':'',
+            'stars':'',
+            'stars_url':'',
+            'image_len':'',
+            'len':'',
+            'title':'',
+            'bigimage':'',
+            'release_date':''
+        }
         # 番号
         try:
-            data[0] = html.xpath(
+            data['av_id'] = html.xpath(
                 '/html/body/div[2]/div[1]/div[2]/p[1]/span[2]/text()')[0]
         except:
             return data
@@ -346,23 +352,23 @@ class Avmo:
 
             if "/director/" in tmp_href:
                 # 导演
-                data[1] = tmp_text
-                data[2] = tmp_href[-16:]
+                data['director'] = tmp_text
+                data['director_url'] = tmp_href[-16:]
             elif "/studio/" in tmp_href:
                 # 制作商
-                data[3] = tmp_text
-                data[4] = tmp_href[-16:]
+                data['studio'] = tmp_text
+                data['studio_url'] = tmp_href[-16:]
             elif "/label/" in tmp_href:
                 # 发行商
-                data[5] = tmp_text
-                data[6] = tmp_href[-16:]
+                data['label'] = tmp_text
+                data['label_url'] = tmp_href[-16:]
             elif "/series/" in tmp_href:
                 # 系列
-                data[7] = tmp_text
-                data[8] = tmp_href[-16:]
+                data['series'] = tmp_text
+                data['series_url'] = tmp_href[-16:]
 
         # 获取类别列表genre 类别列表genre_url
-        data[9] = '|'.join(html.xpath(
+        data['genre'] = '|'.join(html.xpath(
             '/html/body/div[2]/div[1]/div[2]/p/span/a/text()')).replace("'", '"')
         # genre_url_list = html.xpath(
         #     '/html/body/div[2]/div[1]/div[2]/p/span/a/@href')
@@ -371,41 +377,41 @@ class Avmo:
         #         [re.findall('([a-z0-9]+)$', x)[0] for x in genre_url_list])
 
         # 演员stars
-        data[10] = '|'.join(html.xpath(
+        data['stars'] = '|'.join(html.xpath(
             '//div[@id="avatar-waterfall"]/a/span/text()')).replace("'", '"')
-        if data[10] != '':
-            data[10] = '|' + data[10]
+        if data['stars'] != '':
+            data['stars'] = '|' + data['stars']
 
         # stars_url
         stars_url_list = html.xpath('//div[@id="avatar-waterfall"]/a/@href')
         if stars_url_list != None and len(stars_url_list) != 0:
-            data[11] = '|' + '|'.join([re.findall('([a-z0-9]+)$', x)[0]
+            data['stars_url'] = '|' + '|'.join([re.findall('([a-z0-9]+)$', x)[0]
                                       for x in stars_url_list])
 
         # 图片个数image_len
-        data[12] = str(len(html.xpath('//div[@id="sample-waterfall"]/a')))
+        data['image_len'] = str(len(html.xpath('//div[@id="sample-waterfall"]/a')))
         # 时长len
         lentext = html.xpath('/html/body/div[2]/div[1]/div[2]/p[3]/text()')
         if len(lentext) != 0 and '分钟' in lentext[0]:
-            data[13] = lentext[0].replace('分钟', '').strip()
+            data['len'] = lentext[0].replace('分钟', '').strip()
         else:
-            data[13] = '0'
+            data['len'] = '0'
 
-        # 接取除了番号的标题
-        data[14] = html.xpath('/html/body/div[2]/h3/text()')[0]
+        # 标题
+        data['title'] = html.xpath('/html/body/div[2]/h3/text()')[0]
         # 封面 截取域名之后的部分
-        data[15] = '/' + \
+        data['bigimage'] = '/' + \
             html.xpath(
                 '/html/body/div[2]/div[1]/div[1]/a/img/@src')[0].split('/', 5)[5]
         # 发行时间
-        data[16] = html.xpath(
+        data['release_date'] = html.xpath(
             '/html/body/div[2]/div[1]/div[2]/p[2]/text()')[0].strip()
 
         return data
 
     # 获取所有类别
     def genre_update(self):
-        genre_url = self.get_url('cn', 'genre', '')
+        genre_url = self.get_url('genre', '')
         html = etree.HTML(self.s.get(
             genre_url).text)
         insert_list = []

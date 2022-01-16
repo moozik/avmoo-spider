@@ -26,8 +26,6 @@ PAGE_LIMIT = 30
 # 图片服务器，图片慢可以尝试换另一个
 CDN_SITE = '//jp.netcdn.space'
 CDN_SITE = '//pics.dmm.co.jp'
-# 默认语言为中文
-DEFAULT_LANGUAGE = 'cn'
 # 缓存
 SQL_CACHE = {}
 # 缓存默认开启
