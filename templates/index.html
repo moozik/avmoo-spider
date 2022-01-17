@@ -43,13 +43,13 @@
 							</div>
 							<div class="photo-info">
 								{% if item.file %}
-								<span class="sub_title">文件</span>
-								{% endif %}
-								{% if item.http %}
-								<span class="sub_title">网址</span>
+								<span class="glyphicon glyphicon-download-alt" style="color:#cc0000"></span>
 								{% endif %}
 								{% if item.magnet %}
-								<span class="sub_title">磁力</span>
+								<span class="glyphicon glyphicon-magnet" style="color:#cc0000"></span>
+								{% endif %}
+								{% if item.http %}
+								<span class="glyphicon glyphicon-link" style="color:#cc0000"></span>
 								{% endif %}
 								<span>{{ item.title }}
 									<br>
