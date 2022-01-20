@@ -360,11 +360,24 @@ def action_extend_insert(extend_name, key, val):
         # key目前只会存avid所以upper无碍
         key = key.upper()
         val = upperPath(val)
-    sqltext = "INSERT INTO av_extend (extend_name,key,val) VALUES ('{}','{}','{}')".format(
-        extend_name, key, val
-    )
-    execute_sql(sqltext)
-    return '扩展信息添加成功'
+        bizName = "资源"
+    
+    if extend_name == "like":
+        bizName = "收藏"
+    
+    valList = select_extend_value(extend_name, key)
+    if val in valList:
+        sqltext = "DELETE FROM av_extend WHERE extend_name='{}' AND key='{}' AND val='{}';".format(
+            extend_name, key, val
+        )
+        execute_sql(sqltext)
+        return bizName + "已删除"
+    else:
+        sqltext = "INSERT INTO av_extend (extend_name,key,val) VALUES ('{}','{}','{}')".format(
+            extend_name, key, val
+        )
+        execute_sql(sqltext)
+        return bizName + '已添加'
 
 
 @app.route('/action/extend/delete/<extend_name>/<key>/<val>')

@@ -162,14 +162,14 @@
             $('#message').modal('show');
         });
     }
-    function insertMovieRes(av_id, movie_res){
-        $.get("/action/extend/insert/movie_res/"+av_id+"/" + encodeURIComponent(movie_res.replace(/\//g,'\\')),function(data){
+    function insertMovieExtend(extend_name, av_id, movie_res){
+        $.get("/action/extend/insert/"+extend_name+"/"+av_id+"/" + encodeURIComponent(movie_res.replace(/\//g,'\\')),function(data){
             $('#message_title').html(data);
             $('#message').modal('show');
         });
     }
     $('.insert_movie_res').click(function(){
-        insertMovieRes($(this).data('key'), $(this).data('val'));
+        insertMovieExtend('movie_res', $(this).data('key'), $(this).data('val'));
         $(this)[0].style.display = "none";
     });
 </script>
