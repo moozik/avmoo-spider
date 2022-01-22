@@ -93,7 +93,11 @@
         <button class="btn btn-default insert-movie-local" type="submit" onclick="insertMovieExtend('movie_res', '{{data.av_id}}', document.querySelector('#movie_resource').value)">保存</button>
         <ul>
         {% for movie_resource in data.movie_resource_list %}
-            <li><a href="{{movie_resource}}" target="_blank">{{movie_resource}}</a> <button class="btn btn-default delete-movie-local" data-val="{{movie_resource}}" type="submit">删除记录</button> <button class="btn btn-default explorer-local" data-val="{{movie_resource}}" type="submit">本地打开</button></li>
+            <li>
+                <a href="{{movie_resource}}" target="_blank">{{movie_resource}}</a>
+                <button class="btn btn-default" onclick="deleteMovieExtend('movie_res','{{data.av_id}}', this.getAttribute('data-val'));location.reload();" data-val="{{movie_resource}}" type="submit">删除记录</button>
+                <button class="btn btn-default" onclick="explorerLocal(this.getAttribute('data-val'))" data-val="{{movie_resource}}" type="submit">本地打开</button>
+            </li>
         {% endfor %}
         </ul>
     </div>
@@ -151,11 +155,11 @@
     //         $('#message').modal('show');
     //     });
     // });
-    $('.delete-movie-local').click(function(){
-        $.get("/action/extend/delete/movie_res/{{data.av_id}}/" + encodeURIComponent($(this).data('val')),function(data){
-            location.reload();
-        });
-    });
+    // $('.delete-movie-local').click(function(){
+    //     $.get("/action/extend/delete/movie_res/{{data.av_id}}/" + encodeURIComponent($(this).data('val')),function(data){
+    //         location.reload();
+    //     });
+    // });
     function translateTitle(avid){
         $.get("/action/translate/" + encodeURIComponent(document.querySelector("#av_title").innerText),function(data){
             document.querySelector("#av_title").innerText = avid + ' ' + data;

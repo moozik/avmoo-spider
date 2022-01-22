@@ -51,7 +51,7 @@
 
         <ul class="nav navbar-nav navbar-right">
             <li><a href="/action/scandisk" style="font-weight: bold;">扫描文件</a></li>
-            <li><a class="catch_switch">缓存开关</a></li>
+            <li><a onclick="catchSwitch()">缓存开关</a></li>
             <li><a href="https://tellme.pw/avmoo" target="_blank">最新地址</a></li>
             <li><a class="glyphicon glyphicon-thumbs-up" href="https://github.com/moozik/avmoo-spider" target="_blank">本程序</a></li>
         </ul>
@@ -125,9 +125,8 @@
                     删除成功
                 </h4>
             </div>
-            <!-- <div class="modal-body">
-                删除成功
-            </div> -->
+            <div class="modal-body">
+            </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-primary" id="confirm">
                     确认
@@ -138,34 +137,53 @@
 </div>
 <script src="{{url_for('static', filename='app.min.js')}}"></script>
 <script>
-    $('.catch_switch').click(function(){
+    function showMessage(title, body){
+        $("#message").find('.modal-title').html(title)
+        $("#message").find(".modal-body").html(body);
+        $('#message').modal('show');
+    }
+    function catchSwitch(){
         $.get('/action/catch/switch',function(data){
-            $('#message_title').html(data);
-            $('#message').modal('show');
+            showMessage(data,"");
         });
-    });
+    }
     $('#confirm').click(function(){
         $('#message').modal('hide');
     });
-    $('.explorer-local').click(function(){
-        $.get("/action/explorer/" + encodeURIComponent($(this).data('val')));
-    });
+    function explorerLocal(path){
+        $.get("/action/explorer",{"path":path});
+    }
     function downloadStar(linkid){
         $.get("/action/download/star/" + linkid, function (data) {
-            $('#message_title').html(data);
-            $('#message').modal('show');
+            showMessage(data,"");
+        });
+    }
+    function analyseStar(linkid, e){
+        $.get("/action/analyse/star/" + linkid, function (data) {
+            showMessage("分析结果", data);
         });
     }
     function downloadMovie(linkid){
         $.get("/action/download/movie/" + linkid, function (data) {
-            $('#message_title').html(data);
-            $('#message').modal('show');
+            showMessage(data,"");
         });
     }
-    function insertMovieExtend(extend_name, av_id, movie_res){
-        $.get("/action/extend/insert/"+extend_name+"/"+av_id+"/" + encodeURIComponent(movie_res.replace(/\//g,'\\')),function(data){
-            $('#message_title').html(data);
-            $('#message').modal('show');
+    function insertMovieExtend(extend_name, key, val){
+        $.get("/action/extend/insert", {
+            "extend_name": extend_name,
+            "key": key,
+            "val": val,
+        },function(data){
+            showMessage(data,"");
+        });
+    }
+    function deleteMovieExtend(extend_name, key, val){
+        $.get("/action/extend/delete", {
+            "extend_name": extend_name,
+            "key": key,
+            "val": val,
+        },function(data){
+            showMessage(data,"");
         });
     }
     $('.insert_movie_res').click(function(){

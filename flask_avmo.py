@@ -17,6 +17,7 @@ import common
 import spider_avmo
 import _thread
 import html
+import collections
 app = Flask(__name__)
 app.jinja_env.auto_reload = True
 app.config['TEMPLATES_AUTO_RELOAD'] = True
@@ -205,7 +206,7 @@ def search(keyword='', pagenum=1):
 
 @app.route('/genre')
 def genre():
-    result = query_sql("SELECT name,title FROM av_genre")
+    result = query_sql("SELECT av_genre.name,av_genre.title,COUNT(1) AS genre_count FROM av_genre LEFT JOIN (select genre from av_list)av_list ON INSTR ( av_list.genre, av_genre.name ) > 0 GROUP BY av_genre.linkid")
     data = {}
     for item in result:
         if item['title'] not in data:
@@ -238,7 +239,7 @@ def like_del(data_type=None, data_val=None):
 @app.route('/actresses/page/<int:pagenum>')
 def like_stars(pagenum=1):
     pageLimit = 36
-    sqltext = "SELECT av_stars.*,COUNT(distinct av_list.release_date) AS movie_count,av_list.release_date FROM av_stars LEFT JOIN (SELECT release_date,stars_url FROM av_list ORDER BY release_date desc)av_list ON INSTR(av_list.stars_url, av_stars.linkid) > 0 GROUP BY av_stars.linkid ORDER BY av_list.release_date DESC LIMIT {},{}".format(
+    sqltext = "SELECT av_stars.*,COUNT(av_list.release_date) AS movie_count,av_list.release_date FROM av_stars LEFT JOIN (SELECT release_date,stars_url FROM av_list ORDER BY release_date desc)av_list ON INSTR(av_list.stars_url, av_stars.linkid) > 0 GROUP BY av_stars.linkid ORDER BY av_list.release_date DESC LIMIT {},{}".format(
         (pagenum - 1) * pageLimit, pageLimit)
     result = query_sql(sqltext)
 
@@ -345,16 +346,18 @@ def action_catch_switch():
         return '已打开缓存'
 
 
-@app.route('/action/explorer/<movie_path>')
-def action_explorer(movie_path):
+@app.route('/action/explorer')
+def action_explorer():
+    path = request.args["path"]
     # 打开指定路径
-    os.system('explorer "{}"'.format(movie_path))
+    os.system('explorer "{}"'.format(path))
     return 'ok'
-
-
-@app.route('/action/extend/insert/<extend_name>/<key>/<val>')
-def action_extend_insert(extend_name, key, val):
-    val = html.unescape(val)
+ 
+@app.route('/action/extend/insert')
+def action_extend_insert():
+    extend_name = request.args["extend_name"]
+    key = request.args["key"]
+    val = request.args["val"]
     # 格式化
     if extend_name == "movie_res":
         # key目前只会存avid所以upper无碍
@@ -367,11 +370,7 @@ def action_extend_insert(extend_name, key, val):
     
     valList = select_extend_value(extend_name, key)
     if val in valList:
-        sqltext = "DELETE FROM av_extend WHERE extend_name='{}' AND key='{}' AND val='{}';".format(
-            extend_name, key, val
-        )
-        execute_sql(sqltext)
-        return bizName + "已删除"
+        return "已存在不能重复添加"
     else:
         sqltext = "INSERT INTO av_extend (extend_name,key,val) VALUES ('{}','{}','{}')".format(
             extend_name, key, val
@@ -380,13 +379,16 @@ def action_extend_insert(extend_name, key, val):
         return bizName + '已添加'
 
 
-@app.route('/action/extend/delete/<extend_name>/<key>/<val>')
-def action_extend_delete(extend_name, key, val):
+@app.route('/action/extend/delete')
+def action_extend_delete():
+    extend_name = request.args["extend_name"]
+    key = request.args["key"]
+    val = request.args["val"]
     sqltext = "DELETE from av_extend WHERE extend_name='{}' AND key='{}' AND val='{}'".format(
         extend_name, key, val
     )
     execute_sql(sqltext)
-    return '扩展信息删除成功'
+    return '已删除'
 
 
 @app.route('/action/download/star/<linkid>')
@@ -463,6 +465,27 @@ def action_translate(data=''):
         return "出现错误.." + inputtext
     return tt[0].strip()[4:-5]
 
+@app.route('/action/analyse/star/<linkid>')
+def action_analyse_star(linkid=''):
+    sql = "SELECT * FROM av_list WHERE stars_url like '%|{}%';".format(linkid)
+    data = query_sql(sql, False)
+    genreAll = []
+    starsAll = []
+    lenSum = 0
+    for row in data:
+        genreAll.extend(row["genre"].split("|"))
+        starsAll.extend(row["stars"][1:].split("|"))
+        lenSum = lenSum + int(row["len"])
+    print(genreAll)
+    genreCounter = collections.Counter(genreAll)
+    starsCounter = collections.Counter(starsAll)
+    print(genreCounter)
+    print(starsCounter)
+    return {
+        "lenSum": lenSum,
+        "genreCounter": genreCounter,
+        "starsCounter": starsCounter
+    }
 
 def upperPath(path):
     # 如果为windows环境路径，则路径首字母大写
