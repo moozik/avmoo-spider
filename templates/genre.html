@@ -2,12 +2,15 @@
 {% block title %} 分类 {% endblock %}
 {% block container %}
 <div class="container-fluid pt-10">
-    <button class="genre-download-btn">更新类目</button>
+    <button class="btn btn-default genre-download-btn" title="update all">更新类目</button>
+    <a class="btn btn-default" href="/genre?calc=true" title="genre counter">统计类目总数</a>
     {% for item in data %}
     <h4>{{item.0.title}}</h4>
     <div class="row genre-box">
          {% for item2 in item %}
-        <a class="col-lg-2 col-md-2 col-sm-3 col-xs-6 text-center" href="/genre/{{item2.name}}">{{item2.name}}(<b style="color:red;">{{item2.genre_count}}</b>)</a>
+        <a class="col-lg-2 col-md-2 col-sm-3 col-xs-6 text-center" href="/genre/{{item2.name}}" target="_blank">{{item2.name}}
+            {% if item2.genre_count %}(<b style="color:red;">{{item2.genre_count}}</b>){% endif %}
+        </a>
          {% endfor %}
     </div>
     {% endfor %}
@@ -20,8 +23,7 @@
 <script>
 $('.genre-download-btn').click(function () {
     $.get("/action/download/genre", function (data) {
-        $('#message_title').html('正在更新类目。。。');
-        $('#message').modal('show');
+        showMessage('正在更新类目。。。', '');
     });
 });
 </script>

@@ -28,9 +28,9 @@
 								{% if data.av_stars.hometown %}<p>出生地: {{ data.av_stars.hometown }}</p>{% endif %}
 								{% if data.av_stars.hobby %}<p>爱好: {{ data.av_stars.hobby }}</p>{% endif %}
 								<p>影片数量: <b style="color:red;">{{page.count}}</b></p>
-								<p><button class="btn btn-success" onclick="downloadStar('{{data.av_stars.linkid}}')">更新影片列表</button></p>
-								<!-- <p><button class="btn btn-success" onclick="analyseStar('{{data.av_stars.linkid}}')">分析影片</button></p> -->
-								<p><a class="btn btn-default" href="{{avmoo_url}}/cn/star/{{data.av_stars.linkid}}" target="_blank">源站链接</a></p>
+								<p><button class="btn btn-success" onclick="downloadStar('{{data.av_stars.linkid}}')" title="update movie list">更新影片列表</button></p>
+								<p><button class="btn btn-success" onclick="analyseStar('{{data.av_stars.linkid}}')" title="analyse Actresses">分析影片</button></p>
+								<p><a class="btn btn-default" href="{{avmoo_url}}/cn/star/{{data.av_stars.linkid}}" title="origin movie link" target="_blank">源站链接</a></p>
 							</div>
 						</div>
 					</div>

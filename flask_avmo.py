@@ -118,16 +118,17 @@ def movie(linkid=''):
     if linkid == '':
         return redirect(url_for('index'), 404)
     if '-' in linkid:
-        where = ['av_list.av_id="{}"'.format(linkid.upper())]
+        where = 'av_list.av_id="{}"'.format(linkid.upper())
     else:
-        where = ['av_list.linkid="{}"'.format(linkid)]
-    sql_arr = select_av_list(
-        column='av_list.*', av_list_where=where, limit=(0, 1))
-
-    if sql_arr[0] == []:
+        where = 'av_list.linkid="{}"'.format(linkid)
+    movieList = query_sql("SELECT * FROM av_list WHERE {}".format(where))
+    if movieList == []:
         return redirect(url_for('index'), 404)
+    movie = movieList[0]
+    # 修复数据
+    if movie["genre"][0] != '|':
+        query_sql("update av_list set genre=('|' || genre || '|')  where genre not like '|%'")
 
-    movie = sql_arr[0][0]
     # 系列
     if movie['genre']:
         movie['genre_list'] = movie['genre'].split('|')
@@ -152,9 +153,8 @@ def movie(linkid=''):
         img = ''
     movie['imglist'] = img
     # 本地文件
-    movie['movie_resource_list'] = select_extend_value(
-        'movie_res', movie['av_id'])
-    return render_template('movie.html', data=movie, cdn=CDN_SITE, avmoo_url=SPIDER_AVMO.get_avmoo_site())
+    movie['movie_resource_list'] = select_extend_value('movie_res', movie['av_id'])
+    return render_template('movie.html', data=movie, cdn=CDN_SITE, avmoo_url=common.get_avmoo_site())
 
 
 @app.route('/director/<keyword>')
@@ -201,38 +201,25 @@ def search(keyword='', pagenum=1):
     if function != 'genre' and function != 'stars':
         keyword = ''
 
-    return render_template('index.html', data={'av_list': result[0], 'av_stars': starsData}, cdn=CDN_SITE, page=pagination(pagenum, result[1], page_root, PAGE_LIMIT), keyword=keyword, avmoo_url=SPIDER_AVMO.get_avmoo_site())
+    return render_template('index.html', data={'av_list': result[0], 'av_stars': starsData}, cdn=CDN_SITE, page=pagination(pagenum, result[1], page_root, PAGE_LIMIT), keyword=keyword, avmoo_url=common.get_avmoo_site())
 
 
 @app.route('/genre')
 def genre():
-    result = query_sql("SELECT av_genre.name,av_genre.title,COUNT(1) AS genre_count FROM av_genre LEFT JOIN (select genre from av_list)av_list ON INSTR ( av_list.genre, av_genre.name ) > 0 GROUP BY av_genre.linkid")
+    result = query_sql("SELECT av_genre.linkid,av_genre.name,av_genre.title FROM av_genre")
+    if 'calc' in request.values:
+        resultCount = query_sql("SELECT av_genre.linkid,av_genre.name,av_genre.title,COUNT(distinct av_list.linkid) AS gc FROM av_genre LEFT JOIN (select linkid,genre from av_list)av_list ON INSTR ( av_list.genre, '|' || av_genre.name || '|' ) > 0 GROUP BY av_genre.linkid")
     data = {}
     for item in result:
         if item['title'] not in data:
             data[item['title']] = []
+        if 'calc' in request.values:
+            for itemCount in resultCount:
+                if itemCount["linkid"] == item["linkid"]:
+                    item["genre_count"] = itemCount["gc"]
         data[item['title']].append(item)
     data = list(data.values())
     return render_template('genre.html', data=data, cdn=CDN_SITE, page={'pageroot': "/genre", 'count': len(result)})
-
-
-@app.route('/like/add/<data_type>/<data_val>')
-def like_add(data_type=None, data_val=None):
-    if data_type != None and data_val != None:
-        timetext = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        sqltext = "REPLACE INTO av_like VALUES('{}', '{}', '{}')".format(
-            data_type, data_val, timetext)
-        execute_sql(sqltext)
-        return '已添加收藏'
-
-
-@app.route('/like/del/<data_type>/<data_val>')
-def like_del(data_type=None, data_val=None):
-    if data_type != None and data_val != None:
-        sqltext = "DELETE FROM av_like WHERE type='{}' AND val='{}'".format(
-            data_type, data_val)
-        execute_sql(sqltext)
-        return '已删除收藏'
 
 
 @app.route('/actresses')
@@ -309,6 +296,9 @@ def action_scandisk():
         sqltext = "SELECT * FROM 'av_list' WHERE av_id in ('{}')".format(
             "','".join(av_id_list))
         for row in query_sql(sqltext, False):
+            # 图片地址
+            row['smallimage'] = row['bigimage'].replace(
+                'pl.jpg', 'ps.jpg')
             av_data_map[row["av_id"]] = row
 
     for i in range(len(file_res)):
@@ -321,16 +311,7 @@ def action_scandisk():
                 file_res[i]['info'] += spanColor("[影片未抓取]", "red")
         file_res[i]['info'] = file_res[i]['info'].strip(',')
 
-    return render_template('scandisk.html', file_res=file_res, av_data_map=av_data_map, file_target=file_target, path_target=path_target, avmoo_url=SPIDER_AVMO.get_avmoo_site())
-
-# 遍历文件
-
-
-def walk_all_files(path_target):
-    for root, dirs, files in os.walk(path_target):
-        for file in files:
-            yield root, file
-
+    return render_template('scandisk.html', file_res=file_res, av_data_map=av_data_map, file_target=file_target, path_target=path_target, avmoo_url=common.get_avmoo_site(), cdn=CDN_SITE)
 
 @app.route('/action/catch/switch')
 def action_catch_switch():
@@ -391,29 +372,36 @@ def action_extend_delete():
     return '已删除'
 
 
-@app.route('/action/download/star/<linkid>')
-def action_download_star(linkid=''):
+@app.route('/action/download/star', methods=['POST'])
+def action_download_star():
     global SPIDER_AVMO
+    print(request.form)
+    linkidListText = request.form['linkid']
+    linkidList = [x.strip() for x in linkidListText.split("\n") if isLinkId(x)]
 
-    if linkid == 'all':
+    if linkidListText == 'all':
         star_list = query_sql("SELECT linkid FROM av_stars")
-        _thread.start_new_thread(SPIDER_AVMO.spider_by_stars_list, ([
-                                 x['linkid'] for x in star_list],))
+        # 增量更新
+        _thread.start_new_thread(SPIDER_AVMO.spider_by_stars_list, ([x['linkid'] for x in star_list], True))
         return '正在下载所有...'
 
-    if not isLinkId(linkid):
-        return 'id格式不正确'
-    _thread.start_new_thread(SPIDER_AVMO.spider_by_stars, (linkid, False))
-    return '{},正在下载...'.format(linkid)
+    if len(linkidList) == 0:
+        return '请输入有效id'
+    # 全量更新
+    _thread.start_new_thread(SPIDER_AVMO.spider_by_stars_list, (linkidList, False))
+    return '正在下载({})...'.format(len(linkidList))
 
 
-@app.route('/action/download/movie/<linkid>')
-def action_download_movie(linkid=''):
+@app.route('/action/download/movie', methods=['POST'])
+def action_download_movie():
     global SPIDER_AVMO
-    if not isLinkId(linkid):
-        return 'id格式不正确'
-    _thread.start_new_thread(SPIDER_AVMO.spider_by_movie, (linkid, ))
-    return '{},正在下载影片...'.format(linkid)
+    print(request.form)
+    linkidListText = request.form['linkid']
+    linkidList = [x.strip() for x in linkidListText.split("\n") if isLinkId(x)]
+    if len(linkidList) == 0:
+        return '请输入有效id'
+    _thread.start_new_thread(SPIDER_AVMO.spider_by_movie_list, (linkidList, ))
+    return '正在下载({})影片...'.format(len(linkidList))
 
 
 @app.route('/action/download/genre')
@@ -449,9 +437,9 @@ def action_delete_stars(linkid=''):
     return 'stars已删除'
 
 
-@app.route('/action/translate/<data>')
-def action_translate(data=''):
-    tmp = data.split(' ')
+@app.route('/action/translate')
+def action_translate():
+    tmp = request.values["words"].split(' ')
     tmp.pop(0)
     inputtext = ''.join(tmp)
 
@@ -465,26 +453,43 @@ def action_translate(data=''):
         return "出现错误.." + inputtext
     return tt[0].strip()[4:-5]
 
+
 @app.route('/action/analyse/star/<linkid>')
 def action_analyse_star(linkid=''):
     sql = "SELECT * FROM av_list WHERE stars_url like '%|{}%';".format(linkid)
     data = query_sql(sql, False)
     genreAll = []
     starsAll = []
-    lenSum = 0
+    minuteSum = 0
     for row in data:
-        genreAll.extend(row["genre"].split("|"))
-        starsAll.extend(row["stars"][1:].split("|"))
-        lenSum = lenSum + int(row["len"])
-    print(genreAll)
-    genreCounter = collections.Counter(genreAll)
-    starsCounter = collections.Counter(starsAll)
-    print(genreCounter)
-    print(starsCounter)
+        genreAll.extend(row["genre"].strip('|').split("|"))
+        starsAll.extend(row["stars"].strip('|').split("|"))
+        minuteSum = minuteSum + int(row["len"])
+
+    genreCounter = collections.OrderedDict(sorted(collections.Counter(genreAll).items(), key=lambda x:x[1], reverse=True))
+    starsCounter = collections.OrderedDict(sorted(collections.Counter(starsAll).items(), key=lambda x:x[1], reverse=True))
+
+    genreList = []
+    starsList = []
+
+    for key in list(genreCounter.keys()):
+        genreList.append({
+            'name': key,
+            'count': genreCounter[key]
+        })
+            
+    headList = list(starsCounter.keys())[:21]
+    for key in list(starsCounter.keys()):
+        if key in headList:
+            starsList.append({
+                'name': key,
+                'count': starsCounter[key]
+            })
     return {
-        "lenSum": lenSum,
-        "genreCounter": genreCounter,
-        "starsCounter": starsCounter
+        "starName": starsList[0]['name'],
+        "minuteSum": minuteSum,
+        "genreCounter": genreList,
+        "starsCounter": starsList[1:]
     }
 
 def upperPath(path):
@@ -494,24 +499,15 @@ def upperPath(path):
     else:
         return path
 
-
+# 上色
 def spanColor(content, color):
     return '<span style="color:{}">{}</span>'.format(color, content)
+
 
 # 识别linkid
 def isLinkId(linkid=''):
     return re.match('^[a-z0-9]{16}$', linkid)
 
-
-def select_extend_value(extend_name, key):
-    sqltext = "SELECT val from av_extend WHERE extend_name='{}' AND key='{}'".format(
-        extend_name, key
-    )
-    ret = query_sql(sqltext, False)
-    if len(ret) == 0:
-        return []
-    else:
-        return [x["val"] for x in ret]
 
 # 分页
 def pagination(pagenum, count, pageroot, pagelimit):
@@ -550,6 +546,7 @@ def pagination(pagenum, count, pageroot, pagelimit):
     }
 
 
+# 数据库链接
 def conn():
     CONN = sqlite3.connect(common.get_db_file(), check_same_thread=False)
     CUR = CONN.cursor()
@@ -559,6 +556,7 @@ def conn():
     }
 
 
+# 查询列表
 def select_av_list(column='*', av_list_where=[], limit=(0, 30), order='release_date DESC', othertable=''):
     order = 'ORDER BY ' + order
 
@@ -570,15 +568,15 @@ def select_av_list(column='*', av_list_where=[], limit=(0, 30), order='release_d
     result = query_sql(sqltext + ' LIMIT {},{}'.format(limit[0], limit[1]))
 
     # 扩展信息
-    extendList = select_extend_by_key([x["av_id"] for x in result])
+    extendList = select_extend_list('movie_res',[x["av_id"] for x in result])
     for i in range(len(result)):
         # 图片地址
         result[i]['smallimage'] = result[i]['bigimage'].replace(
             'pl.jpg', 'ps.jpg')
         # 扩展信息
-        if result[i]['av_id'] not in extendList or 'movie_res' not in extendList[result[i]['av_id']]:
+        if result[i]['av_id'] not in extendList:
             continue
-        for extend in extendList[result[i]['av_id']]['movie_res']:
+        for extend in extendList[result[i]['av_id']]:
             if extend[:6] == "magnet" or extend[:3] == "115":
                 result[i]['magnet'] = 1
                 continue
@@ -589,32 +587,65 @@ def select_av_list(column='*', av_list_where=[], limit=(0, 30), order='release_d
     res_count = query_sql('SELECT COUNT(1) AS count FROM ({})'.format(sqltext))
     return (result, res_count[0]['count'])
 
+
 # 获取指定key的扩展信息
-def select_extend_by_key(keyList):
+def select_extend_list(extend_name, keyList):
     if len(keyList) == 0:
         return {}
-    sqltext = "SELECT key,extend_name,val from av_extend WHERE key IN ('{}')".format(
-        "','".join(keyList))
+    sqltext = "SELECT key,val from av_extend WHERE extend_name='{}' AND key IN ('{}')".format(
+        extend_name, "','".join(keyList))
     result = query_sql(sqltext)
     ret = {}
     for extend in result:
         if extend['key'] not in ret:
-            ret[extend['key']] = {}
-
-        if extend['extend_name'] not in ret[extend['key']]:
-            ret[extend['key']][extend['extend_name']] = []
-        ret[extend['key']][extend['extend_name']].append(extend['val'])
+            ret[extend['key']] = []
+        ret[extend['key']].append(extend['val'])
     return ret
 
 
+# 获取指定key的扩展信息
+def select_extend_value(extend_name, key):
+    sqltext = "SELECT val from av_extend WHERE extend_name='{}' AND key='{}'".format(
+        extend_name, key
+    )
+    ret = query_sql(sqltext, False)
+    if len(ret) == 0:
+        return []
+    else:
+        return [x["val"] for x in ret]
+
+
+# 遍历文件
+def walk_all_files(path_target):
+    for root, dirs, files in os.walk(path_target):
+        for file in files:
+            yield root, file
+
+# 执行sql
 def execute_sql(sql):
+    print("SQL EXEC:\n{}".format(sql))
     DB['CUR'].execute(sql)
     DB['CONN'].commit()
-    SQL_CACHE = {}
+    tableName = get_table_name(sql)[0]
+    #清楚指定表的缓存
+    for cacheKey in list(SQL_CACHE.keys()):
+        if tableName in cacheKey:
+            del SQL_CACHE[cacheKey]
 
 
+# 获取sql中的表名
+def get_table_name(sql):
+    return list(set(re.findall("(av_[^ \.\*]+)", sql)))
+
+
+# 获取缓存key
+def cache_key(sql):
+    return '|'.join(get_table_name(sql)) + ':' + str(binascii.crc32(sql.encode()) & 0xffffffff)
+
+
+# 查询sql
 def query_sql(sql, ifCache=True) -> list:
-    cacheKey = (binascii.crc32(sql.encode()) & 0xffffffff)
+    cacheKey = cache_key(sql)
     # 是否使用缓存
     if IF_USE_CACHE and ifCache:
         # 是否有缓存

@@ -78,7 +78,7 @@ class Avmo:
             # 'https':'http://127.0.0.1:1080'
         }
         # 番号主页url
-        self.movie_url = self.get_avmoo_site() + '/movie/'
+        self.movie_url = common.get_avmoo_site() + '/movie/'
         # 导演 制作 发行 系列
         self.director_url = self.get_url('director', '')
         self.studio_url = self.get_url('studio', '')
@@ -93,22 +93,12 @@ class Avmo:
         # 如果不存在则新建表
         buildSqliteDb(self.CONN, self.CUR)
     
-    def get_avmoo_site(self):
-        if hasattr(self, 'site_url') and self.site_url != None:
-            return self.site_url
-        
-        res = self.s.get('https://tellme.pw/avmoo')
-        html = etree.HTML(res.text)
-        avmoUrl = html.xpath('/html/body/div[1]/div[2]/div/div[2]/h4[1]/strong/a/@href')[0]
-        print("newUrl:{}".format(avmoUrl))
-        self.site_url = avmoUrl
-        return avmoUrl
 
     def get_url(self, pagetype, linkid, page_no=None):
         if page_no == None or page_no == 1:
-            return '{}/{}/{}/{}'.format(self.get_avmoo_site(), common.get_country(), pagetype, linkid)
+            return '{}/{}/{}/{}'.format(common.get_avmoo_site(), common.get_country(), pagetype, linkid)
         else:
-            return '{}/{}/{}/{}/page/{}'.format(self.get_avmoo_site(), common.get_country(), pagetype, linkid, page_no)
+            return '{}/{}/{}/{}/page/{}'.format(common.get_avmoo_site(), common.get_country(), pagetype, linkid, page_no)
 
     def linkid_general_by_stars(self, stars_id):
         for page_no in range(1, 1000):
@@ -127,32 +117,50 @@ class Avmo:
             for item in movieIdList:
                 yield item[-16:]
 
-    # 根据列表抓取
-    def spider_by_stars_list(self, stars_id_list):
-        for stars in stars_id_list:
-            # 全集搜索，碰到相同就跳出
-            self.spider_by_stars(stars, True)
 
     # 抓取指定影片
-    def spider_by_movie(self, movie_linkid):
-        url = self.get_url('movie', movie_linkid)
-        res = self.s.get(url)
-        try:
-            html = etree.HTML(res.text)
-        except:
-            print(url, 'etree.HTML error')
-            return
+    def spider_by_movie_list(self, movie_linkid_list):
+        print("spider_by_movie_list:\n", movie_linkid_list)
+        # 待插入
+        insert_list = []
+        insert_count = 0
+        for linkid in movie_linkid_list:
+            url = self.get_url('movie', linkid)
+            res = self.s.get(url)
+            try:
+                html = etree.HTML(res.text)
+            except:
+                print(url, 'etree.HTML error')
+                return
 
-        # 解析页面内容
-        data = self.movie_page_data(html)
-        data['linkid'] = movie_linkid
-        self.movie_save([tuple(data.values())])
-        print("影片{}抓取完成".format(movie_linkid))
-    
+            # 解析页面内容
+            data = self.movie_page_data(html)
+            data['linkid'] = linkid
+            # 输出当前进度
+            print(data['av_id'].ljust(15), data['release_date'].ljust(11), data['stars'])
+            insert_list.append(tuple(data.values()))
+            # 存储数据
+            if len(insert_list) == self.insert_threshold:
+                self.movie_save(insert_list)
+                insert_count += len(insert_list)
+                insert_list = []
+        # 插入剩余的数据
+        self.movie_save(insert_list)
+        insert_count += len(insert_list)
+        print("done.count:{}".format(insert_count))
+
+    # 根据列表抓取
+    def spider_by_stars_list(self, stars_id_list, is_increment):
+        print("spider_by_stars_list:\n", stars_id_list)
+        for stars in stars_id_list:
+            # 全集搜索
+            self.spider_by_stars(stars, is_increment)
+
     # 主函数，抓取页面内信息
     def spider_by_stars(self, stars_linkid, is_increment):
         starsData = self.stars_one(stars_linkid)
-        print("[{}] spider_by_stars start".format(starsData['name']))
+        print("-" * 20)
+        print("[{}]start".format(starsData['name']))
         # 查询db全集去重
         self.CUR.execute(
             "SELECT linkid from av_list where stars_url LIKE '%{}%'".format(stars_linkid))
@@ -204,7 +212,8 @@ class Avmo:
         insert_count += len(insert_list)
         print("stars:{},insert_count:{},skip_count:{}".format(
             starsData['name'], insert_count, skip_count))
-        print("[{}] spider_by_stars end".format(starsData['name']))
+        print("[{}]end".format(starsData['name']))
+        print()
 
     # 获取一个明星的信息
     def stars_one(self, linkid):
@@ -368,13 +377,8 @@ class Avmo:
                 data['series_url'] = tmp_href[-16:]
 
         # 获取类别列表genre 类别列表genre_url
-        data['genre'] = '|'.join(html.xpath(
-            '/html/body/div[2]/div[1]/div[2]/p/span/a/text()')).replace("'", '"')
-        # genre_url_list = html.xpath(
-        #     '/html/body/div[2]/div[1]/div[2]/p/span/a/@href')
-        # if genre_url_list != None and len(genre_url_list) != 0:
-        #     data[10] = '|' + '|'.join(
-        #         [re.findall('([a-z0-9]+)$', x)[0] for x in genre_url_list])
+        data['genre'] = '|' + '|'.join(html.xpath(
+            '/html/body/div[2]/div[1]/div[2]/p/span/a/text()')).replace("'", '"') + '|'
 
         # 演员stars
         data['stars'] = '|'.join(html.xpath(

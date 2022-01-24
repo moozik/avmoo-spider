@@ -15,44 +15,44 @@
             <p>
                 <span class="header">识别码:</span>
                 <span style="color:#CC0000;">{{data.av_id}}</span>
-                <button class="btn btn-default" type="submit" onclick="insertMovieExtend('like', 'av_id', '{{data.av_id}}')">收藏</button>
+                <button class="btn btn-default" type="submit" onclick="insertMovieExtend('like', 'av_id', '{{data.av_id}}')" title="add Favorites">收藏</button>
             </p>
             {% if data.release_date %}
                 <p>
-                    <span class="header">发行时间:</span> {{data.release_date}}
+                    <span class="header" title="release date">发行时间:</span> {{data.release_date}}
                 </p>
             {% endif %}
             {% if data.len %}
                 <p>
-                    <span class="header">长度:</span> {{data.len}}分钟
+                    <span class="header" title="length">长度:</span> {{data.len}}分钟
                 </p>
             {% endif %}
             {% if data.director_url %}
                 <p>
-                    <span class="header">导演:</span>
+                    <span class="header" title="director">导演:</span>
                     <a data-type="director_url" data-val="{{data.director_url}}" href="/director/{{data.director_url}}">{{data.director}}</a>
                 </p>
             {% endif %}
             {% if data.studio_url %}
-                <p class="header">制作商: </p>
+                <p class="header" title="studio">制作商: </p>
                 <p>
                     <a data-type="studio_url" data-val="{{data.studio_url}}" href="/studio/{{data.studio_url}}">{{data.studio}}</a>
                 </p>
             {% endif %}
             {% if data.label_url %}
-                <p class="header">发行商: </p>
+                <p class="header" title="label">发行商: </p>
                 <p>
                     <a data-type="label_url" data-val="{{data.label_url}}" href="/label/{{data.label_url}}">{{data.label}}</a>
                 </p>
             {% endif %}
             {% if data.series_url %}
-                <p class="header">系列:</p>
+                <p class="header" title="series">系列:</p>
                 <p>
                     <a data-type="series_url" data-val="{{data.series_url}}" href="/series/{{data.series_url}}">{{data.series}}</a>
                 </p>
             {% endif %}
             {% if data.genre_list %}
-            <p class="header">类别:</p>
+            <p class="header" title="genre">类别:</p>
             <p>
                  {% for item in data.genre_list %}
                     <span class="genre">
@@ -89,14 +89,14 @@
 
     <h4>影片资源</h4>
     <div class="row">
-        <input id="movie_resource" type="text" class="form-control" style="max-width: 400px;" placeholder="磁力链接 | 本地路径 | 在线地址" />
-        <button class="btn btn-default insert-movie-local" type="submit" onclick="insertMovieExtend('movie_res', '{{data.av_id}}', document.querySelector('#movie_resource').value)">保存</button>
+        <input id="movie_resource" type="text" class="form-control" style="max-width: 400px;" placeholder="磁力链接 | 本地路径 | 在线地址" title="magnet | local movie path | url"/>
+        <button class="btn btn-default insert-movie-local" type="submit" onclick="insertMovieExtend('movie_res', '{{data.av_id}}', document.querySelector('#movie_resource').value)" title="save extend data">保存</button>
         <ul>
         {% for movie_resource in data.movie_resource_list %}
             <li>
                 <a href="{{movie_resource}}" target="_blank">{{movie_resource}}</a>
-                <button class="btn btn-default" onclick="deleteMovieExtend('movie_res','{{data.av_id}}', this.getAttribute('data-val'));location.reload();" data-val="{{movie_resource}}" type="submit">删除记录</button>
-                <button class="btn btn-default" onclick="explorerLocal(this.getAttribute('data-val'))" data-val="{{movie_resource}}" type="submit">本地打开</button>
+                <button class="btn btn-default" onclick="deleteMovieExtend('movie_res','{{data.av_id}}', this.getAttribute('data-val'));location.reload();" data-val="{{movie_resource}}" type="submit" title="del">删除记录</button>
+                <button class="btn btn-default" onclick="explorerLocal(this.getAttribute('data-val'))" data-val="{{movie_resource}}" type="submit" title="explorer local">本地打开</button>
             </li>
         {% endfor %}
         </ul>
@@ -144,24 +144,10 @@
 
 {% block javascript %}
 <script>
-    // $('.like').each(function () {
-    //     $(this).after('<span title="收藏" class="glyphicon glyphicon-star-empty stars-btn" style="padding: 2px;color: #FFC107;"></span>');
-    // });
-    // $('.stars-btn').click(function(){
-    //     var data_type = $($(this)[0].previousElementSibling).data('type');
-    //     var data_val = $($(this)[0].previousElementSibling).data('val');
-    //     $.get("/action/extend/insert/like/" + data_type + '/'+ data_val,function(data){
-    //         $('#message_title').html(data);
-    //         $('#message').modal('show');
-    //     });
-    // });
-    // $('.delete-movie-local').click(function(){
-    //     $.get("/action/extend/delete/movie_res/{{data.av_id}}/" + encodeURIComponent($(this).data('val')),function(data){
-    //         location.reload();
-    //     });
-    // });
     function translateTitle(avid){
-        $.get("/action/translate/" + encodeURIComponent(document.querySelector("#av_title").innerText),function(data){
+        $.get("/action/translate",{
+            "words": document.querySelector("#av_title").innerText
+        } ,function(data){
             document.querySelector("#av_title").innerText = avid + ' ' + data;
         });
     }
