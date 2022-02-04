@@ -11,9 +11,9 @@
 						<div class="avatar-box">
 							<div class="photo-frame">
 								{% if data.av_stars.headimg %}
-								<img src="{{cdn}}/{{data.av_stars.headimg}}" title="">
+								<img src="{{config['website']['cdn']}}/{{data.av_stars.headimg}}" title="">
 								{% else %}
-								<img src="{{cdn}}/mono/actjpgs/nowprinting.gif" title="">
+								<img src="{{config['website']['cdn']}}/mono/actjpgs/nowprinting.gif" title="">
 								{% endif %}
 							</div>
 							<div class="photo-info">
@@ -28,9 +28,9 @@
 								{% if data.av_stars.hometown %}<p>出生地: {{ data.av_stars.hometown }}</p>{% endif %}
 								{% if data.av_stars.hobby %}<p>爱好: {{ data.av_stars.hobby }}</p>{% endif %}
 								<p>影片数量: <b style="color:red;">{{page.count}}</b></p>
-								<p><button class="btn btn-success" onclick="downloadStar('{{data.av_stars.linkid}}')" title="update movie list">更新影片列表</button></p>
+								<p><button class="btn btn-success" onclick="crawlStar('{{data.av_stars.linkid}}')" title="update movie list">更新影片列表</button></p>
 								<p><button class="btn btn-success" onclick="analyseStar('{{data.av_stars.linkid}}')" title="analyse Actresses">分析影片</button></p>
-								<p><a class="btn btn-default" href="{{avmoo_url}}/cn/star/{{data.av_stars.linkid}}" title="origin movie link" target="_blank">源站链接</a></p>
+								<p><a class="btn btn-default" href="{{config['base']['avmoo_site']}}/cn/star/{{data.av_stars.linkid}}" title="origin movie link" target="_blank">源站链接</a></p>
 							</div>
 						</div>
 					</div>
@@ -42,7 +42,7 @@
 					<div class="item">
 						<a class="movie-box" href="/movie/{{ item.linkid }}">
 							<div class="photo-frame">
-								<img src="{{ cdn }}/digital/video{{ item.smallimage }}" title="标签:{{ item.genre }}
+								<img src="{{config['website']['cdn']}}/digital/video{{ item.smallimage }}" title="标签:{{ item.genre }}
 演员:{{ item.stars }}">
 							</div>
 							<div class="photo-info">

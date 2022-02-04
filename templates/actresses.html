@@ -11,21 +11,9 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-md-1"></div>
-        <div class="col-md-3">
-            <div class="input-group" style="margin-top:20px;">
-                <textarea class="form-control" id="movie_linkid" placeholder="影片ID,例:f979b8b2a02901dd" style="width: 300px;height: 50px;" title="movie id,eg:f979b8b2a02901dd"></textarea>
-                <button class="btn btn-default" onclick='downloadMovie(document.querySelector("#movie_linkid").value)' title="download by movie id">下载指定影片</button>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="input-group" style="margin-top:20px;">
-                <textarea class="form-control" id="stars_linkid" placeholder="演员ID,例:09206c6bbe8d918f" style="width: 300px;height: 50px;" title="Actresses id,eg:09206c6bbe8d918f"></textarea>
-                <button class="btn btn-default" onclick='downloadStar(document.querySelector("#stars_linkid").value)' title="download by Actresses id">下载指定演员</button>
-            </div>
-        </div>
         <div class="col-md-1">
             <div class="input-group" style="margin-top:20px;">
-                <button class="btn btn-default" onclick="downloadStar('all')" title="update all movie">更新所有影片</button>
+                <button class="btn btn-default" onclick="crawlStar('all')" title="update all movie">更新所有影片</button>
             </div>
         </div>
     </div>
@@ -36,16 +24,16 @@
                 <a class="" href="/stars/{{item.linkid}}" title="{{item.time}}">
                     <div class="photo-frame">
                         {% if item.headimg %}
-                        <img src="{{cdn}}/{{item.headimg}}" title="">
+                        <img src="{{config['website']['cdn']}}/{{item.headimg}}" title="">
                         {% else %}
-                        <img src="{{cdn}}/mono/actjpgs/nowprinting.gif" title="">
+                        <img src="{{config['website']['cdn']}}/mono/actjpgs/nowprinting.gif" title="">
                         {% endif %}
                     </div>
                 </a>
                 <span>{{item.name}}</span>
                 <span>作品 <b style="color:red;">{{item.movie_count}}</b></span>
                 <span>最新 <b style="color:red;">{{item.release_date}}</b></span>
-                <span><button class="btn btn-default" onclick="downloadStar('{{item.linkid}}')" title="update movie list">更新影片</button></span>
+                <span><button class="btn btn-default" onclick="crawlStar('{{item.linkid}}')" title="update movie list">更新影片</button></span>
             </div>
             {% endfor %}
         </div>

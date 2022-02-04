@@ -4,11 +4,11 @@
 <div class="container">
     <h3 id="av_title">{{data.title}}</h3>
     <button class="btn btn-default" onclick="translateTitle('{{data.av_id}}')">翻译</button>
-    <a class="btn btn-default" href="{{avmoo_url}}/cn/movie/{{data.linkid}}" target="_blank">源站链接</a>
+    <a class="btn btn-default" href="{{config['base']['avmoo_site']}}/cn/movie/{{data.linkid}}" target="_blank">源站链接</a>
     <div class="row movie">
         <div class="col-md-9 screencap">
-            <a class="bigImage" href="{{cdn}}/digital/video{{data.bigimage}}" title="{{data.title}}">
-                <img src="{{cdn}}/digital/video{{data.bigimage}}">
+            <a class="bigImage" href="{{config['website']['cdn']}}/digital/video{{data.bigimage}}" title="{{data.title}}">
+                <img src="{{config['website']['cdn']}}/digital/video{{data.bigimage}}">
             </a>
         </div>
         <div class="col-md-3 info">
@@ -16,6 +16,7 @@
                 <span class="header">识别码:</span>
                 <span style="color:#CC0000;">{{data.av_id}}</span>
                 <button class="btn btn-default" type="submit" onclick="insertMovieExtend('like', 'av_id', '{{data.av_id}}')" title="add Favorites">收藏</button>
+                <button class="btn btn-default" type="submit" onclick="crawlAccurate('movie', '{{data.linkid}}')" title="crawl again">抓取</button>
             </p>
             {% if data.release_date %}
                 <p>
@@ -110,9 +111,9 @@
         <a data-type="stars_url" data-val="{{item.linkid}}" class="avatar-box" href="/stars/{{item.linkid}}">
             <div class="photo-frame">
                 {% if item.headimg %}
-                <img src="{{cdn}}/{{item.headimg}}" title="">
+                <img src="{{config['website']['cdn']}}/{{item.headimg}}" title="">
                 {% else %}
-                <img src="{{cdn}}/mono/actjpgs/nowprinting.gif" title="">
+                <img src="{{config['website']['cdn']}}/mono/actjpgs/nowprinting.gif" title="">
                 {% endif %}
             </div>
             <span>{{item.name}}</span>

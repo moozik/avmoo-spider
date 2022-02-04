@@ -22,7 +22,7 @@
 {% block javascript %}
 <script>
 $('.genre-download-btn').click(function () {
-    $.get("/action/download/genre", function (data) {
+    $.get("/action/crawl/genre", function (data) {
         showMessage('正在更新类目。。。', '');
     });
 });

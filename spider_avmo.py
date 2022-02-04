@@ -1,15 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
-import sys
 import time
-import getopt
 import requests
-import sqlite3
-import math
 import re
-import os
 from lxml import etree
-from install import buildSqliteDb
 import common
 '''
 图片服务器:
@@ -25,26 +19,16 @@ https://pics.javcdn.pw/cover/3tya_b.jpg
 https://pics.javcdn.pw/cover/{{linkid}}_b.jpg
 '''
 
-
 class Avmo:
 
     def __init__(self):
         print('avmo.init')
-        # ================主要配置================
-
-        # sqlite数据库地址
-        self.sqlite_file = common.get_db_file()
-        # 主函数延时 越慢越稳，请求过快会403
-        self.main_sleep = 1.5
-
         # 其他配置初始化
         self.config()
 
     # 默认配置
     def config(self):
         print('avmo.config')
-        # 插入阈值
-        self.insert_threshold = 10
 
         # 主表
         self.table_main = 'av_list'
@@ -64,160 +48,190 @@ class Avmo:
         # 表结构str
         self.column_str = ",".join(self.column)
         # 链接数据库
-        self.conn()
+        self.CONN = common.DB["CONN"]
+        self.CUR = common.DB["CUR"]
 
         # 创建会话对象
         self.s = requests.Session()
         # 超时时间
-        self.s.timeout = 3
+        self.s.timeout = common.CONFIG.getint("requests","timeout")
         self.s.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36',
+            'User-Agent': common.CONFIG.get("requests","user_agent"),
         }
         # 代理
         self.s.proxies = {
             # 'https':'http://127.0.0.1:1080'
         }
-        # 番号主页url
-        self.movie_url = common.get_avmoo_site() + '/movie/'
-        # 导演 制作 发行 系列
-        self.director_url = self.get_url('director', '')
-        self.studio_url = self.get_url('studio', '')
-        self.label_url = self.get_url('label', '')
-        self.series_url = self.get_url('series', '')
-
-    # sqlite conn
-    def conn(self):
-        # 链接sqlite
-        self.CONN = sqlite3.connect(self.sqlite_file, check_same_thread=False)
-        self.CUR = self.CONN.cursor()
-        # 如果不存在则新建表
-        buildSqliteDb(self.CONN, self.CUR)
     
 
-    def get_url(self, pagetype, linkid, page_no=None):
-        if page_no == None or page_no == 1:
-            return '{}/{}/{}/{}'.format(common.get_avmoo_site(), common.get_country(), pagetype, linkid)
-        else:
-            return '{}/{}/{}/{}/page/{}'.format(common.get_avmoo_site(), common.get_country(), pagetype, linkid, page_no)
+    def get_url(self, page_type, linkid, page_no=1):
+        ret = '{}/{}/{}/{}'.format(common.CONFIG.get("base","avmoo_site"), common.CONFIG.get("base","country"), page_type, linkid)
+        if page_no > 1:
+            ret = ret + '/page/{}'.format(page_no)
+        return ret
+    
+    # 识别url抓取
+    def crawl_by_url(self, link_list):
+        for link in link_list:
+            time.sleep(common.CONFIG.getfloat("spider","sleep"))
+            if link == None or link == "":
+                continue
+            res = re.findall("https?://[^/]+/[^/]+/(movie|star|genre|series|studio|label|director|search)/([^/]+)(/page/(\d+))?", link)
+            if res == None or len(res) == 0:
+                print("格式不正确,link:{}".format(link))
+                continue
+            page_type = res[0][0]
+            keyword = res[0][1]
+            page_start = 1
+            if res[0][3] != "":
+                page_start = int(res[0][3])
+            
+            ret = self.crawl_accurate(page_type, keyword, page_start)
+            if not ret:
+                print("错误的链接,link:{},res:{}".format(link, res))
+    
+    # 根据链接参数抓取
+    def crawl_accurate(self, page_type, keyword, page_start = 1, is_increment = False):
+        # 单个电影
+        if page_type == "movie":
+            data = self.crawl_by_movie_linkid(keyword)
+            if data == None:
+                return False
+            self.movie_save([tuple(data.values())])
+            return True
+        # 演员
+        if page_type == "star":
+            self.crawl_by_stars(keyword, is_increment, page_start)
+            return True
+        # 其他
+        if page_type in ('genre','series','studio','label','director','search'):
+            self.crawl_by_page_type(page_type, keyword, page_start)
+            return True
+        print("错误的参数,page_type:{}, keyword:{}, page_start:{}".format(page_type, keyword, page_start))
+        return False
 
-    def linkid_general_by_stars(self, stars_id):
-        for page_no in range(1, 1000):
-            url = self.get_url('star', stars_id, page_no)
-            # time.sleep(500)
+    # 自动翻页返回movie_id
+    def linkid_general(self, page_type, keyword, page_start = 1):
+        for page_no in range(page_start, 100000):
+            url = self.get_url(page_type, keyword, page_no)
             res = self.s.get(url)
             if res.status_code != 200:
-                print("get:{},status_code:{}".format(url, res.status_code))
+                print("status_code:{},get:{}".format(res.status_code, url))
                 break
             html = etree.HTML(res.text)
-            print("get:{},page_length:{}".format(url, len(res.text)))
-            movieIdList = html.xpath('//*[@id="waterfall"]/div/a/@href')
-            if movieIdList == [] or movieIdList == None:
+            print("get:{}".format(url))
+            movie_id_list = html.xpath('//*[@id="waterfall"]/div/a/@href')
+            if movie_id_list == []:
                 print("page empty break")
                 break
-            for item in movieIdList:
+            for item in movie_id_list:
                 yield item[-16:]
 
+            # 检查是否有下一页
+            next_page = html.xpath('//span[@class="glyphicon glyphicon-chevron-right"]')
+            if next_page == []:
+                break
 
-    # 抓取指定影片
-    def spider_by_movie_list(self, movie_linkid_list):
-        print("spider_by_movie_list:\n", movie_linkid_list)
-        # 待插入
-        insert_list = []
-        insert_count = 0
-        for linkid in movie_linkid_list:
-            url = self.get_url('movie', linkid)
-            res = self.s.get(url)
-            try:
-                html = etree.HTML(res.text)
-            except:
-                print(url, 'etree.HTML error')
-                return
-
-            # 解析页面内容
-            data = self.movie_page_data(html)
-            data['linkid'] = linkid
-            # 输出当前进度
-            print(data['av_id'].ljust(15), data['release_date'].ljust(11), data['stars'])
-            insert_list.append(tuple(data.values()))
-            # 存储数据
-            if len(insert_list) == self.insert_threshold:
-                self.movie_save(insert_list)
-                insert_count += len(insert_list)
-                insert_list = []
-        # 插入剩余的数据
-        self.movie_save(insert_list)
-        insert_count += len(insert_list)
-        print("done.count:{}".format(insert_count))
-
-    # 根据列表抓取
-    def spider_by_stars_list(self, stars_id_list, is_increment):
-        print("spider_by_stars_list:\n", stars_id_list)
+    # 根据演员列表抓取 增量更新
+    def crawl_by_stars_list(self, stars_id_list, is_increment):
         for stars in stars_id_list:
-            # 全集搜索
-            self.spider_by_stars(stars, is_increment)
+            self.crawl_by_stars(stars, is_increment)
 
-    # 主函数，抓取页面内信息
-    def spider_by_stars(self, stars_linkid, is_increment):
+    # 抓取演员所有影片
+    def crawl_by_stars(self, stars_linkid, is_increment, page_start = 1):
         starsData = self.stars_one(stars_linkid)
         print("-" * 20)
-        print("[{}]start".format(starsData['name']))
+        print("[{}][is_increment:{}][page_start:{}]start".format(starsData['name'], is_increment, page_start))
         # 查询db全集去重
         self.CUR.execute(
             "SELECT linkid from av_list where stars_url LIKE '%{}%'".format(stars_linkid))
         db_res = self.CUR.fetchall()
         movie_id_exist_list = [x[0] for x in db_res]
-        print("已存在影片数量,{}".format(len(movie_id_exist_list)))
+        print("exist count:{}".format(len(movie_id_exist_list)))
         # 待插入
         insert_list = []
         skip_count = 0
         insert_count = 0
-        for item in self.linkid_general_by_stars(stars_linkid):
+        for movie_linkid in self.linkid_general('star', stars_linkid, page_start):
             # 过滤已存在影片
-            url = self.get_url('movie', item)
-            if item in movie_id_exist_list:
+            if movie_linkid in movie_id_exist_list:
                 skip_count += 1
                 # 如果为增量更新，碰到相同就跳出
                 if is_increment:
                     break
                 continue
-            time.sleep(self.main_sleep)
-            try:
-                res = self.s.get(url)
-                if res.status_code != 200:
-                    print(url, res.status_code)
-                    continue
-            except:
-                print(url, 'requests.get error')
+            
+            data = self.crawl_by_movie_linkid(movie_linkid)
+            time.sleep(common.CONFIG.getfloat("spider","sleep"))
+            if data == None:
                 continue
-            try:
-                html = etree.HTML(res.text)
-            except:
-                print(url, 'etree.HTML error')
-                continue
-
-            # 解析页面内容
-            data = self.movie_page_data(html)
-            data['linkid'] = item
-            # 输出当前进度
-            print(data['av_id'].ljust(15), data['release_date'].ljust(11), data['stars'])
 
             insert_list.append(tuple(data.values()))
             # 存储数据
-            if len(insert_list) == self.insert_threshold:
+            if len(insert_list) == common.CONFIG.getint("spider","insert_threshold"):
                 self.movie_save(insert_list)
                 insert_count += len(insert_list)
                 insert_list = []
         # 插入剩余的数据
         self.movie_save(insert_list)
         insert_count += len(insert_list)
-        print("stars:{},insert_count:{},skip_count:{}".format(
-            starsData['name'], insert_count, skip_count))
-        print("[{}]end".format(starsData['name']))
+        print("[{}][insert_count:{}][skip_count:{}]end".format(starsData['name'], insert_count, skip_count))
         print()
+
+    # 根据页面类型抓取所有影片
+    def crawl_by_page_type(self, page_type, keyword, page_start = 1):
+        print("-" * 20)
+        print("[page_type:{}][keyword:{}][page_start:{}]start".format(page_type, keyword, page_start))
+        # 待插入
+        insert_list = []
+        insert_count = 0
+        for movie_linkid in self.linkid_general(page_type, keyword, page_start):
+            data = self.crawl_by_movie_linkid(movie_linkid)
+            time.sleep(common.CONFIG.getfloat("spider","sleep"))
+            if data == None:
+                continue
+            insert_list.append(tuple(data.values()))
+            # 存储数据
+            if len(insert_list) == common.CONFIG.getint("spider","insert_threshold"):
+                self.movie_save(insert_list)
+                insert_count += len(insert_list)
+                insert_list = []
+        # 插入剩余的数据
+        self.movie_save(insert_list)
+        insert_count += len(insert_list)
+        print("[page_type:{}][keyword:{}][count:{}]end".format(page_type, keyword, insert_count))
+        print()
+
+    # 根据linkid抓取一个movie页面
+    def crawl_by_movie_linkid(self, movie_linkid):
+        url = self.get_url('movie', movie_linkid)
+        try:
+            res = self.s.get(url)
+            if res.status_code != 200:
+                print(url, res.status_code)
+                return None
+        except:
+            print(url, 'requests.get error')
+            return None
+        try:
+            html = etree.HTML(res.text)
+        except:
+            print(url, 'etree.HTML error')
+            return None
+
+        # 解析页面内容
+        data = self.movie_page_data(html)
+        if data == None or data["av_id"] == "" or data["title"] == "":
+            print("movie crawl fatal,linkid:{}".format(movie_linkid))
+            return None
+        data['linkid'] = movie_linkid
+        # 输出当前进度
+        print(data['av_id'].ljust(15), data['release_date'].ljust(11), data['stars'])
+        return data
 
     # 获取一个明星的信息
     def stars_one(self, linkid):
-        starsRes = common.fetchall(self.CUR, "SELECT * from av_stars where linkid='{}'".format(linkid))
+        starsRes = common.fetchall(self.CUR, "SELECT * FROM av_stars WHERE linkid='{}'".format(linkid))
         if len(starsRes) == 1:
             return starsRes[0]
 
@@ -266,28 +280,28 @@ class Avmo:
         for item_p in html.xpath('//*[@id="waterfall"]/div[1]/div/div[2]/p'):
             if item_p.text == None:
                 continue
-            if '生日:' in item_p.text or 'Birthday:' in item_p.text:
+            if self.list_in_str(('生日:','Birthday:','生年月日:'), item_p.text):
                 data['birthday'] = get_val(item_p.text)
                 continue
-            if '身高:' in item_p.text or 'Height:' in item_p.text:
+            if self.list_in_str(('身高:','Height:','身長:'), item_p.text):
                 data['height'] = get_val(item_p.text)
                 continue
-            if '罩杯:' in item_p.text or 'Cup:' in item_p.text:
+            if self.list_in_str(('罩杯:','Cup:','ブラのサイズ:'), item_p.text):
                 data['cup'] = get_val(item_p.text)
                 continue
-            if '胸围:' in item_p.text or 'Bust:' in item_p.text:
+            if self.list_in_str(('胸围:','Bust:','バスト:'), item_p.text):
                 data['bust'] = get_val(item_p.text)
                 continue
-            if '腰围:' in item_p.text or 'Waist:' in item_p.text:
+            if self.list_in_str(('腰围:','Waist:','ウエスト:'), item_p.text):
                 data['waist'] = get_val(item_p.text)
                 continue
-            if '臀围:' in item_p.text or 'Hips:' in item_p.text:
+            if self.list_in_str(('臀围:','Hips:','ヒップ:'), item_p.text):
                 data['hips'] = get_val(item_p.text)
                 continue
-            if '出生地:' in item_p.text or 'Hometown:' in item_p.text:
+            if self.list_in_str(('出生地:','Hometown:','出身地:'), item_p.text):
                 data['hometown'] = get_val(item_p.text)
                 continue
-            if '爱好:' in item_p.text or 'Hobby:' in item_p.text:
+            if self.list_in_str(('爱好:','Hobby:','趣味:'), item_p.text):
                 data['hobby'] = get_val(item_p.text)
                 continue
         # 讲括号中的名字记录为曾用名
@@ -324,6 +338,7 @@ class Avmo:
         self.CONN.commit()
         print('INSERT:', len(insert_list))
 
+    # 解析html数据
     def movie_page_data(self, html):
         data = {
             'linkid':'',
@@ -345,12 +360,33 @@ class Avmo:
             'bigimage':'',
             'release_date':''
         }
+        # 标题
+        data['title'] = html.xpath('/html/body/div[2]/h3/text()')[0]
+
+        # 封面 截取域名之后的部分
+        data['bigimage'] = '/' + \
+            html.xpath(
+                '/html/body/div[2]/div[1]/div[1]/a/img/@src')[0].split('/', 5)[5]
+        
+        # 发行时间
+        data['release_date'] = html.xpath(
+            '/html/body/div[2]/div[1]/div[2]/p[2]/text()')[0].strip()
+        
         # 番号
         try:
             data['av_id'] = html.xpath(
                 '/html/body/div[2]/div[1]/div[2]/p[1]/span[2]/text()')[0]
         except:
             return data
+        
+        # 时长len
+        lentext = html.xpath('/html/body/div[2]/div[1]/div[2]/p[3]/text()')
+        if len(lentext) != 0:
+            res = re.findall("(\d+)",lentext[0])
+            data['len'] = res[0].strip()
+        else:
+            data['len'] = '0'
+        
         # 获取：导演、制作商、发行商、系列
         right_info = html.xpath('/html/body/div[2]/div[1]/div[2]/p/a')
         for i in right_info:
@@ -394,24 +430,14 @@ class Avmo:
 
         # 图片个数image_len
         data['image_len'] = str(len(html.xpath('//div[@id="sample-waterfall"]/a')))
-        # 时长len
-        lentext = html.xpath('/html/body/div[2]/div[1]/div[2]/p[3]/text()')
-        if len(lentext) != 0 and '分钟' in lentext[0]:
-            data['len'] = lentext[0].replace('分钟', '').strip()
-        else:
-            data['len'] = '0'
-
-        # 标题
-        data['title'] = html.xpath('/html/body/div[2]/h3/text()')[0]
-        # 封面 截取域名之后的部分
-        data['bigimage'] = '/' + \
-            html.xpath(
-                '/html/body/div[2]/div[1]/div[1]/a/img/@src')[0].split('/', 5)[5]
-        # 发行时间
-        data['release_date'] = html.xpath(
-            '/html/body/div[2]/div[1]/div[2]/p[2]/text()')[0].strip()
 
         return data
+    
+    def list_in_str(self, target_list, target_string):
+        for item in target_list:
+            if item in target_string:
+                return True
+        return False
 
     # 获取所有类别
     def genre_update(self):

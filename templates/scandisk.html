@@ -55,7 +55,7 @@
                                 {{resource.info|safe}}
                                 <a class="movie-box" href="/movie/{{ av_data_map[resource.av_id].linkid }}">
                                     <div class="photo-frame">
-                                        <img src="{{ cdn }}/digital/video{{ av_data_map[resource.av_id].smallimage }}" title="title:{{ av_data_map[resource.av_id].title }}
+                                        <img src="{{config['website']['cdn']}}/digital/video{{ av_data_map[resource.av_id].smallimage }}" title="title:{{ av_data_map[resource.av_id].title }}
 标签:{{ av_data_map[resource.av_id].genre }}
 演员:{{ av_data_map[resource.av_id].stars }}">
                                     </div>
@@ -77,7 +77,7 @@
                             <!-- 视频文件 命中avid 无页面 -->
                             <td><span style="color: coral;">{{resource.file_path}}</span></td>
                             <td><button class="btn btn-default" onclick="explorerLocal(this.getAttribute('data-val'))" data-val="{{resource.file_path}}" title="play">播放</button></td>
-                            <td><a href="{{avmoo_url}}/cn/search/{{resource.av_id}}" target="_blank">{{resource.av_id}}</a>|{{resource.info|safe}}</td>
+                            <td><a href="{{config['base']['avmoo_site']}}/cn/search/{{resource.av_id}}" target="_blank">{{resource.av_id}}</a>|{{resource.info|safe}}</td>
                         </tr>
                     {% endif %}
                 {% endfor %}

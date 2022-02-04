@@ -1,0 +1,19 @@
+[base]
+avmoo_site = https://avmoo.com
+db_file = avmoo.db
+# cn/tw/en/ja,star's name will change
+country = cn
+
+[spider]
+sleep = 1.5
+insert_threshold = 10
+
+[requests]
+timeout = 3
+user_agent = Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36
+
+[website]
+# image server,//jp.netcdn.space
+cdn = //pics.dmm.co.jp
+page_limit = 30
+actresses_page_limit = 36

@@ -59,6 +59,7 @@
           </ul>
 
         <ul class="nav navbar-nav navbar-right">
+            <li><a href="/spider" style="font-weight: bold;color:#f44336;" title="spider">爬虫</a></li>
             <li><a href="/action/scandisk" style="font-weight: bold;" title="scan local files">扫描文件</a></li>
             <li><a onclick="catchSwitch()">缓存开关</a></li>
             <li><a href="https://tellme.pw/avmoo" target="_blank">最新地址</a></li>
@@ -162,16 +163,24 @@
     function explorerLocal(path){
         $.get("/action/explorer",{"path":path});
     }
-    function downloadStar(linkid){
-        $.post("/action/download/star", {
-            linkid: linkid
+    function crawlLink(input_text){
+        $.post("/action/crawl", {
+            input_text: input_text
         }, function (data) {
             showMessage(data,"");
         });
     }
-    function downloadMovie(linkid){
-        $.post("/action/download/movie", {
-            linkid: linkid
+    function crawlStar(input_text){
+        $.post("/action/crawl/star", {
+            input_text: input_text
+        }, function (data) {
+            showMessage(data,"");
+        });
+    }
+    function crawlAccurate(page_type, keyword){
+        $.post("/action/crawl/accurate", {
+            page_type: page_type,
+            keyword: keyword,
         }, function (data) {
             showMessage(data,"");
         });
