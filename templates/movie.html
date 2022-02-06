@@ -15,8 +15,6 @@
             <p>
                 <span class="header">识别码:</span>
                 <span style="color:#CC0000;">{{data.av_id}}</span>
-                <button class="btn btn-default" type="submit" onclick="insertMovieExtend('like', 'av_id', '{{data.av_id}}')" title="add Favorites">收藏</button>
-                <button class="btn btn-default" type="submit" onclick="crawlAccurate('movie', '{{data.linkid}}')" title="crawl again">抓取</button>
             </p>
             {% if data.release_date %}
                 <p>
@@ -62,6 +60,11 @@
                  {% endfor %}
             </p>
             {% endif %}
+            <p class="header" title="action">操作:</p>
+            <p>
+                <button class="btn btn-default" type="submit" onclick="insertMovieExtend('like', 'av_id', '{{data.av_id}}')" title="add Favorites">收藏</button>
+                <button class="btn btn-default" type="submit" onclick="crawlAccurate('movie', '{{data.linkid}}');setTimeout(function(){location.reload()}, 5000);" title="crawl again">重新抓取</button>
+            </p>
         </div>
     </div>
 
