@@ -23,31 +23,31 @@
             {% endif %}
             {% if data.len %}
                 <p>
-                    <span class="header" title="length">长度:</span> {{data.len}}分钟
+                    <span class="header" title="movie length">长度:</span> {{data.len}}分钟
                 </p>
             {% endif %}
             {% if data.director_url %}
                 <p>
                     <span class="header" title="director">导演:</span>
-                    <a data-type="director_url" data-val="{{data.director_url}}" href="/director/{{data.director_url}}">{{data.director}}</a>
+                    <a href="/director/{{data.director_url}}">{{data.director}}</a>
                 </p>
             {% endif %}
             {% if data.studio_url %}
                 <p class="header" title="studio">制作商: </p>
                 <p>
-                    <a data-type="studio_url" data-val="{{data.studio_url}}" href="/studio/{{data.studio_url}}">{{data.studio}}</a>
+                    <a href="/studio/{{data.studio_url}}">{{data.studio}}</a>
                 </p>
             {% endif %}
             {% if data.label_url %}
                 <p class="header" title="label">发行商: </p>
                 <p>
-                    <a data-type="label_url" data-val="{{data.label_url}}" href="/label/{{data.label_url}}">{{data.label}}</a>
+                    <a href="/label/{{data.label_url}}">{{data.label}}</a>
                 </p>
             {% endif %}
             {% if data.series_url %}
                 <p class="header" title="series">系列:</p>
                 <p>
-                    <a data-type="series_url" data-val="{{data.series_url}}" href="/series/{{data.series_url}}">{{data.series}}</a>
+                    <a href="/series/{{data.series_url}}">{{data.series}}</a>
                 </p>
             {% endif %}
             {% if data.genre_list %}
@@ -68,31 +68,14 @@
         </div>
     </div>
 
-    <style>
-        .solink {
-    width: 100px;
-    height: 35px;
-    line-height: 35px;
-    text-align: center;
-    font-size: 17px;
-    display: block;
-    background: #60727d;
-    color: #fff;
-    border-radius: 10px;
-    margin-left: 10px;
-    margin-top: 10px;
-    bottom: 106px;
-    float: left;
-        }
-    </style>
-    <h4>搜索资源</h4>
-    <div class="row">
-        <a class="solink" href="https://btsow.rest/search/{{data.av_id}}" target="_blank">BTSO</a>
-        <a class="solink" href="http://www.haociso.top/s/{{data.av_id}}" target="_blank">haociso</a>
+    <h4 title="search tools">搜索资源</h4>
+    <div>
+        <a class="btn btn-default" href="https://btsow.rest/search/{{data.av_id}}" target="_blank">BTSO</a>
+        <a class="btn btn-default" href="http://www.haociso.top/s/{{data.av_id}}" target="_blank">haociso</a>
     </div>
 
-    <h4>影片资源</h4>
-    <div class="row">
+    <h4 title="resource">影片资源</h4>
+    <div>
         <input id="movie_resource" type="text" class="form-control" style="max-width: 400px;" placeholder="磁力链接 | 本地路径 | 在线地址" title="magnet | local movie path | url"/>
         <button class="btn btn-default insert-movie-local" type="submit" onclick="insertMovieExtend('movie_res', '{{data.av_id}}', document.querySelector('#movie_resource').value)" title="save extend data">保存</button>
         <ul>
@@ -107,11 +90,10 @@
     </div>
 
     {% if data.stars %}
-    <h4>演员</h4>
-    <h5>{{data.stars}}</h5>
+    <h4 title="actresses">演员</h4>
     <div id="avatar-waterfall">
         {% for item in data.stars_data %}
-        <a data-type="stars_url" data-val="{{item.linkid}}" class="avatar-box" href="/stars/{{item.linkid}}">
+        <a class="avatar-box" href="/stars/{{item.linkid}}">
             <div class="photo-frame">
                 {% if item.headimg %}
                 <img src="{{config['website']['cdn']}}/{{item.headimg}}" title="">
@@ -124,6 +106,19 @@
         {% endfor %}
     </div>
     {% endif %}
+    
+    
+    {% if data.stars_map %}
+    <h4 title="not yet fetch actresses">其他演员</h4>
+    <p class="info">
+    {% for item in data.stars_map %}
+        <span class="genre">
+            <a href="/stars/{{item.linkid}}">{{item.name}}</a>
+        </span>
+    {% endfor %}
+    </p>
+    {% endif %}
+
 
     <div class="clearfix"></div>
     {% if data.imglist %}

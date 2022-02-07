@@ -119,34 +119,46 @@ class Avmo:
 
     # 根据演员列表抓取 增量更新
     def crawl_by_stars_list(self, stars_id_list: list[str], is_increment: bool) -> None:
+        # 存储所有演员的最新影片id
+        early_linkid_list = []
+        if is_increment:
+            for stars in stars_id_list:
+                # 查询db全集去重
+                self.CUR.execute(
+                    "SELECT linkid FROM av_list WHERE stars_url LIKE '%{}%' ORDER BY release_date DESC LIMIT 1".format(stars))
+                db_res = self.CUR.fetchall()
+                if len(db_res) > 0:
+                    early_linkid_list.append(db_res[0][0])
         for stars in stars_id_list:
-            self.crawl_by_stars(stars, is_increment)
+            self.crawl_by_stars(stars, early_linkid_list)
 
     # 抓取演员所有影片
-    def crawl_by_stars(self, stars_linkid: str, is_increment: bool, page_start: int = 1) -> None:
+    def crawl_by_stars(self, stars_linkid: str, early_linkid_list: list[str], page_start: int = 1) -> None:
         starsData = self.stars_one(stars_linkid)
         print("-" * 20)
-        print("[{}][is_increment:{}][page_start:{}]start".format(
-            starsData['name'], is_increment, page_start))
-        # 查询db全集去重
-        self.CUR.execute(
-            "SELECT linkid from av_list where stars_url LIKE '%{}%'".format(stars_linkid))
-        db_res = self.CUR.fetchall()
-        movie_id_exist_list = [x[0] for x in db_res]
-        print("exist count:{}".format(len(movie_id_exist_list)))
+        print("[{}][early_linkid_list:{}][page_start:{}]start".format(
+            starsData['name'], len(early_linkid_list), page_start))
+        linkid_exist_list = []
+        if len(early_linkid_list) == 0:
+            # 查询db全集去重
+            self.CUR.execute(
+                "SELECT linkid from av_list where stars_url LIKE '%{}%'".format(stars_linkid))
+            db_res = self.CUR.fetchall()
+            linkid_exist_list = [x[0] for x in db_res]
+            print("exist count:{}".format(len(linkid_exist_list)))
         # 待插入
         insert_list = []
         skip_count = 0
         insert_count = 0
         for movie_linkid in self.linkid_general('star', stars_linkid, page_start):
             # 过滤已存在影片
-            if movie_linkid in movie_id_exist_list:
+            if movie_linkid in linkid_exist_list:
                 skip_count += 1
-                # 如果为增量更新，碰到相同就跳出
-                if is_increment:
-                    break
                 continue
-
+            # 如果为增量更新，碰到相同就跳出
+            if movie_linkid in early_linkid_list:
+                skip_count += 1
+                break
             data = self.crawl_by_movie_linkid(movie_linkid)
             time.sleep(common.CONFIG.getfloat("spider", "sleep"))
             if data == None:

@@ -126,39 +126,59 @@ def movie(linkid=''):
     movieList = query_sql("SELECT * FROM av_list WHERE {}".format(where))
     if movieList == []:
         return redirect(url_for('index'), 404)
-    movie = movieList[0]
+    return render_template('movie.html', data=movieBuild(movieList[0]), config=common.CONFIG)
+
+# 构造电影页
+def movieBuild(movie):
+    if 'build' in movie:
+        return movie
     # 修复数据
     if movie["genre"][0] != '|':
         query_sql(
             "update av_list set genre=('|' || genre || '|')  where genre not like '|%'")
 
     # 系列
-    if movie['genre']:
+    if movie['genre'] != "":
         movie['genre_list'] = movie['genre'][1:].split('|')
+    
     # 演员
-    if movie['stars_url']:
+    if movie['stars_url'] != "" and not isinstance(movie['stars_url'], list):
+        movie['stars_url'] = movie['stars_url'].strip('|').split("|")
+        movie['stars'] = movie['stars'].strip('|').split("|")
+
         sqltext = "SELECT linkid,name,headimg FROM av_stars WHERE linkid IN ('{}')".format(
-            movie['stars_url'].strip('|').replace('|', "','"))
-        stars_data = query_sql(sqltext)
-        movie['stars_data'] = stars_data
+            "','".join(movie['stars_url'])
+        )
+        movie['stars_data'] = query_sql(sqltext)
+        # 其他所有演员
+        if len(movie['stars_data']) < len(movie['stars_url']):
+            movie['stars_map'] = []
+            linkid_list = [x["linkid"] for x in movie['stars_data']]
+            for i in range(len(movie['stars_url'])):
+                if movie['stars_url'][i] in linkid_list:
+                    continue
+                movie['stars_map'].append({
+                    "linkid": movie['stars_url'][i],
+                    "name": movie['stars'][i]
+                })
+
     # 图片
-    img = []
+    movie['imglist'] = []
     if movie['image_len'] != '0':
         count = int(movie['image_len'])
         imgurl = common.CONFIG.get("website", "cdn") + '/digital/video' + \
             movie['bigimage'].replace('pl.jpg', '')
         for i in range(1, count+1):
-            img.append({
+            movie['imglist'].append({
                 'small': '{}-{}.jpg'.format(imgurl, i),
                 'big': '{}jp-{}.jpg'.format(imgurl, i)
             })
-    else:
-        img = ''
-    movie['imglist'] = img
-    # 本地文件
+    
+    # 影片资源
     movie['movie_resource_list'] = select_extend_value(
         'movie_res', movie['av_id'])
-    return render_template('movie.html', data=movie, config=common.CONFIG)
+    movie['build'] = True
+    return movie
 
 # 分类页
 @app.route('/director/<keyword>')
@@ -193,14 +213,18 @@ def search(keyword='', pagenum=1):
     starsData = None
     if function == 'stars':
         starsData = query_sql(
-            "SELECT * FROM av_stars WHERE linkid='{}';".format(keyword))[0]
-        # 计算年龄
-        if starsData['birthday'] != '':
-            sp = starsData['birthday'].split('-')
-            birthdayData = datetime.date(int(sp[0]), int(sp[1]), int(sp[2]))
-            starsData['age'] = math.ceil(
-                (datetime.date.today() - birthdayData).days/365)
-        keyword = starsData['name']
+            "SELECT * FROM av_stars WHERE linkid='{}';".format(keyword))
+        if len(starsData) == 1:
+            starsData = starsData[0]
+            # 计算年龄
+            if starsData['birthday'] != '':
+                sp = starsData['birthday'].split('-')
+                birthdayData = datetime.date(int(sp[0]), int(sp[1]), int(sp[2]))
+                starsData['age'] = math.ceil(
+                    (datetime.date.today() - birthdayData).days/365)
+            keyword = starsData['name']
+        else:
+            keyword = ''
 
     if function != 'genre' and function != 'stars':
         keyword = ''
@@ -225,7 +249,7 @@ def genre():
                     item["genre_count"] = itemCount["gc"]
         data[item['title']].append(item)
     data = list(data.values())
-    return render_template('genre.html', data=data, page={'pageroot': "/genre", 'count': len(result)}, config=common.CONFIG)
+    return render_template('genre.html', data={'av_genre': data}, page={'pageroot': "/genre", 'count': len(result)}, config=common.CONFIG)
 
 # 演员页
 @app.route('/actresses')

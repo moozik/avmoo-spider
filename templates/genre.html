@@ -4,7 +4,7 @@
 <div class="container-fluid pt-10">
     <button class="btn btn-default genre-download-btn" title="update all">更新类目</button>
     <a class="btn btn-default" href="/genre?calc=true" title="genre counter">统计类目总数</a>
-    {% for item in data %}
+    {% for item in data.av_genre %}
     <h4>{{item.0.title}}</h4>
     <div class="row genre-box">
          {% for item2 in item %}
