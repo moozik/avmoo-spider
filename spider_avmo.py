@@ -84,7 +84,10 @@ class Avmo:
             return True
         # 演员
         if page_type == "star":
-            self.crawl_by_stars(keyword, is_increment, page_start)
+            early_linkid_list = []
+            if is_increment:
+                early_linkid_list = self.get_early_linkid_list([keyword])
+            self.crawl_by_stars(keyword, early_linkid_list, page_start)
             return True
         # 其他
         if page_type in ('genre', 'series', 'studio', 'label', 'director', 'search'):
@@ -122,15 +125,20 @@ class Avmo:
         # 存储所有演员的最新影片id
         early_linkid_list = []
         if is_increment:
-            for stars in stars_id_list:
-                # 查询db全集去重
-                self.CUR.execute(
-                    "SELECT linkid FROM av_list WHERE stars_url LIKE '%{}%' ORDER BY release_date DESC LIMIT 1".format(stars))
-                db_res = self.CUR.fetchall()
-                if len(db_res) > 0:
-                    early_linkid_list.append(db_res[0][0])
+            early_linkid_list = self.get_early_linkid_list(stars_id_list)
         for stars in stars_id_list:
             self.crawl_by_stars(stars, early_linkid_list)
+
+    def get_early_linkid_list(self, stars_id_list: list[str]) -> list[str]:
+        early_linkid_list = []
+        for stars in stars_id_list:
+            # 查询db全集去重
+            self.CUR.execute(
+                "SELECT linkid FROM av_list WHERE stars_url LIKE '%{}%' ORDER BY release_date DESC LIMIT 1".format(stars))
+            db_res = self.CUR.fetchall()
+            if len(db_res) > 0:
+                early_linkid_list.append(db_res[0][0])
+        return early_linkid_list
 
     # 抓取演员所有影片
     def crawl_by_stars(self, stars_linkid: str, early_linkid_list: list[str], page_start: int = 1) -> None:

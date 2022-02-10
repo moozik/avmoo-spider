@@ -69,6 +69,9 @@ def index(keyword='', pagenum=1):
             return movie(tmp)
         else:
             where.append("av_list.av_id LIKE '%{}%'".format(tmp))
+    # 识别linkid
+    elif isLinkId(keyword):
+        return movie(keyword)
     # 搜索
     elif keyword != '':
         key_list = keyword.split(' ')
@@ -103,8 +106,6 @@ def index(keyword='', pagenum=1):
             av_list.genre LIKE '%{0}%' OR
             av_list.stars LIKE '%{0}%')'''.format(key_item))
 
-    elif keyword == '':
-        where = []
 
     result = select_av_list(column='av_list.*', av_list_where=where,
                             limit=(limit_start, PAGE_LIMIT))
