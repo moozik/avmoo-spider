@@ -110,10 +110,11 @@ def show_column_name(data, description) -> list:
     return result
 
 
-def fetchall(cur, sql) -> list:
-    cur.execute(sql)
-    ret = cur.fetchall()
-    return show_column_name(ret, cur.description)
+def fetchall(sql) -> list:
+    global DB
+    DB["CUR"].execute(sql)
+    ret = DB["CUR"].fetchall()
+    return show_column_name(ret, DB["CUR"].description)
 
 
 def get_new_avmoo_site() -> str:

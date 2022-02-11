@@ -9,26 +9,57 @@
 </style>
 <div class="container-fluid">
     <div class="row">
-        <div class="col-md-3">
-            <ul>
-                <!-- <li>https://avmoo.sbs/cn</li> -->
-                <!-- <li>https://avmoo.sbs/cn/released</li>
-                <li>https://avmoo.sbs/cn/popular</li> -->
-                <li><b>https://avmoo.sbs/cn/movie/9fed39545dc47840</b></li>
-                <li><b>https://avmoo.sbs/cn/star/26532bc87b4ce1d1</b></li>
-                <li><b>https://avmoo.sbs/cn/genre/dd21aefe7ae3228c</b></li>
-                <li><b>https://avmoo.sbs/cn/studio/ce25ddc3a9caca20</b></li>
-                <li><b>https://avmoo.sbs/cn/label/8eab1a64464779ff</b></li>
-                <li><b>https://avmoo.sbs/cn/director/63a8f4da6e22cc09</b></li>
-                <li><b>https://avmoo.sbs/cn/search/ABP</b></li>
-            </ul>
+        <div id="waterfall">
         </div>
+    </div>
+    <div class="row">
         <div class="col-md-3">
             <div class="input-group" style="margin-top:20px;">
-                <textarea class="form-control" id="input_text" placeholder="完整链接,例:https://avmoo.sbs/en/movie/64588e4956778441" style="width: 500px;height: 200px;" title="link text"></textarea>
-                <button class="btn btn-default" onclick='crawlLink(document.querySelector("#input_text").value)' title="crawl by whole link">下载指定链接</button>
+                <textarea class="form-control" id="input_text" placeholder="完整链接,例:
+https://avmoo.sbs/cn/movie/9fed39545dc47840
+https://avmoo.sbs/cn/star/26532bc87b4ce1d1/page/2
+https://avmoo.sbs/cn/genre/dd21aefe7ae3228c
+https://avmoo.sbs/cn/studio/ce25ddc3a9caca20
+https://avmoo.sbs/cn/label/8eab1a64464779ff
+https://avmoo.sbs/cn/director/63a8f4da6e22cc09
+https://avmoo.sbs/cn/search/ABP/page/25" style="width: 500px;height: 200px;" title="link text"></textarea>
+                <button class="btn btn-default" onclick='crawlLink(document.querySelector("#input_text").value);document.querySelector("#input_text").value="";' title="crawl by whole link">下载指定链接</button>
             </div>
         </div>
     </div>
+
+
+
 </div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+function frash_last_insert_list(){
+    $.getJSON("/action/last/insert", function(data){
+        $("#waterfall").html("");
+        data.forEach(item => {
+            $("#waterfall").append(
+                '<div class="item">'+
+                    '<a class="movie-box" href="/movie/' + item.linkid + '" target="_blank">'+
+                        '<div class="photo-frame">'+
+                            '<img src="{{config["website"]["cdn"]}}' + '/digital/video' + item.bigimage.replace("pl.", "ps.") + '">'+
+                        '</div>'+
+                        '<div class="photo-info">'+
+                            '<span>' + item.title +
+                                '<br>'+
+                                '<date>' + item.av_id + '</date> /'+
+                                '<date>' + item.release_date + '</date>'+
+                            '</span>'+
+                        '</div>'+
+                    '</a>'+
+                '</div>'
+            );
+        })
+        console.log(data);
+    });
+}
+frash_last_insert_list()
+setInterval(frash_last_insert_list, 6000);
+</script>
 {% endblock %}

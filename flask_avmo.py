@@ -5,7 +5,7 @@ from flask import Flask
 from flask import request
 from flask import redirect
 from flask import url_for
-import sqlite3
+import json
 import datetime
 import requests
 import time
@@ -17,6 +17,7 @@ import common
 import spider_avmo
 import _thread
 import collections
+from queue import Queue
 
 app = Flask(__name__)
 app.jinja_env.auto_reload = True
@@ -39,7 +40,7 @@ SPIDER_AVMO = spider_avmo.Avmo()
 
 # 文件类型与判定
 FILE_TAIL = {
-    'mp4': "\.(mp4|mkv|flv|avi|rm|rmvb|mpg|mpeg|mpe|m1v|mov|3gp|m4v|m3p|wmv|wmp|wm|ts)$",
+    'mp4': "\.(mp4|mkv|flv|avi|rm|rmvb|mpg|mpeg|mpe|m1v|mov|3gp|m4v|m3p|wmv|wmp|wm)$",
     'jpg': "\.(jpg|png|gif|jpeg|bmp|ico)$",
     'mp3': "\.(mp3|wav|wmv|mpa|mp2|ogg|m4a|aac)$",
     'torrent': "\.torrent$",
@@ -48,6 +49,9 @@ FILE_TAIL = {
 }
 
 AV_FILE_REG = "[a-zA-Z]{3,5}-\d{3,4}"
+
+# 任务队列
+QUEUE = Queue(maxsize=0)
 
 # 主页 搜索页
 @app.route('/')
@@ -277,18 +281,25 @@ def action_crawl():
     input_list = [x.strip() for x in input_text.split("\n") if x.strip() != ""]
     if len(input_list) == 0:
         return '请输入有效id'
-    _thread.start_new_thread(SPIDER_AVMO.crawl_by_url, (input_list, ))
+    for link in input_list:
+        QUEUE.put((
+            "crawl_by_url",
+            (link, )
+        ))
     return '正在下载({})影片...'.format(len(input_list))
 
 # 爬虫精确接口 确定到页面类型
 @app.route('/action/crawl/accurate', methods=['POST'])
 def action_crawl_accurate():
-    global SPIDER_AVMO, SQL_CACHE
+    global QUEUE, SPIDER_AVMO, SQL_CACHE
     page_type = request.form['page_type']
     keyword = request.form['keyword']
     if page_type not in ['movie', 'star', 'genre', 'series', 'studio', 'label', 'director', 'search']:
         return 'wrong'
-    _thread.start_new_thread(SPIDER_AVMO.crawl_accurate, (page_type, keyword))
+    QUEUE.put((
+        "crawl_accurate",
+        (page_type, keyword)
+    ))
     SQL_CACHE = {}
     return '正在下载...'
 
@@ -296,22 +307,26 @@ def action_crawl_accurate():
 # 演员爬虫接口
 @app.route('/action/crawl/star', methods=['POST'])
 def action_crawl_star():
-    global SPIDER_AVMO
+    global QUEUE, SPIDER_AVMO
     input_text = request.form['input_text']
     input_list = [x.strip() for x in input_text.split("\n") if isLinkId(x)]
 
     if input_text == 'all':
         star_list = query_sql("SELECT linkid FROM av_stars")
         # 增量更新
-        _thread.start_new_thread(SPIDER_AVMO.crawl_by_stars_list, ([
-                                 x['linkid'] for x in star_list], True))
+        QUEUE.put((
+            "crawl_by_stars_list",
+            ([x['linkid'] for x in star_list], True)
+        ))
         return '正在下载所有...'
 
     if len(input_list) == 0:
         return '请输入有效id'
     # 全量更新
-    _thread.start_new_thread(
-        SPIDER_AVMO.crawl_by_stars_list, (input_list, False))
+    QUEUE.put((
+        "crawl_by_stars_list",
+        (input_list, False)
+    ))
     return '正在下载({})...'.format(len(input_list))
 
 # 类目爬虫接口
@@ -320,6 +335,11 @@ def action_crawl_genre():
     global SPIDER_AVMO
     _thread.start_new_thread(SPIDER_AVMO.genre_update, ())
     return '正在下载...'
+
+@app.route('/action/last/insert')
+def action_last_insert():
+    global SPIDER_AVMO
+    return json.dumps(SPIDER_AVMO.get_last_insert_list())
 
 # 磁盘扫描工具
 @app.route('/action/scandisk')
@@ -555,6 +575,23 @@ def action_change_language():
     common.config_init()
     return 'ok'
 
+# 爬虫线程
+def spider_thread():
+    global QUEUE, SPIDER_AVMO
+    print("spider_thread.start")
+    while True:
+        time.sleep(common.CONFIG.getfloat("spider", "sleep"))
+
+        (function_name, param) = QUEUE.get()
+        print("=" * 10, function_name, param, "=" * 10, "start")
+        if function_name == "crawl_by_stars_list":
+            SPIDER_AVMO.crawl_by_stars_list(param[0], param[1])
+        if function_name == "crawl_accurate":
+            SPIDER_AVMO.crawl_accurate(param[0], param[1])
+        if function_name == "crawl_by_url":
+            SPIDER_AVMO.crawl_by_url(param[0])
+        
+        print("=" * 10, function_name, param, "=" * 10, "end\n")
 
 def upperPath(path):
     # 如果为windows环境路径，则路径首字母大写
@@ -605,6 +642,7 @@ def pagination(pagenum, count, pageroot, pagelimit):
         'left': pageleft,
         'right': pageright,
         'list': pagelist,
+        'tail': pagecount,
         'pageroot': pageroot,
         'count': count
     }
@@ -708,14 +746,14 @@ def query_sql(sql, if_cache=True) -> list:
             return SQL_CACHE[cacheKey][:]
         else:
             print('SQL EXEC[{}]:\n{}'.format(cacheKey, sql))
-            ret = common.fetchall(DB['CUR'], sql)
-            if IF_USE_CACHE:
+            ret = common.fetchall(sql)
+            if IF_USE_CACHE and ret != []:
                 SQL_CACHE[cacheKey] = ret
             return ret[:]
     else:
         print('SQL EXEC:\n{}'.format(sql))
-        return common.fetchall(DB['CUR'], sql)
-
+        return common.fetchall(sql)
 
 if __name__ == '__main__':
+    _thread.start_new_thread(spider_thread, ())
     app.run(port=5000)

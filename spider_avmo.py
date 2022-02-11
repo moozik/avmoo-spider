@@ -44,6 +44,10 @@ class Avmo:
         self.s.proxies = {
             # 'https':'http://127.0.0.1:1080'
         }
+        self.last_insert_list = []
+
+    def get_last_insert_list(self):
+        return self.last_insert_list
 
     def get_url(self, page_type: str, linkid: str, page_no: int = 1) -> str:
         ret = '{}/{}/{}/{}'.format(common.CONFIG.get("base", "avmoo_site"),
@@ -51,28 +55,25 @@ class Avmo:
         if page_no > 1:
             ret = ret + '/page/{}'.format(page_no)
         return ret
+    
+    def crawl_by_url(self, link: str) -> None:
+        if link == None or link == "":
+            return
+        res = re.findall(
+            "https?://[^/]+/[^/]+/(movie|star|genre|series|studio|label|director|search)/([^/]+)(/page/(\d+))?", link)
+        if res == None or len(res) == 0:
+            print("格式不正确,link:{}".format(link))
+            return
+        page_type = res[0][0]
+        keyword = res[0][1]
+        page_start = 1
+        if res[0][3] != "":
+            page_start = int(res[0][3])
 
-    # 识别url抓取
-    def crawl_by_url(self, link_list: list[str]) -> None:
-        for link in link_list:
-            time.sleep(common.CONFIG.getfloat("spider", "sleep"))
-            if link == None or link == "":
-                continue
-            res = re.findall(
-                "https?://[^/]+/[^/]+/(movie|star|genre|series|studio|label|director|search)/([^/]+)(/page/(\d+))?", link)
-            if res == None or len(res) == 0:
-                print("格式不正确,link:{}".format(link))
-                continue
-            page_type = res[0][0]
-            keyword = res[0][1]
-            page_start = 1
-            if res[0][3] != "":
-                page_start = int(res[0][3])
-
-            ret = self.crawl_accurate(page_type, keyword, page_start)
-            if not ret:
-                print("错误的链接,link:{},res:{}".format(link, res))
-
+        ret = self.crawl_accurate(page_type, keyword, page_start)
+        if not ret:
+            print("错误的链接,link:{},res:{}".format(link, res))
+    
     # 根据链接参数抓取
     def crawl_accurate(self, page_type: str, keyword: str, page_start: int = 1, is_increment: bool = False) -> None:
         # 单个电影
@@ -80,7 +81,7 @@ class Avmo:
             data = self.crawl_by_movie_linkid(keyword)
             if data == None:
                 return False
-            self.movie_save([tuple(data.values())])
+            self.movie_save([data])
             return True
         # 演员
         if page_type == "star":
@@ -172,7 +173,7 @@ class Avmo:
             if data == None:
                 continue
 
-            insert_list.append(tuple(data.values()))
+            insert_list.append(data)
             # 存储数据
             if len(insert_list) == common.CONFIG.getint("spider", "insert_threshold"):
                 self.movie_save(insert_list)
@@ -187,7 +188,6 @@ class Avmo:
 
     # 根据页面类型抓取所有影片
     def crawl_by_page_type(self, page_type: str, keyword: str, page_start: int = 1) -> None:
-        print("-" * 20)
         print("[page_type:{}][keyword:{}][page_start:{}]start".format(
             page_type, keyword, page_start))
         # 待插入
@@ -198,7 +198,7 @@ class Avmo:
             time.sleep(common.CONFIG.getfloat("spider", "sleep"))
             if data == None:
                 continue
-            insert_list.append(tuple(data.values()))
+            insert_list.append(data)
             # 存储数据
             if len(insert_list) == common.CONFIG.getint("spider", "insert_threshold"):
                 self.movie_save(insert_list)
@@ -207,8 +207,7 @@ class Avmo:
         # 插入剩余的数据
         self.movie_save(insert_list)
         insert_count += len(insert_list)
-        print("[page_type:{}][keyword:{}][count:{}]end".format(
-            page_type, keyword, insert_count))
+        print("[count:{}]end".format(insert_count))
         print()
 
     # 根据linkid抓取一个movie页面
@@ -229,7 +228,12 @@ class Avmo:
             return None
 
         # 解析页面内容
-        data = self.movie_page_data(html)
+        try:
+            data = self.movie_page_data(html)
+        except Exception as e:
+            print('movie_page_data error:', e)
+            return None
+
         if data == None or data["av_id"] == "" or data["title"] == "":
             print("movie crawl fatal,linkid:{}".format(movie_linkid))
             return None
@@ -241,8 +245,7 @@ class Avmo:
 
     # 获取一个明星的信息
     def stars_one(self, linkid: str):
-        starsRes = common.fetchall(
-            self.CUR, "SELECT * FROM av_stars WHERE linkid='{}'".format(linkid))
+        starsRes = common.fetchall("SELECT * FROM av_stars WHERE linkid='{}'".format(linkid))
         if len(starsRes) == 1:
             return starsRes[0]
 
@@ -340,13 +343,14 @@ class Avmo:
         self.CONN.commit()
 
     # 插入数据库
-    def movie_save(self, insert_list: list[tuple[str]]) -> None:
+    def movie_save(self, insert_list: list[dict]) -> None:
         if len(insert_list) == 0:
             print("insert_list empty!")
             return
+        self.last_insert_list = insert_list
         insertSql = 'REPLACE INTO {0}({1})VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);'.format(
             self.table_main, self.column_str)
-        self.CUR.executemany(insertSql, insert_list)
+        self.CUR.executemany(insertSql, [tuple(x.values()) for x in insert_list])
         self.CONN.commit()
         print('INSERT:', len(insert_list))
 
@@ -385,19 +389,15 @@ class Avmo:
             '/html/body/div[2]/div[1]/div[2]/p[2]/text()')[0].strip()
 
         # 番号
-        try:
-            data['av_id'] = html.xpath(
-                '/html/body/div[2]/div[1]/div[2]/p[1]/span[2]/text()')[0]
-        except:
-            return data
+        data['av_id'] = html.xpath(
+            '/html/body/div[2]/div[1]/div[2]/p[1]/span[2]/text()')[0]
 
         # 时长len
         lentext = html.xpath('/html/body/div[2]/div[1]/div[2]/p[3]/text()')
         if len(lentext) != 0:
             res = re.findall("(\d+)", lentext[0])
-            data['len'] = res[0].strip()
-        else:
-            data['len'] = '0'
+            if len(res) != 0:
+                data['len'] = res[0].strip()
 
         # 获取：导演、制作商、发行商、系列
         right_info = html.xpath('/html/body/div[2]/div[1]/div[2]/p/a')
@@ -468,7 +468,7 @@ class Avmo:
                     continue
                 g_name = a_item.text
                 g_id = a_item.attrib.get('href')[-16:]
-                insert_list.append(g_id, g_name, g_title)
+                insert_list.append((g_id, g_name, g_title))
         sql = "REPLACE INTO {} (linkid,name,title)VALUES(?,?,?);".format(
             self.table_genre)
         self.CUR.executemany(sql, insert_list)

@@ -82,7 +82,7 @@
         {% for movie_resource in data.movie_resource_list %}
             <li>
                 <a href="{{movie_resource}}" target="_blank">{{movie_resource}}</a>
-                <button class="btn btn-default" onclick="deleteMovieExtend('movie_res','{{data.av_id}}', this.getAttribute('data-val'));location.reload();" data-val="{{movie_resource}}" type="submit" title="del">删除记录</button>
+                <button class="btn btn-default" onclick="deleteMovieExtend('movie_res','{{data.av_id}}', this.getAttribute('data-val'));setTimeout(function(){location.reload()}, 1000);" data-val="{{movie_resource}}" type="submit" title="del">删除记录</button>
                 <button class="btn btn-default" onclick="explorerLocal(this.getAttribute('data-val'))" data-val="{{movie_resource}}" type="submit" title="explorer local">本地打开</button>
             </li>
         {% endfor %}
@@ -93,7 +93,7 @@
     <h4 title="actresses">演员</h4>
     <div id="avatar-waterfall">
         {% for item in data.stars_data %}
-        <a class="avatar-box" href="/stars/{{item.linkid}}">
+        <a class="avatar-box" href="/stars/{{item.linkid}}" target="_blank">
             <div class="photo-frame">
                 {% if item.headimg %}
                 <img src="{{config['website']['cdn']}}/{{item.headimg}}" title="">
@@ -113,7 +113,7 @@
     <p class="info">
     {% for item in data.stars_map %}
         <span class="genre">
-            <a href="/stars/{{item.linkid}}">{{item.name}}</a>
+            <a href="/stars/{{item.linkid}}" style="color: rgb(239 186 165);" target="_blank">{{item.name}}</a>
         </span>
     {% endfor %}
     </p>
