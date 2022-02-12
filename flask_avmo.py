@@ -18,6 +18,7 @@ import spider_avmo
 import _thread
 import collections
 from queue import Queue
+from urllib.parse import quote, unquote
 
 app = Flask(__name__)
 app.jinja_env.auto_reload = True
@@ -56,13 +57,13 @@ QUEUE = Queue(maxsize=0)
 # 主页 搜索页
 @app.route('/')
 @app.route('/page/<int:pagenum>')
-@app.route('/search/<keyword>')
-@app.route('/search/<keyword>/page/<int:pagenum>')
-def index(keyword='', pagenum=1):
+@app.route('/search/<keyword_origin>')
+@app.route('/search/<keyword_origin>/page/<int:pagenum>')
+def index(keyword_origin='', pagenum=1):
     if pagenum < 1:
         redirect(url_for('/'))
     limit_start = (pagenum - 1) * PAGE_LIMIT
-    keyword = keyword.replace("'", '').replace('"', '').strip()
+    keyword = keyword_origin.replace("'", '').replace('"', '').strip()
 
     where = []
 
@@ -76,6 +77,9 @@ def index(keyword='', pagenum=1):
     # 识别linkid
     elif isLinkId(keyword):
         return movie(keyword)
+    # sql mode
+    elif keyword_origin[:5] == 'where':
+        where.append(keyword_origin[5:])
     # 搜索
     elif keyword != '':
         key_list = keyword.split(' ')
@@ -113,11 +117,11 @@ def index(keyword='', pagenum=1):
 
     result = select_av_list(column='av_list.*', av_list_where=where,
                             limit=(limit_start, PAGE_LIMIT))
-    if keyword != '':
-        page_root = '/search/{}'.format(keyword)
+    if keyword_origin != '':
+        page_root = '/search/{}'.format(quote(keyword_origin))
     else:
         page_root = ''
-    return render_template('index.html', data={'av_list': result[0]}, page=pagination(pagenum, result[1], page_root, PAGE_LIMIT), keyword=keyword, config=common.CONFIG)
+    return render_template('index.html', data={'av_list': result[0]}, page=pagination(pagenum, result[1], page_root, PAGE_LIMIT), keyword=keyword_origin, config=common.CONFIG)
 
 # 电影页
 @app.route('/movie/<linkid>')
