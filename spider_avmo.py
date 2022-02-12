@@ -61,14 +61,12 @@ class Avmo:
         try:
             res = self.s.get(url)
             if res.status_code != 200:
-                print("status_code != 200,url:{}", url)
-                if res.status_code == 403:
-                    exit()
-                return None
+                print("status_code = {},url:{}".format(res.status_code, url))
+                return res.status_code, None
             
-            return etree.HTML(res.text)
+            return 200, etree.HTML(res.text)
         except:
-            return None
+            return 500, None
     
     def crawl_by_url(self, link: str) -> None:
         if link == None or link == "":
@@ -115,11 +113,15 @@ class Avmo:
     # 自动翻页返回movie_id
     def linkid_general(self, page_type: str, keyword: str, page_start: int = 1) -> Iterator[str]:
         for page_no in range(page_start, 100000):
+            time.sleep(common.CONFIG.getfloat("spider", "sleep"))
+
             url = self.get_url(page_type, keyword, page_no)
             print("get:{}".format(url))
-            html = self.get_html_by_url(url)
-            if html == None:
-                continue
+            
+            (status_code, html) = self.get_html_by_url(url)
+            if status_code in [403, 404, 500] or html == None:
+                break
+            
             movie_id_list = html.xpath('//*[@id="waterfall"]/div/a/@href')
             if movie_id_list == []:
                 print("page empty break")
@@ -140,6 +142,7 @@ class Avmo:
         if is_increment:
             early_linkid_list = self.get_early_linkid_list(stars_id_list)
         for stars in stars_id_list:
+            time.sleep(common.CONFIG.getfloat("spider", "sleep"))
             self.crawl_by_stars(stars, early_linkid_list)
 
     def get_early_linkid_list(self, stars_id_list: list[str]) -> list[str]:
@@ -172,6 +175,7 @@ class Avmo:
         skip_count = 0
         insert_count = 0
         for movie_linkid in self.linkid_general('star', stars_linkid, page_start):
+            time.sleep(common.CONFIG.getfloat("spider", "sleep"))
             # 过滤已存在影片
             if movie_linkid in linkid_exist_dict:
                 skip_count += 1
@@ -181,7 +185,6 @@ class Avmo:
                 skip_count += 1
                 break
             data = self.crawl_by_movie_linkid(movie_linkid)
-            time.sleep(common.CONFIG.getfloat("spider", "sleep"))
             if data == None:
                 continue
 
@@ -241,7 +244,7 @@ class Avmo:
     # 根据linkid抓取一个movie页面
     def crawl_by_movie_linkid(self, movie_linkid: str) -> dict:
         url = self.get_url('movie', movie_linkid)
-        html = self.get_html_by_url(url)
+        (status_code, html) = self.get_html_by_url(url)
         if html == None:
             return None
         # 解析页面内容
@@ -286,7 +289,7 @@ class Avmo:
             'headimg': ''
         }
         print("get:{}".format(url))
-        html = self.get_html_by_url(url)
+        (status_code, html) = self.get_html_by_url(url)
         if html == None:
             data['birthday'] = 'error'
             self.stars_save(data)
@@ -465,7 +468,7 @@ class Avmo:
     def crawl_genre(self) -> None:
         genre_url = self.get_url('genre', '')
         print("get:{}".format(genre_url))
-        html = self.get_html_by_url(genre_url)
+        (status_code, html) = self.get_html_by_url(genre_url)
         insert_list = []
         h4 = html.xpath('/html/body/div[2]/h4/text()')
         div = html.xpath('/html/body/div[2]/div')
