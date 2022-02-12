@@ -56,6 +56,19 @@ class Avmo:
             ret = ret + '/page/{}'.format(page_no)
         return ret
     
+    def get_html_by_url(self, url):
+        try:
+            res = self.s.get(url)
+            if res.status_code != 200:
+                print("status_code != 200,url:{}", url)
+                if res.status_code == 403:
+                    exit()
+                return None
+            
+            return etree.HTML(res.text)
+        except:
+            return None
+    
     def crawl_by_url(self, link: str) -> None:
         if link == None or link == "":
             return
@@ -102,12 +115,10 @@ class Avmo:
     def linkid_general(self, page_type: str, keyword: str, page_start: int = 1) -> Iterator[str]:
         for page_no in range(page_start, 100000):
             url = self.get_url(page_type, keyword, page_no)
-            res = self.s.get(url)
-            if res.status_code != 200:
-                print("status_code:{},get:{}".format(res.status_code, url))
-                break
-            html = etree.HTML(res.text)
             print("get:{}".format(url))
+            html = self.get_html_by_url(url)
+            if html == None:
+                continue
             movie_id_list = html.xpath('//*[@id="waterfall"]/div/a/@href')
             if movie_id_list == []:
                 print("page empty break")
@@ -147,21 +158,21 @@ class Avmo:
         print("-" * 20)
         print("[{}][early_linkid_list:{}][page_start:{}]start".format(
             starsData['name'], len(early_linkid_list), page_start))
-        linkid_exist_list = []
+        linkid_exist_dict = {}
         if len(early_linkid_list) == 0:
             # 查询db全集去重
             self.CUR.execute(
                 "SELECT linkid from av_list where stars_url LIKE '%{}%'".format(stars_linkid))
             db_res = self.CUR.fetchall()
-            linkid_exist_list = [x[0] for x in db_res]
-            print("exist count:{}".format(len(linkid_exist_list)))
+            linkid_exist_dict = {x[0]:True for x in db_res}
+            print("exist count:{}".format(len(linkid_exist_dict)))
         # 待插入
         insert_list = []
         skip_count = 0
         insert_count = 0
         for movie_linkid in self.linkid_general('star', stars_linkid, page_start):
             # 过滤已存在影片
-            if movie_linkid in linkid_exist_list:
+            if movie_linkid in linkid_exist_dict:
                 skip_count += 1
                 continue
             # 如果为增量更新，碰到相同就跳出
@@ -188,12 +199,29 @@ class Avmo:
 
     # 根据页面类型抓取所有影片
     def crawl_by_page_type(self, page_type: str, keyword: str, page_start: int = 1) -> None:
-        print("[page_type:{}][keyword:{}][page_start:{}]start".format(
-            page_type, keyword, page_start))
+        
+        sql = ""
+        # 查询已存在的
+        if page_type in ['director','studio','label','series']:
+            sql = "SELECT linkid FROM av_list WHERE {}_url='{}'".format(page_type, keyword)
+        if page_type == 'genre':
+            genre = common.fetchall("SELECT * FROM av_genre WHERE linkid='{}'".format(keyword))
+            print(genre)
+            sql = "SELECT linkid FROM av_list WHERE genre LIKE '%|{}|%'".format(genre[0]['name'])
+        ret = common.fetchall(sql)
+        exist_linkid_dict = {x["linkid"]:True for x in ret}
+
+        print("[page_type:{}][keyword:{}][exist_count:{}][page_start:{}]start".format(
+            page_type, keyword, len(exist_linkid_dict), page_start))
+
         # 待插入
         insert_list = []
         insert_count = 0
         for movie_linkid in self.linkid_general(page_type, keyword, page_start):
+            # 跳过已存在的
+            if movie_linkid in exist_linkid_dict:
+                print("skip exist movie,linkid:{}".format(movie_linkid))
+                continue
             data = self.crawl_by_movie_linkid(movie_linkid)
             time.sleep(common.CONFIG.getfloat("spider", "sleep"))
             if data == None:
@@ -213,20 +241,9 @@ class Avmo:
     # 根据linkid抓取一个movie页面
     def crawl_by_movie_linkid(self, movie_linkid: str) -> dict:
         url = self.get_url('movie', movie_linkid)
-        try:
-            res = self.s.get(url)
-            if res.status_code != 200:
-                print(url, res.status_code)
-                return None
-        except:
-            print(url, 'requests.get error')
+        html = self.get_html_by_url(url)
+        if html == None:
             return None
-        try:
-            html = etree.HTML(res.text)
-        except:
-            print(url, 'etree.HTML error')
-            return None
-
         # 解析页面内容
         try:
             data = self.movie_page_data(html)
@@ -268,18 +285,11 @@ class Avmo:
             'hobby': '',
             'headimg': ''
         }
-        try:
-            response = self.s.get(url)
-            html = etree.HTML(response.text)
-        except:
+        print("get:{}".format(url))
+        html = self.get_html_by_url(url)
+        if html == None:
             data['birthday'] = 'error'
             self.stars_save(data)
-            return False
-
-        if response.status_code == 403:
-            print(data['id'], '  ', data['linkid'], '  status_code:403')
-            exit()
-        if response.status_code == 404:
             return False
 
         try:
@@ -288,7 +298,6 @@ class Avmo:
             data['headimg'] = html.xpath(
                 '//*[@id="waterfall"]/div[1]/div/div[1]/img/@src')[0].split('/', 3)[3].replace('mono/actjpgs/nowprinting.gif', '')
         except:
-            print(response.text)
             return False
 
         for item_p in html.xpath('//*[@id="waterfall"]/div[1]/div/div[2]/p'):
@@ -455,8 +464,8 @@ class Avmo:
     # 获取所有类别
     def genre_update(self) -> None:
         genre_url = self.get_url('genre', '')
-        html = etree.HTML(self.s.get(
-            genre_url).text)
+        print("get:{}".format(genre_url))
+        html = self.get_html_by_url(genre_url)
         insert_list = []
         h4 = html.xpath('/html/body/div[2]/h4/text()')
         div = html.xpath('/html/body/div[2]/div')

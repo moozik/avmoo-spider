@@ -95,10 +95,12 @@
     {% if page %}
 	<div class="text-center hidden-xs mtb-20">
 		<ul class="pagination pagination-lg mtb-0">
+            {% if page.head > 0 %}
             <li>
                 <a name="prepage" href="{{page.pageroot}}/page/1">
                     <span class="glyphicon glyphicon-fast-backward"></span> 首页</a>
             </li>
+            {% endif %}
             {% if page.left>0 %}
             <li>
                 <a name="prepage" href="{{page.pageroot}}/page/{{page.left}}">
@@ -123,10 +125,12 @@
                     <span class="glyphicon glyphicon-chevron-right"></span> 下一页</a>
                 </li>
             {% endif %}
+            {% if page.tail > 0 %}
             <li>
                 <a name="prepage" href="{{page.pageroot}}/page/{{page.tail}}">
                     <span class="glyphicon glyphicon-fast-forward"></span> 尾页</a>
             </li>
+            {% endif %}
 		</ul>
   </div>
   {% endif %}

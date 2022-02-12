@@ -138,10 +138,13 @@ def movieBuild(movie):
     if 'build' in movie:
         return movie
     # 修复数据
-    if movie["genre"][0] != '|':
-        query_sql(
+    if len(movie["genre"]) > 0 and movie["genre"][0] != '|':
+        execute_sql(
             "update av_list set genre=('|' || genre || '|')  where genre not like '|%'")
-
+    # 修复数据 20200212
+    if len(movie["stars"]) > 0 and movie["stars"][-1] != '|':
+        execute_sql(
+            "update av_list set stars=(stars || '|')  where stars not like '%|'")
     # 系列
     if movie['genre'] != "":
         movie['genre_list'] = movie['genre'][1:].split('|')
@@ -204,12 +207,12 @@ def search(keyword='', pagenum=1):
     limit_start = (pagenum - 1) * PAGE_LIMIT
 
     function = request.path.split('/')[1]
-    if function == 'director' or function == 'studio' or function == 'label' or function == 'series':
+    if function in ['director','studio','label','series']:
         where = ["av_list.{}_url='{}'".format(function, keyword)]
     if function == 'genre':
-        where = ["av_list.{} LIKE '%{}%'".format(function, keyword)]
+        where = ["av_list.genre LIKE '%|{}|%'".format(keyword)]
     if function == 'stars':
-        where = ["av_list.stars_url LIKE '%{}%'".format(keyword)]
+        where = ["av_list.stars_url LIKE '%|{}%'".format(keyword)]
 
     page_root = '/{}/{}'.format(function, keyword)
     result = select_av_list(column="av_list.*",
@@ -613,36 +616,32 @@ def isLinkId(linkid=''):
 # 分页
 def pagination(pagenum, count, pageroot, pagelimit):
     pagecount = math.ceil(count / pagelimit)
-    if pagecount <= 15:
-        p1 = 1
-        p2 = pagecount
-    else:
-        if pagenum - 7 < 1:
-            p1 = 1
-        else:
-            p1 = pagenum - 7
-        if pagenum + 7 > pagecount:
-            p2 = pagecount
-        else:
-            p2 = pagenum + 7
+    total_max = 8
+    p1 = pagenum - total_max
+    p2 = pagenum + total_max
+    pagelist = [x for x in range(p1, p2 + 1) if x > 0 and x <= pagecount]
 
-    pagelist = [x for x in range(p1, p2 + 1)]
-
+    pageleft = 0
+    pageright = 0
     if pagenum != pagecount:
         pageright = pagenum + 1
-    else:
-        pageright = 0
     if pagenum != 1:
         pageleft = pagenum - 1
-    else:
-        pageleft = 0
+    
+    pagehead = 1
+    pagetail = pagecount
+    if pagelist[0] == 1:
+        pagehead = 0
+    if pagelist[-1] == pagecount:
+        pagetail = 0
 
     return {
         'now': pagenum,
         'left': pageleft,
         'right': pageright,
         'list': pagelist,
-        'tail': pagecount,
+        'head': pagehead,
+        'tail': pagetail,
         'pageroot': pageroot,
         'count': count
     }
