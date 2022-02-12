@@ -279,7 +279,6 @@ def page_spider():
 # 爬虫接口
 @app.route('/action/crawl', methods=['POST'])
 def action_crawl():
-    global SPIDER_AVMO
     input_text = request.form['input_text']
     input_list = [x.strip() for x in input_text.split("\n") if x.strip() != ""]
     if len(input_list) == 0:
@@ -294,7 +293,7 @@ def action_crawl():
 # 爬虫精确接口 确定到页面类型
 @app.route('/action/crawl/accurate', methods=['POST'])
 def action_crawl_accurate():
-    global QUEUE, SPIDER_AVMO, SQL_CACHE
+    global QUEUE, SQL_CACHE
     page_type = request.form['page_type']
     keyword = request.form['keyword']
     if page_type not in ['movie', 'star', 'genre', 'series', 'studio', 'label', 'director', 'search']:
@@ -310,7 +309,7 @@ def action_crawl_accurate():
 # 演员爬虫接口
 @app.route('/action/crawl/star', methods=['POST'])
 def action_crawl_star():
-    global QUEUE, SPIDER_AVMO
+    global QUEUE
     input_text = request.form['input_text']
     input_list = [x.strip() for x in input_text.split("\n") if isLinkId(x)]
 
@@ -335,13 +334,15 @@ def action_crawl_star():
 # 类目爬虫接口
 @app.route('/action/crawl/genre')
 def action_crawl_genre():
-    global SPIDER_AVMO
-    _thread.start_new_thread(SPIDER_AVMO.genre_update, ())
+    global QUEUE
+    QUEUE.put((
+        "crawl_genre",
+        ()
+    ))
     return '正在下载...'
 
 @app.route('/action/last/insert')
 def action_last_insert():
-    global SPIDER_AVMO
     return json.dumps(SPIDER_AVMO.get_last_insert_list())
 
 # 磁盘扫描工具
@@ -581,6 +582,7 @@ def action_change_language():
 # 爬虫线程
 def spider_thread():
     global QUEUE, SPIDER_AVMO
+    SPIDER_AVMO.init_db()
     print("spider_thread.start")
     while True:
         time.sleep(common.CONFIG.getfloat("spider", "sleep"))
@@ -593,6 +595,8 @@ def spider_thread():
             SPIDER_AVMO.crawl_accurate(param[0], param[1])
         if function_name == "crawl_by_url":
             SPIDER_AVMO.crawl_by_url(param[0])
+        if function_name == "crawl_genre":
+            SPIDER_AVMO.crawl_genre()
         
         print("=" * 10, function_name, param, "=" * 10, "end\n")
 
@@ -615,6 +619,7 @@ def isLinkId(linkid=''):
 
 # 分页
 def pagination(pagenum, count, pageroot, pagelimit):
+    print(pagenum, count, pageroot, pagelimit)
     pagecount = math.ceil(count / pagelimit)
     total_max = 8
     p1 = pagenum - total_max
@@ -623,18 +628,18 @@ def pagination(pagenum, count, pageroot, pagelimit):
 
     pageleft = 0
     pageright = 0
-    if pagenum != pagecount:
+    if pagecount != 0 and pagenum != pagecount:
         pageright = pagenum + 1
     if pagenum != 1:
         pageleft = pagenum - 1
     
-    pagehead = 1
-    pagetail = pagecount
-    if pagelist[0] == 1:
-        pagehead = 0
-    if pagelist[-1] == pagecount:
-        pagetail = 0
-
+    pagehead = 0
+    pagetail = 0
+    if len(pagelist) > 0:
+        if pagelist[0] != 1:
+            pagehead = 1
+        if pagelist[-1] != pagecount:
+            pagetail = pagecount
     return {
         'now': pagenum,
         'left': pageleft,
@@ -745,13 +750,13 @@ def query_sql(sql, if_cache=True) -> list:
             return SQL_CACHE[cacheKey][:]
         else:
             print('SQL EXEC[{}]:\n{}'.format(cacheKey, sql))
-            ret = common.fetchall(sql)
+            ret = common.fetchall(DB["CUR"], sql)
             if IF_USE_CACHE and ret != []:
                 SQL_CACHE[cacheKey] = ret
             return ret[:]
     else:
         print('SQL EXEC:\n{}'.format(sql))
-        return common.fetchall(sql)
+        return common.fetchall(DB["CUR"], sql)
 
 if __name__ == '__main__':
     _thread.start_new_thread(spider_thread, ())

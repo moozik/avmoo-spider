@@ -3,10 +3,10 @@
 import time
 import requests
 import re
-from lxml import etree
 import common
+import sqlite3
+from lxml import etree
 from typing import Iterator
-
 
 class Avmo:
 
@@ -29,10 +29,6 @@ class Avmo:
             'image_len', 'len', 'title', 'bigimage', 'release_date', ]
         # 表结构str
         self.column_str = ",".join(self.column)
-        # 链接数据库
-        self.CONN = common.DB["CONN"]
-        self.CUR = common.DB["CUR"]
-
         # 创建会话对象
         self.s = requests.Session()
         # 超时时间
@@ -45,7 +41,12 @@ class Avmo:
             # 'https':'http://127.0.0.1:1080'
         }
         self.last_insert_list = []
-
+    def init_db(self):
+        # 链接数据库
+        self.CONN = sqlite3.connect(common.CONFIG.get(
+            "base", "db_file"), check_same_thread=False)
+        self.CUR = self.CONN.cursor()
+    
     def get_last_insert_list(self):
         return self.last_insert_list
 
@@ -205,10 +206,9 @@ class Avmo:
         if page_type in ['director','studio','label','series']:
             sql = "SELECT linkid FROM av_list WHERE {}_url='{}'".format(page_type, keyword)
         if page_type == 'genre':
-            genre = common.fetchall("SELECT * FROM av_genre WHERE linkid='{}'".format(keyword))
-            print(genre)
+            genre = common.fetchall(self.CUR, "SELECT * FROM av_genre WHERE linkid='{}'".format(keyword))
             sql = "SELECT linkid FROM av_list WHERE genre LIKE '%|{}|%'".format(genre[0]['name'])
-        ret = common.fetchall(sql)
+        ret = common.fetchall(self.CUR, sql)
         exist_linkid_dict = {x["linkid"]:True for x in ret}
 
         print("[page_type:{}][keyword:{}][exist_count:{}][page_start:{}]start".format(
@@ -262,7 +262,7 @@ class Avmo:
 
     # 获取一个明星的信息
     def stars_one(self, linkid: str):
-        starsRes = common.fetchall("SELECT * FROM av_stars WHERE linkid='{}'".format(linkid))
+        starsRes = common.fetchall(self.CUR, "SELECT * FROM av_stars WHERE linkid='{}'".format(linkid))
         if len(starsRes) == 1:
             return starsRes[0]
 
@@ -462,7 +462,7 @@ class Avmo:
         return False
 
     # 获取所有类别
-    def genre_update(self) -> None:
+    def crawl_genre(self) -> None:
         genre_url = self.get_url('genre', '')
         print("get:{}".format(genre_url))
         html = self.get_html_by_url(genre_url)
