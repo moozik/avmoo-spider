@@ -57,29 +57,20 @@ QUEUE = Queue(maxsize=0)
 # 主页 搜索页
 @app.route('/')
 @app.route('/page/<int:pagenum>')
-@app.route('/search/<keyword_origin>')
-@app.route('/search/<keyword_origin>/page/<int:pagenum>')
-def index(keyword_origin='', pagenum=1):
+@app.route('/search/<keyword>')
+@app.route('/search/<keyword>/page/<int:pagenum>')
+def index(keyword='', pagenum=1):
     if pagenum < 1:
         redirect(url_for('/'))
     limit_start = (pagenum - 1) * PAGE_LIMIT
-    keyword = keyword_origin.replace("'", '').replace('"', '').strip()
 
     where = []
-
-    # 识别番号
-    if re.match('^[a-zA-Z0-9 \-]{4,14}$', keyword):
-        tmp = keyword.replace(' ', '-').upper()
-        if '-' in tmp:
-            return movie(tmp)
-        else:
-            where.append("av_list.av_id LIKE '%{}%'".format(tmp))
     # 识别linkid
-    elif isLinkId(keyword):
+    if isLinkId(keyword):
         return movie(keyword)
     # sql mode
-    elif keyword_origin[:5] == 'where':
-        where.append(keyword_origin[5:])
+    elif keyword[:5] == 'where':
+        where.append(keyword[5:])
     # 搜索
     elif keyword != '':
         key_list = keyword.split(' ')
@@ -117,11 +108,11 @@ def index(keyword_origin='', pagenum=1):
 
     result = select_av_list(column='av_list.*', av_list_where=where,
                             limit=(limit_start, PAGE_LIMIT))
-    if keyword_origin != '':
-        page_root = '/search/{}'.format(quote(keyword_origin))
+    if keyword != '':
+        page_root = '/search/{}'.format(quote(keyword))
     else:
         page_root = ''
-    return render_template('index.html', data={'av_list': result[0]}, page=pagination(pagenum, result[1], page_root, PAGE_LIMIT), keyword=keyword_origin, config=common.CONFIG)
+    return render_template('index.html', data={'av_list': result[0]}, page=pagination(pagenum, result[1], page_root, PAGE_LIMIT), keyword=keyword, config=common.CONFIG)
 
 # 电影页
 @app.route('/movie/<linkid>')
@@ -135,7 +126,7 @@ def movie(linkid=''):
     movieList = query_sql("SELECT * FROM av_list WHERE {}".format(where))
     if movieList == []:
         return redirect(url_for('index'), 404)
-    return render_template('movie.html', data=movieBuild(movieList[0]), config=common.CONFIG)
+    return render_template('movie.html', data=movieBuild(movieList[0]), origin_link = common.get_url("movie", movieList[0]["linkid"]), config=common.CONFIG)
 
 # 构造电影页
 def movieBuild(movie):
@@ -211,10 +202,14 @@ def search(keyword='', pagenum=1):
     limit_start = (pagenum - 1) * PAGE_LIMIT
 
     function = request.path.split('/')[1]
+    origin_link = common.get_url(function, keyword, pagenum)
     if function in ['director','studio','label','series']:
         where = ["av_list.{}_url='{}'".format(function, keyword)]
     if function == 'genre':
         where = ["av_list.genre LIKE '%|{}|%'".format(keyword)]
+        ret = common.fetchall(DB['CUR'], "SELECT * FROM av_genre WHERE name='{}'".format(keyword))
+        if len(ret) > 0:
+            origin_link = common.get_url(function, ret[0]['linkid'], pagenum)
     if function == 'stars':
         where = ["av_list.stars_url LIKE '%|{}%'".format(keyword)]
 
@@ -241,7 +236,7 @@ def search(keyword='', pagenum=1):
     if function != 'genre' and function != 'stars':
         keyword = ''
 
-    return render_template('index.html', data={'av_list': result[0], 'av_stars': starsData}, page=pagination(pagenum, result[1], page_root, PAGE_LIMIT), keyword=keyword, config=common.CONFIG)
+    return render_template('index.html', data={'av_list': result[0], 'av_stars': starsData}, page=pagination(pagenum, result[1], page_root, PAGE_LIMIT), keyword=keyword, origin_link = origin_link, config=common.CONFIG)
 
 # 标签页
 @app.route('/genre')
@@ -261,7 +256,7 @@ def genre():
                     item["genre_count"] = itemCount["gc"]
         data[item['title']].append(item)
     data = list(data.values())
-    return render_template('genre.html', data={'av_genre': data}, page={'pageroot': "/genre", 'count': len(result)}, config=common.CONFIG)
+    return render_template('genre.html', data={'av_genre': data}, page={'pageroot': "/genre", 'count': len(result)}, origin_link = common.get_url("genre"), config=common.CONFIG)
 
 # 演员页
 @app.route('/actresses')
@@ -273,7 +268,7 @@ def like_stars(pagenum=1):
     result = query_sql(sqltext)
 
     res_count = query_sql("SELECT COUNT(1) AS count FROM av_stars")
-    return render_template('actresses.html', data=result, page=pagination(pagenum, res_count[0]['count'], "/actresses", pageLimit), config=common.CONFIG)
+    return render_template('actresses.html', data=result, page=pagination(pagenum, res_count[0]['count'], "/actresses", pageLimit), origin_link = common.get_url("actresses"), config=common.CONFIG)
 
 # 爬虫页
 @app.route('/spider')
@@ -304,7 +299,7 @@ def action_crawl_accurate():
         return 'wrong'
     QUEUE.put((
         "crawl_accurate",
-        (page_type, keyword)
+        (page_type, keyword, 1, False)
     ))
     SQL_CACHE = {}
     return '正在下载...'
@@ -314,26 +309,27 @@ def action_crawl_accurate():
 @app.route('/action/crawl/star', methods=['POST'])
 def action_crawl_star():
     global QUEUE
-    input_text = request.form['input_text']
-    input_list = [x.strip() for x in input_text.split("\n") if isLinkId(x)]
+    linkid = request.form['linkid']
 
-    if input_text == 'all':
-        star_list = query_sql("SELECT linkid FROM av_stars")
-        # 增量更新
-        QUEUE.put((
-            "crawl_by_stars_list",
-            ([x['linkid'] for x in star_list], True)
-        ))
-        return '正在下载所有...'
+    if linkid == 'all':
+        star_list = query_sql("SELECT linkid,name FROM av_stars")
+        for item in star_list:
+            # 增量更新
+            QUEUE.put((
+                "crawl_accurate",
+                ('star', item["linkid"], 1, True)
+            ))
+        return '正在下载({})...'.format(','.join([x['name'] for x in star_list]))
 
-    if len(input_list) == 0:
+    if not isLinkId(linkid):
         return '请输入有效id'
+    star_list = query_sql("SELECT linkid,name FROM av_stars WHERE linkid='{}'".format(linkid))
     # 全量更新
     QUEUE.put((
-        "crawl_by_stars_list",
-        (input_list, False)
+        "crawl_accurate",
+        ("star", linkid, 1, False)
     ))
-    return '正在下载({})...'.format(len(input_list))
+    return '正在下载({})...'.format(star_list[0]["name"])
 
 # 类目爬虫接口
 @app.route('/action/crawl/genre')
@@ -593,10 +589,8 @@ def spider_thread():
 
         (function_name, param) = QUEUE.get()
         print("=" * 10, function_name, param, "=" * 10, "start")
-        if function_name == "crawl_by_stars_list":
-            SPIDER_AVMO.crawl_by_stars_list(param[0], param[1])
         if function_name == "crawl_accurate":
-            SPIDER_AVMO.crawl_accurate(param[0], param[1])
+            SPIDER_AVMO.crawl_accurate(param[0], param[1], param[2], param[3])
         if function_name == "crawl_by_url":
             SPIDER_AVMO.crawl_by_url(param[0])
         if function_name == "crawl_genre":
@@ -623,7 +617,6 @@ def isLinkId(linkid=''):
 
 # 分页
 def pagination(pagenum, count, pageroot, pagelimit):
-    print(pagenum, count, pageroot, pagelimit)
     pagecount = math.ceil(count / pagelimit)
     total_max = 8
     p1 = pagenum - total_max
@@ -721,6 +714,7 @@ def walk_all_files(path_target):
         for file in files:
             yield root, file
 
+
 # 执行sql
 def execute_sql(sql):
     print("SQL EXEC:\n{}".format(sql))
@@ -731,16 +725,6 @@ def execute_sql(sql):
     for cacheKey in list(SQL_CACHE.keys()):
         if tableName in cacheKey:
             del SQL_CACHE[cacheKey]
-
-
-# 获取sql中的表名
-def get_table_name(sql):
-    return list(set(re.findall("(av_[^ \.\*]+)", sql)))
-
-
-# 获取缓存key
-def cache_key(sql):
-    return '|'.join(get_table_name(sql)) + ':' + str(binascii.crc32(sql.encode()) & 0xffffffff)
 
 
 # 查询sql
@@ -761,6 +745,17 @@ def query_sql(sql, if_cache=True) -> list:
     else:
         print('SQL EXEC:\n{}'.format(sql))
         return common.fetchall(DB["CUR"], sql)
+
+
+# 获取sql中的表名
+def get_table_name(sql):
+    return list(set(re.findall("(av_[^ \.\*]+)", sql)))
+
+
+# 获取缓存key
+def cache_key(sql):
+    return '|'.join(get_table_name(sql)) + ':' + str(binascii.crc32(sql.encode()) & 0xffffffff)
+
 
 if __name__ == '__main__':
     _thread.start_new_thread(spider_thread, ())

@@ -4,7 +4,6 @@
 <div class="container">
     <h3 id="av_title">{{data.title}}</h3>
     <button class="btn btn-default" onclick="translateTitle('{{data.av_id}}')">翻译</button>
-    <a class="btn btn-default" href="{{config['base']['avmoo_site']}}/cn/movie/{{data.linkid}}" target="_blank">源站链接</a>
     <div class="row movie">
         <div class="col-md-9 screencap">
             <a class="bigImage" href="{{config['website']['cdn']}}/digital/video{{data.bigimage}}" title="{{data.title}}">
@@ -148,6 +147,12 @@
             "words": document.querySelector("#av_title").innerText
         } ,function(data){
             document.querySelector("#av_title").innerText = avid + ' ' + data;
+        });
+    }
+    //删除影片
+    function del(){
+        $.get("/action/delete/movie/{{data.linkid}}", function(data){
+            alert(data)
         });
     }
 </script>

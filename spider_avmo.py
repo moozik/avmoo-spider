@@ -47,34 +47,14 @@ class Avmo:
             "base", "db_file"), check_same_thread=False)
         self.CUR = self.CONN.cursor()
     
-    def get_last_insert_list(self):
-        return self.last_insert_list
-
-    def get_url(self, page_type: str, linkid: str, page_no: int = 1) -> str:
-        ret = '{}/{}/{}/{}'.format(common.CONFIG.get("base", "avmoo_site"),
-                                   common.CONFIG.get("base", "country"), page_type, linkid)
-        if page_no > 1:
-            ret = ret + '/page/{}'.format(page_no)
-        return ret
-    
-    def get_html_by_url(self, url):
-        try:
-            res = self.s.get(url)
-            if res.status_code != 200:
-                print("status_code = {},url:{}".format(res.status_code, url))
-                return res.status_code, None
-            
-            return 200, etree.HTML(res.text)
-        except:
-            return 500, None
-    
+    # 根据链接抓取
     def crawl_by_url(self, link: str) -> None:
         if link == None or link == "":
             return
         res = re.findall(
             "https?://[^/]+/[^/]+/(movie|star|genre|series|studio|label|director|search)/([^/]+)(/page/(\d+))?", link)
         if res == None or len(res) == 0:
-            print("格式不正确,link:{}".format(link))
+            print("wrong link:{}".format(link))
             return
         page_type = res[0][0]
         keyword = res[0][1]
@@ -82,12 +62,12 @@ class Avmo:
         if res[0][3] != "":
             page_start = int(res[0][3])
 
-        ret = self.crawl_accurate(page_type, keyword, page_start)
+        ret = self.crawl_accurate(page_type, keyword, page_start, False)
         if not ret:
-            print("错误的链接,link:{},res:{}".format(link, res))
+            print("wrong link:{},res:{}".format(link, res))
     
     # 根据链接参数抓取
-    def crawl_accurate(self, page_type: str, keyword: str, page_start: int = 1, is_increment: bool = False) -> None:
+    def crawl_accurate(self, page_type: str, keyword: str, page_start: int, is_increment: bool) -> None:
         # 单个电影
         if page_type == "movie":
             data = self.crawl_by_movie_linkid(keyword)
@@ -95,138 +75,61 @@ class Avmo:
                 return False
             self.movie_save([data])
             return True
-        # 演员
-        if page_type == "star":
-            early_linkid_list = []
-            if is_increment:
-                early_linkid_list = self.get_early_linkid_list([keyword])
-            self.crawl_by_stars(keyword, early_linkid_list, page_start)
-            return True
+        
+        exist_linkid_dict = self.get_exist_linkid(page_type, keyword, is_increment)
         # 其他
-        if page_type in ('genre', 'series', 'studio', 'label', 'director', 'search'):
-            self.crawl_by_page_type(page_type, keyword, page_start)
+        if page_type in ('genre', 'series', 'studio', 'label', 'director', 'search', 'star'):
+            self.crawl_by_page_type(page_type, keyword, exist_linkid_dict, page_start, is_increment)
             return True
-        print("错误的参数,page_type:{}, keyword:{}, page_start:{}".format(
+        print("wrong param,page_type:{}, keyword:{}, page_start:{}".format(
             page_type, keyword, page_start))
         return False
-
-    # 自动翻页返回movie_id
-    def linkid_general(self, page_type: str, keyword: str, page_start: int = 1) -> Iterator[str]:
-        for page_no in range(page_start, 100000):
-            time.sleep(common.CONFIG.getfloat("spider", "sleep"))
-
-            url = self.get_url(page_type, keyword, page_no)
-            print("get:{}".format(url))
-            
-            (status_code, html) = self.get_html_by_url(url)
-            if status_code in [403, 404, 500] or html == None:
-                break
-            
-            movie_id_list = html.xpath('//*[@id="waterfall"]/div/a/@href')
-            if movie_id_list == []:
-                print("page empty break")
-                break
-            for item in movie_id_list:
-                yield item[-16:]
-
-            # 检查是否有下一页
-            next_page = html.xpath(
-                '//span[@class="glyphicon glyphicon-chevron-right"]')
-            if next_page == []:
-                break
-
-    # 根据演员列表抓取 增量更新
-    def crawl_by_stars_list(self, stars_id_list: list[str], is_increment: bool) -> None:
-        # 存储所有演员的最新影片id
-        early_linkid_list = []
-        if is_increment:
-            early_linkid_list = self.get_early_linkid_list(stars_id_list)
-        for stars in stars_id_list:
-            time.sleep(common.CONFIG.getfloat("spider", "sleep"))
-            self.crawl_by_stars(stars, early_linkid_list)
-
-    def get_early_linkid_list(self, stars_id_list: list[str]) -> list[str]:
-        early_linkid_list = []
-        for stars in stars_id_list:
-            # 查询db全集去重
-            self.CUR.execute(
-                "SELECT linkid FROM av_list WHERE stars_url LIKE '%{}%' ORDER BY release_date DESC LIMIT 1".format(stars))
-            db_res = self.CUR.fetchall()
-            if len(db_res) > 0:
-                early_linkid_list.append(db_res[0][0])
-        return early_linkid_list
-
-    # 抓取演员所有影片
-    def crawl_by_stars(self, stars_linkid: str, early_linkid_list: list[str], page_start: int = 1) -> None:
-        starsData = self.stars_one(stars_linkid)
-        print("-" * 20)
-        print("[{}][early_linkid_list:{}][page_start:{}]start".format(
-            starsData['name'], len(early_linkid_list), page_start))
-        linkid_exist_dict = {}
-        if len(early_linkid_list) == 0:
-            # 查询db全集去重
-            self.CUR.execute(
-                "SELECT linkid from av_list where stars_url LIKE '%{}%'".format(stars_linkid))
-            db_res = self.CUR.fetchall()
-            linkid_exist_dict = {x[0]:True for x in db_res}
-            print("exist count:{}".format(len(linkid_exist_dict)))
-        # 待插入
+    
+    # 获取所有类别
+    def crawl_genre(self) -> None:
+        genre_url = common.get_url('genre', '')
+        print("get:{}".format(genre_url))
+        (status_code, html) = self.get_html_by_url(genre_url)
         insert_list = []
-        skip_count = 0
-        insert_count = 0
-        for movie_linkid in self.linkid_general('star', stars_linkid, page_start):
-            time.sleep(common.CONFIG.getfloat("spider", "sleep"))
-            # 过滤已存在影片
-            if movie_linkid in linkid_exist_dict:
-                skip_count += 1
-                continue
-            # 如果为增量更新，碰到相同就跳出
-            if movie_linkid in early_linkid_list:
-                skip_count += 1
-                break
-            data = self.crawl_by_movie_linkid(movie_linkid)
-            if data == None:
-                continue
-
-            insert_list.append(data)
-            # 存储数据
-            if len(insert_list) == common.CONFIG.getint("spider", "insert_threshold"):
-                self.movie_save(insert_list)
-                insert_count += len(insert_list)
-                insert_list = []
-        # 插入剩余的数据
-        self.movie_save(insert_list)
-        insert_count += len(insert_list)
-        print("[{}][insert_count:{}][skip_count:{}]end".format(
-            starsData['name'], insert_count, skip_count))
-        print()
+        h4 = html.xpath('/html/body/div[2]/h4/text()')
+        div = html.xpath('/html/body/div[2]/div')
+        for div_item in range(len(div)):
+            g_title = h4[div_item]
+            a_list = div[div_item].xpath('a')
+            for a_item in a_list:
+                if a_item.text == None:
+                    continue
+                g_name = a_item.text
+                g_id = a_item.attrib.get('href')[-16:]
+                insert_list.append((g_id, g_name, g_title))
+        sql = "REPLACE INTO {} (linkid,name,title)VALUES(?,?,?);".format(
+            self.table_genre)
+        self.CUR.executemany(sql, insert_list)
+        self.CONN.commit()
+        print('genre update record:{}'.format(len(insert_list)))
 
     # 根据页面类型抓取所有影片
-    def crawl_by_page_type(self, page_type: str, keyword: str, page_start: int = 1) -> None:
-        
-        sql = ""
-        # 查询已存在的
-        if page_type in ['director','studio','label','series']:
-            sql = "SELECT linkid FROM av_list WHERE {}_url='{}'".format(page_type, keyword)
-        if page_type == 'genre':
-            genre = common.fetchall(self.CUR, "SELECT * FROM av_genre WHERE linkid='{}'".format(keyword))
-            sql = "SELECT linkid FROM av_list WHERE genre LIKE '%|{}|%'".format(genre[0]['name'])
-        ret = common.fetchall(self.CUR, sql)
-        exist_linkid_dict = {x["linkid"]:True for x in ret}
-
-        print("[page_type:{}][keyword:{}][exist_count:{}][page_start:{}]start".format(
-            page_type, keyword, len(exist_linkid_dict), page_start))
-
+    def crawl_by_page_type(self, page_type: str, keyword: str, exist_linkid_dict: dict, page_start: int, is_increment: bool) -> None:
+        print("[exist_count:{}]".format(
+            len(exist_linkid_dict)))
+        if page_type == 'star':
+            self.stars_one(keyword)
         # 待插入
         insert_list = []
         insert_count = 0
+        skip_count = 0
         for movie_linkid in self.linkid_general(page_type, keyword, page_start):
             # 跳过已存在的
             if movie_linkid in exist_linkid_dict:
+                # 当增量更新，遇到已存在的直接结束
+                if is_increment:
+                    break
+                skip_count += 1
                 print("skip exist movie,linkid:{}".format(movie_linkid))
                 continue
-            data = self.crawl_by_movie_linkid(movie_linkid)
             time.sleep(common.CONFIG.getfloat("spider", "sleep"))
+            
+            data = self.crawl_by_movie_linkid(movie_linkid)
             if data == None:
                 continue
             insert_list.append(data)
@@ -238,12 +141,12 @@ class Avmo:
         # 插入剩余的数据
         self.movie_save(insert_list)
         insert_count += len(insert_list)
-        print("[count:{}]end".format(insert_count))
-        print()
+        print("[exist_count:{}][fetch count:{}][skip count:{}]".format(
+            len(exist_linkid_dict), insert_count, skip_count))
 
     # 根据linkid抓取一个movie页面
     def crawl_by_movie_linkid(self, movie_linkid: str) -> dict:
-        url = self.get_url('movie', movie_linkid)
+        url = common.get_url('movie', movie_linkid)
         (status_code, html) = self.get_html_by_url(url)
         if html == None:
             return None
@@ -272,7 +175,7 @@ class Avmo:
         def get_val(str):
             return str.split(':')[1].strip()
 
-        url = self.get_url('star', linkid)
+        url = common.get_url('star', linkid)
         print(linkid)
         data = {
             'linkid': linkid,
@@ -306,28 +209,28 @@ class Avmo:
         for item_p in html.xpath('//*[@id="waterfall"]/div[1]/div/div[2]/p'):
             if item_p.text == None:
                 continue
-            if self.list_in_str(('生日:', 'Birthday:', '生年月日:'), item_p.text):
+            if common.list_in_str(('生日:', 'Birthday:', '生年月日:'), item_p.text):
                 data['birthday'] = get_val(item_p.text)
                 continue
-            if self.list_in_str(('身高:', 'Height:', '身長:'), item_p.text):
+            if common.list_in_str(('身高:', 'Height:', '身長:'), item_p.text):
                 data['height'] = get_val(item_p.text)
                 continue
-            if self.list_in_str(('罩杯:', 'Cup:', 'ブラのサイズ:'), item_p.text):
+            if common.list_in_str(('罩杯:', 'Cup:', 'ブラのサイズ:'), item_p.text):
                 data['cup'] = get_val(item_p.text)
                 continue
-            if self.list_in_str(('胸围:', 'Bust:', 'バスト:'), item_p.text):
+            if common.list_in_str(('胸围:', 'Bust:', 'バスト:'), item_p.text):
                 data['bust'] = get_val(item_p.text)
                 continue
-            if self.list_in_str(('腰围:', 'Waist:', 'ウエスト:'), item_p.text):
+            if common.list_in_str(('腰围:', 'Waist:', 'ウエスト:'), item_p.text):
                 data['waist'] = get_val(item_p.text)
                 continue
-            if self.list_in_str(('臀围:', 'Hips:', 'ヒップ:'), item_p.text):
+            if common.list_in_str(('臀围:', 'Hips:', 'ヒップ:'), item_p.text):
                 data['hips'] = get_val(item_p.text)
                 continue
-            if self.list_in_str(('出生地:', 'Hometown:', '出身地:'), item_p.text):
+            if common.list_in_str(('出生地:', 'Hometown:', '出身地:'), item_p.text):
                 data['hometown'] = get_val(item_p.text)
                 continue
-            if self.list_in_str(('爱好:', 'Hobby:', '趣味:'), item_p.text):
+            if common.list_in_str(('爱好:', 'Hobby:', '趣味:'), item_p.text):
                 data['hobby'] = get_val(item_p.text)
                 continue
         # 讲括号中的名字记录为曾用名
@@ -346,6 +249,49 @@ class Avmo:
         )
         self.stars_save(data)
         return data
+    
+    # 自动翻页返回movie_id
+    def linkid_general(self, page_type: str, keyword: str, page_start: int = 1) -> Iterator[str]:
+        for page_no in range(page_start, 100000):
+            time.sleep(common.CONFIG.getfloat("spider", "sleep"))
+
+            url = common.get_url(page_type, keyword, page_no)
+            print("get:{}".format(url))
+            
+            (status_code, html) = self.get_html_by_url(url)
+            if status_code in [403, 404, 500] or html == None:
+                break
+            
+            movie_id_list = html.xpath('//*[@id="waterfall"]/div/a/@href')
+            if movie_id_list == []:
+                print("page empty break")
+                break
+            for item in movie_id_list:
+                yield item[-16:]
+
+            # 检查是否有下一页
+            next_page = html.xpath(
+                '//span[@class="glyphicon glyphicon-chevron-right"]')
+            if next_page == []:
+                break
+
+    def get_exist_linkid(self, page_type: str, keyword: str, is_increment: bool) -> dict:
+        sql = ''
+        exist_linkid_dict = {}
+        # 查询已存在的
+        if page_type in ['director','studio','label','series']:
+            sql = "SELECT linkid FROM av_list WHERE {}_url='{}'".format(page_type, keyword)
+        if page_type == 'genre':
+            genre = common.fetchall(self.CUR, "SELECT * FROM av_genre WHERE linkid='{}'".format(keyword))
+            sql = "SELECT linkid FROM av_list WHERE genre LIKE '%|{}|%'".format(genre[0]['name'])
+        if page_type == 'star' and is_increment:
+            sql = "SELECT linkid FROM av_list WHERE stars_url LIKE '%{}%' ORDER BY release_date DESC LIMIT 1".format(keyword)
+        if page_type == 'star' and not is_increment:
+            sql = "SELECT linkid FROM av_list WHERE stars_url LIKE '%{}%'".format(keyword)
+        if sql != '':
+            ret = common.fetchall(self.CUR, sql)
+            exist_linkid_dict = {x["linkid"]:True for x in ret}
+        return exist_linkid_dict
 
     def stars_save(self, data: dict[str, str]) -> None:
         insert_sql = 'REPLACE INTO {} VALUES(?,?,?,?,?,?,?,?,?,?,?,?);'.format(
@@ -357,7 +303,6 @@ class Avmo:
     # 插入数据库
     def movie_save(self, insert_list: list[dict]) -> None:
         if len(insert_list) == 0:
-            print("insert_list empty!")
             return
         self.last_insert_list = insert_list
         insertSql = 'REPLACE INTO {0}({1})VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);'.format(
@@ -458,35 +403,19 @@ class Avmo:
 
         return data
 
-    def list_in_str(self, target_list: list[str], target_string: str) -> bool:
-        for item in target_list:
-            if item in target_string:
-                return True
-        return False
-
-    # 获取所有类别
-    def crawl_genre(self) -> None:
-        genre_url = self.get_url('genre', '')
-        print("get:{}".format(genre_url))
-        (status_code, html) = self.get_html_by_url(genre_url)
-        insert_list = []
-        h4 = html.xpath('/html/body/div[2]/h4/text()')
-        div = html.xpath('/html/body/div[2]/div')
-        for div_item in range(len(div)):
-            g_title = h4[div_item]
-            a_list = div[div_item].xpath('a')
-            for a_item in a_list:
-                if a_item.text == None:
-                    continue
-                g_name = a_item.text
-                g_id = a_item.attrib.get('href')[-16:]
-                insert_list.append((g_id, g_name, g_title))
-        sql = "REPLACE INTO {} (linkid,name,title)VALUES(?,?,?);".format(
-            self.table_genre)
-        self.CUR.executemany(sql, insert_list)
-        self.CONN.commit()
-        print('genre update record:{}'.format(len(insert_list)))
-
+    def get_last_insert_list(self):
+        return self.last_insert_list
+    
+    def get_html_by_url(self, url: str) -> tuple:
+        try:
+            res = self.s.get(url)
+            if res.status_code != 200:
+                print("status_code = {},url:{}".format(res.status_code, url))
+                return res.status_code, None
+            
+            return 200, etree.HTML(res.text)
+        except:
+            return 500, None
 
 if __name__ == '__main__':
     pass

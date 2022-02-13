@@ -123,3 +123,21 @@ def get_new_avmoo_site() -> str:
     avmoo_site = html.xpath(
         '/html/body/div[1]/div[2]/div/div[2]/h4[1]/strong/a/@href')[0]
     return avmoo_site
+
+def list_in_str(target_list: list[str], target_string: str) -> bool:
+    for item in target_list:
+        if item in target_string:
+            return True
+    return False
+
+def get_url(page_type: str = "", linkid: str = "", page_no: int = 1) -> str:
+    global CONFIG
+    ret = '{}/{}'.format(CONFIG.get("base", "avmoo_site"),
+                                CONFIG.get("base", "country"),)
+    if page_type != "":
+        ret += '/{}'.format(page_type)
+    if linkid != "":
+        ret += '/{}'.format(linkid)
+    if page_no > 1:
+        ret += '/page/{}'.format(page_no)
+    return ret
