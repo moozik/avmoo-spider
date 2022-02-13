@@ -70,8 +70,8 @@ class Avmo:
     def crawl_accurate(self, page_type: str, keyword: str, page_start: int, is_increment: bool) -> None:
         # 单个电影
         if page_type == "movie":
-            data = self.crawl_by_movie_linkid(keyword)
-            if data == None:
+            (status_code, data) = self.crawl_by_movie_linkid(keyword)
+            if data == None or status_code != 200:
                 return False
             self.movie_save([data])
             return True
@@ -118,6 +118,7 @@ class Avmo:
         insert_list = []
         insert_count = 0
         skip_count = 0
+        banned_count = 0
         for movie_linkid in self.linkid_general(page_type, keyword, page_start):
             # 跳过已存在的
             if movie_linkid in exist_linkid_dict:
@@ -129,7 +130,13 @@ class Avmo:
                 continue
             time.sleep(common.CONFIG.getfloat("spider", "sleep"))
             
-            data = self.crawl_by_movie_linkid(movie_linkid)
+            (status_code, data) = self.crawl_by_movie_linkid(movie_linkid)
+            if status_code == 403:
+                banned_count += 1
+                if banned_count == 10:
+                    print("banned count:{},break loop".format(banned_count))
+                    break
+                continue
             if data == None:
                 continue
             insert_list.append(data)
@@ -148,14 +155,16 @@ class Avmo:
     def crawl_by_movie_linkid(self, movie_linkid: str) -> dict:
         url = common.get_url('movie', movie_linkid)
         (status_code, html) = self.get_html_by_url(url)
+        if  status_code != 200:
+            return status_code, None
         if html == None:
-            return None
+            return status_code, None
         # 解析页面内容
         try:
             data = self.movie_page_data(html)
         except Exception as e:
             print('movie_page_data error:', e)
-            return None
+            return status_code, None
 
         if data == None or data["av_id"] == "" or data["title"] == "":
             print("movie crawl fatal,linkid:{}".format(movie_linkid))
@@ -164,7 +173,7 @@ class Avmo:
         # 输出当前进度
         print(data['av_id'].ljust(15),
               data['release_date'].ljust(11), data['stars'])
-        return data
+        return status_code, data
 
     # 获取一个明星的信息
     def stars_one(self, linkid: str):
