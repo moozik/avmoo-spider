@@ -241,25 +241,25 @@ def search(keyword='', pagenum=1):
 
 # 标签页
 @app.route('/genre')
-def genre2():
-    genre_counter = {}
-    if 'calc' in request.values:
-        res = query_sql("SELECT genre AS genre FROM av_list")
-        genre_list = []
-        for row in res:
-            genre_list.extend(list(set(row['genre'].strip("|").split("|"))))
-        genre_counter = collections.Counter(genre_list)
+def genre():
+    # 统计标签个数
+    genre_list = []
+    for row in query_sql("SELECT genre AS genre FROM av_list"):
+        genre_list.extend(list(set(row['genre'].strip("|").split("|"))))
+    genre_counter = collections.Counter(genre_list)
 
-    result = query_sql("SELECT linkid,name,title FROM av_genre")
     data = {}
-    for item in result:
+    av_genre_res = query_sql("SELECT linkid,name,title FROM av_genre")
+    for item in av_genre_res:
         if item['title'] not in data:
             data[item['title']] = []
-        if 'calc' in request.values and item['name'] in genre_counter:
+        # 组装标签数据
+        if item['name'] in genre_counter:
             item["genre_count"] = genre_counter[item['name']]
+        
         data[item["title"]].append(item)
     data = list(data.values())
-    return render_template('genre.html', data={'av_genre': data}, page={'pageroot': "/genre", 'count': len(result)}, origin_link = common.get_url("genre"), config=common.CONFIG)
+    return render_template('genre.html', data={'av_genre': data}, page={'pageroot': "/genre", 'count': len(av_genre_res)}, origin_link = common.get_url("genre"), config=common.CONFIG)
 
 # 演员页
 @app.route('/actresses')
@@ -724,7 +724,7 @@ def execute_sql(sql):
     DB['CUR'].execute(sql)
     DB['CONN'].commit()
     tableName = get_table_name(sql)[0]
-    # 清楚指定表的缓存
+    # 清除指定表的缓存
     for cacheKey in list(SQL_CACHE.keys()):
         if tableName in cacheKey:
             del SQL_CACHE[cacheKey]
