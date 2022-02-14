@@ -238,23 +238,26 @@ def search(keyword='', pagenum=1):
 
     return render_template('index.html', data={'av_list': result[0], 'av_stars': starsData}, page=pagination(pagenum, result[1], page_root, PAGE_LIMIT), keyword=keyword, origin_link = origin_link, config=common.CONFIG)
 
+
 # 标签页
 @app.route('/genre')
-def genre():
-    result = query_sql(
-        "SELECT av_genre.linkid,av_genre.name,av_genre.title FROM av_genre")
+def genre2():
+    genre_counter = {}
     if 'calc' in request.values:
-        resultCount = query_sql(
-            "SELECT av_genre.linkid,av_genre.name,av_genre.title,COUNT(distinct av_list.linkid) AS gc FROM av_genre LEFT JOIN (select linkid,genre from av_list)av_list ON INSTR ( av_list.genre, '|' || av_genre.name || '|' ) > 0 GROUP BY av_genre.linkid")
+        res = query_sql("SELECT genre AS genre FROM av_list")
+        genre_list = []
+        for row in res:
+            genre_list.extend(list(set(row['genre'].strip("|").split("|"))))
+        genre_counter = collections.Counter(genre_list)
+
+    result = query_sql("SELECT linkid,name,title FROM av_genre")
     data = {}
     for item in result:
         if item['title'] not in data:
             data[item['title']] = []
-        if 'calc' in request.values:
-            for itemCount in resultCount:
-                if itemCount["linkid"] == item["linkid"]:
-                    item["genre_count"] = itemCount["gc"]
-        data[item['title']].append(item)
+        if 'calc' in request.values and item['name'] in genre_counter:
+            item["genre_count"] = genre_counter[item['name']]
+        data[item["title"]].append(item)
     data = list(data.values())
     return render_template('genre.html', data={'av_genre': data}, page={'pageroot': "/genre", 'count': len(result)}, origin_link = common.get_url("genre"), config=common.CONFIG)
 
@@ -749,7 +752,7 @@ def query_sql(sql, if_cache=True) -> list:
 
 # 获取sql中的表名
 def get_table_name(sql):
-    return list(set(re.findall("(av_[^ \.\*]+)", sql)))
+    return list(set(re.findall("(av_[a-z]+)", sql)))
 
 
 # 获取缓存key

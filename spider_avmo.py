@@ -126,7 +126,7 @@ class Avmo:
                 if is_increment:
                     break
                 skip_count += 1
-                print("skip exist movie,linkid:{}".format(movie_linkid))
+                print("SKIP EXIST,URL:http://127.0.0.1:5000/movie/{}".format(movie_linkid))
                 continue
             time.sleep(common.CONFIG.getfloat("spider", "sleep"))
             
