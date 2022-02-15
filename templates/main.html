@@ -4,7 +4,7 @@
 <meta http-equiv="x-dns-prefetch-control" content="on">
 <meta name="renderer" content="webkit">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %} {% endblock %} -avmoo-spider</title>
+<title>{% block title %} {% endblock %}  avmoo-spider</title>
 <link rel="shortcut Icon" href="/static/icon.png">
 <link rel="bookmark" href="/static/icon.png">
 <link rel="dns-prefetch" href="http://jp.netcdn.space">
@@ -29,6 +29,24 @@
     margin: 2px;
     border-radius: 7px;
 }
+.movie-desc {
+    position: absolute;
+    width: 167px;
+    height: auto;
+    min-height: 220px;
+    left: 10px;
+    top: 100px;
+    padding: 5px;
+    color: white;
+    background-color: #000;
+    opacity: 0;
+    line-height: 19px;
+    transition: all .2s;
+}
+.movie-box:hover .movie-desc {
+	opacity: 0.9;
+	top: 10px;
+}
 </style>
 {% block head %} {% endblock %}
 </head>
@@ -40,7 +58,7 @@
         <div id="navbar" class="collapse navbar-collapse">
           <form class="navbar-form navbar-left fullsearch-form" action="/search" onsubmit="return false">
             <div class="input-group">
-              <input name="keyword" type="text" class="form-control" placeholder="演员ID,类型,演员" value="{% block keyword %}{% endblock %}">
+              <input name="keyword" type="text" class="form-control" placeholder="演员ID,类型,演员" value="{% block placeholder %}{% endblock %}">
               <span class="input-group-btn">
                 <button class="btn btn-default" type="submit">查找</button>
               </span>
@@ -58,13 +76,13 @@
           </ul>
 
           <ul class="nav navbar-nav navbar-right">
-              <li><a href="/spider" style="font-weight: bold;color:#f44336;" title="spider">爬虫</a></li>
-              <li><a href="/action/scandisk" style="font-weight: bold;" title="scan local files">扫描文件</a></li>
-              <li><a href="#" onclick="catchSwitch()">缓存开关</a></li>
+              <li><a href="/spider" style="font-weight: bold;color:#f44336;" title="spider"><span class="glyphicon glyphicon-tasks" style="font-size:12px;"></span> 爬虫</a></li>
+              <li><a href="/action/scandisk" style="font-weight: bold;" title="scan local files"><span class="glyphicon glyphicon-search" style="font-size:12px;"></span> 扫描</a></li>
+              <li><a href="#" onclick="catchSwitch()"><span class="glyphicon glyphicon-wrench" style="font-size:12px;"></span> 缓存</a></li>
                 {% if origin_link %}
-                <li><a href="{{ origin_link }}" target="_blank" title="origin link">原始链接</a></li>
+                <li><a href="{{ origin_link }}" target="_blank" title="origin link"><span class="glyphicon glyphicon-link" style="font-size:12px;"></span> 链接</a></li>
                 {% else %}
-                <li><a href="{{config['base']['avmoo_site']}}" target="_blank" title="origin link">原始链接</a></li>
+                <li><a href="{{config['base']['avmoo_site']}}" target="_blank" title="origin link"><span class="glyphicon glyphicon-link" style="font-size:12px;"></span> 链接</a></li>
                 {% endif %}
               <li class="dropdown">
                 <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><span class="glyphicon glyphicon-globe" style="font-size:12px;"></span> <span class="hidden-sm">{{config['base']['country_name']}}</span> <span class="caret"></span></a>

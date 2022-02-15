@@ -21,7 +21,7 @@
         <div id="avatar-waterfall" style="margin: 20px 60px;">
             {% for item in data %}
             <div class="avatar-box">
-                <a class="" href="/stars/{{item.linkid}}" title="{{item.time}}">
+                <a class="" href="/star/{{item.linkid}}" title="{{item.time}}">
                     <div class="photo-frame">
                         {% if item.headimg %}
                         <img src="{{config['website']['cdn']}}/{{item.headimg}}" title="">

@@ -62,7 +62,7 @@
             <p class="header" title="action">操作:</p>
             <p>
                 <button class="btn btn-default" type="submit" onclick="insertMovieExtend('like', 'av_id', '{{data.av_id}}')" title="add Favorites">收藏</button>
-                <button class="btn btn-default" type="submit" onclick="crawlAccurate('movie', '{{data.linkid}}');setTimeout(function(){location.reload()}, 5000);" title="crawl again">重新抓取</button>
+                <button class="btn btn-default" type="submit" onclick="crawlAccurate('movie', '{{data.linkid}}');setTimeout(function(){location.reload()}, 3000);" title="crawl again">重新抓取</button>
             </p>
         </div>
     </div>
@@ -92,7 +92,7 @@
     <h4 title="actresses">演员</h4>
     <div id="avatar-waterfall">
         {% for item in data.stars_data %}
-        <a class="avatar-box" href="/stars/{{item.linkid}}" target="_blank">
+        <a class="avatar-box" href="/star/{{item.linkid}}" target="_blank">
             <div class="photo-frame">
                 {% if item.headimg %}
                 <img src="{{config['website']['cdn']}}/{{item.headimg}}" title="">
@@ -112,7 +112,7 @@
     <p class="info">
     {% for item in data.stars_map %}
         <span class="genre">
-            <a href="/stars/{{item.linkid}}" style="color: rgb(239 186 165);" target="_blank">{{item.name}}</a>
+            <a href="/star/{{item.linkid}}" style="color: rgb(239 186 165);" target="_blank">{{item.name}}</a>
         </span>
     {% endfor %}
     </p>

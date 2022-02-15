@@ -1,9 +1,9 @@
 [base]
 avmoo_site = https://avmoo.sbs
 db_file = avmoo.db
+
 # cn/tw/en/ja
 country = cn
-network_test = https://www.baidu.com/img/flexible/logo/pc/result.png
 
 [spider]
 sleep = 1.5
@@ -16,5 +16,15 @@ user_agent = Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML
 [website]
 # image server,//jp.netcdn.space, //pics.dmm.com
 cdn = //pics.dmm.co.jp
+
+# page item limit
 page_limit = 30
+
+# /actresses item limit
 actresses_page_limit = 36
+
+# cache enable or not
+use_cache = False
+
+# auto open site on run or not
+auto_open_site_on_run = True

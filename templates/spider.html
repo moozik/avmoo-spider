@@ -40,7 +40,7 @@ function frash_last_insert_list(){
         $("#waterfall").html("");
         data.forEach(item => {
             $("#waterfall").append(
-                '<div class="item">'+
+                '<div class="item" style="position: relative;">'+
                     '<a class="movie-box" href="/movie/' + item.linkid + '" target="_blank">'+
                         '<div class="photo-frame">'+
                             '<img src="{{config["website"]["cdn"]}}' + '/digital/video' + item.bigimage.replace("pl.", "ps.") + '">'+
@@ -52,6 +52,11 @@ function frash_last_insert_list(){
                                 '<date>' + item.release_date + '</date>'+
                             '</span>'+
                         '</div>'+
+                        '<div class="movie-desc">'+
+                            item.genre + '<br><br>'+
+                            item.stars + '<br><br>'+
+                            'len:<b style="color:red;">'+item.len+'min</b> image:<b style="color:red;">'+item.image_len+'</b>'+
+						'</div>'+
                     '</a>'+
                 '</div>'
             );

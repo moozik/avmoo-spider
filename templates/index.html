@@ -1,7 +1,7 @@
 {% extends "main.html" %}
 
-{% block title %}{{keyword}} {% endblock %}
-{% block keyword %}{{keyword}}{% endblock %}
+{% block title %}{{placeholder}} {% endblock %}
+{% block placeholder %}{{placeholder}}{% endblock %}
 {% block container %}
 <div class="container-fluid">
       <div class="row">
@@ -42,8 +42,7 @@
 					<div class="item">
 						<a class="movie-box" href="/movie/{{ item.linkid }}">
 							<div class="photo-frame">
-								<img src="{{config['website']['cdn']}}/digital/video{{ item.smallimage }}" title="标签:{{ item.genre }}
-演员:{{ item.stars }}">
+								<img class="photo-sm" src="{{config['website']['cdn']}}/digital/video{{ item.smallimage }}">
 							</div>
 							<div class="photo-info">
 								{% if item.file %}
@@ -60,6 +59,13 @@
 									<date>{{ item.av_id }}</date> /
 									<date>{{ item.release_date }}</date>
 								</span>
+							</div>
+							<div class="movie-desc">
+								{{ item.genre_desc }}<br><br>
+								{% if item.stars_desc %}
+								{{ item.stars_desc }}<br><br>
+								{% endif %}
+								len:<b style="color:red;">{{item.len}}min</b> image:<b style="color:red;">{{item.image_len}}</b>
 							</div>
 						</a>
 					</div>

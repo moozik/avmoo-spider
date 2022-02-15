@@ -46,28 +46,10 @@ class Avmo:
         self.CONN = sqlite3.connect(common.CONFIG.get(
             "base", "db_file"), check_same_thread=False)
         self.CUR = self.CONN.cursor()
-    
-    # 根据链接抓取
-    def crawl_by_url(self, link: str) -> None:
-        if link == None or link == "":
-            return
-        res = re.findall(
-            "https?://[^/]+/[^/]+/(movie|star|genre|series|studio|label|director|search)/([^/]+)(/page/(\d+))?", link)
-        if res == None or len(res) == 0:
-            print("wrong link:{}".format(link))
-            return
-        page_type = res[0][0]
-        keyword = res[0][1]
-        page_start = 1
-        if res[0][3] != "":
-            page_start = int(res[0][3])
 
-        ret = self.crawl_accurate(page_type, keyword, page_start, False)
-        if not ret:
-            print("wrong link:{},res:{}".format(link, res))
-    
+
     # 根据链接参数抓取
-    def crawl_accurate(self, page_type: str, keyword: str, page_start: int, is_increment: bool) -> None:
+    def crawl_accurate(self, page_type: str, keyword: str, page_start: int, is_increment: bool, exist_linkid_dict: dict) -> None:
         # 单个电影
         if page_type == "movie":
             (status_code, data) = self.crawl_by_movie_linkid(keyword)
@@ -75,8 +57,6 @@ class Avmo:
                 return False
             self.movie_save([data])
             return True
-        
-        exist_linkid_dict = self.get_exist_linkid(page_type, keyword, is_increment)
         # 其他
         if page_type in ('genre', 'series', 'studio', 'label', 'director', 'search', 'star'):
             self.crawl_by_page_type(page_type, keyword, exist_linkid_dict, page_start, is_increment)
@@ -84,7 +64,7 @@ class Avmo:
         print("wrong param,page_type:{}, keyword:{}, page_start:{}".format(
             page_type, keyword, page_start))
         return False
-    
+
     # 获取所有类别
     def crawl_genre(self) -> None:
         genre_url = common.get_url('genre', '')
@@ -126,7 +106,7 @@ class Avmo:
                 if is_increment:
                     break
                 skip_count += 1
-                print("SKIP EXIST,URL:http://127.0.0.1:5000/movie/{}".format(movie_linkid))
+                print("SKIP EXIST,URL:{}".format(common.get_local_url("movie", movie_linkid)))
                 continue
             time.sleep(common.CONFIG.getfloat("spider", "sleep"))
             
@@ -148,7 +128,7 @@ class Avmo:
         # 插入剩余的数据
         self.movie_save(insert_list)
         insert_count += len(insert_list)
-        print("[exist_count:{}][fetch count:{}][skip count:{}]".format(
+        print("[exist_count:{}][fetch_count:{}][skip_count:{}]".format(
             len(exist_linkid_dict), insert_count, skip_count))
 
     # 根据linkid抓取一个movie页面
@@ -185,7 +165,6 @@ class Avmo:
             return str.split(':')[1].strip()
 
         url = common.get_url('star', linkid)
-        print(linkid)
         data = {
             'linkid': linkid,
             'name': '',
@@ -258,10 +237,12 @@ class Avmo:
         )
         self.stars_save(data)
         return data
-    
+
+
     # 自动翻页返回movie_id
     def linkid_general(self, page_type: str, keyword: str, page_start: int = 1) -> Iterator[str]:
-        for page_no in range(page_start, 100000):
+        # 网站限制最多100页
+        for page_no in range(page_start, 101):
             time.sleep(common.CONFIG.getfloat("spider", "sleep"))
 
             url = common.get_url(page_type, keyword, page_no)
@@ -284,23 +265,6 @@ class Avmo:
             if next_page == []:
                 break
 
-    def get_exist_linkid(self, page_type: str, keyword: str, is_increment: bool) -> dict:
-        sql = ''
-        exist_linkid_dict = {}
-        # 查询已存在的
-        if page_type in ['director','studio','label','series']:
-            sql = "SELECT linkid FROM av_list WHERE {}_url='{}'".format(page_type, keyword)
-        if page_type == 'genre':
-            genre = common.fetchall(self.CUR, "SELECT * FROM av_genre WHERE linkid='{}'".format(keyword))
-            sql = "SELECT linkid FROM av_list WHERE genre LIKE '%|{}|%'".format(genre[0]['name'])
-        if page_type == 'star' and is_increment:
-            sql = "SELECT linkid FROM av_list WHERE stars_url LIKE '%{}%' ORDER BY release_date DESC LIMIT 1".format(keyword)
-        if page_type == 'star' and not is_increment:
-            sql = "SELECT linkid FROM av_list WHERE stars_url LIKE '%{}%'".format(keyword)
-        if sql != '':
-            ret = common.fetchall(self.CUR, sql)
-            exist_linkid_dict = {x["linkid"]:True for x in ret}
-        return exist_linkid_dict
 
     def stars_save(self, data: dict[str, str]) -> None:
         insert_sql = 'REPLACE INTO {} VALUES(?,?,?,?,?,?,?,?,?,?,?,?);'.format(
