@@ -13,8 +13,8 @@
         </div>
     </div>
     <div class="row">
-        <div class="col-md-3">
-            <div class="input-group" style="margin-top:20px;">
+        <div class="col-md-4">
+            <div class="input-group" style="">
                 <textarea class="form-control" id="input_text" placeholder="完整链接,例:
 https://avmoo.sbs/cn/movie/9fed39545dc47840
 https://avmoo.sbs/cn/star/26532bc87b4ce1d1/page/2
@@ -27,7 +27,65 @@ https://avmoo.sbs/cn/search/ABP/page/25" style="width: 500px;height: 200px;" tit
             </div>
         </div>
     </div>
-
+    <div class="row">
+        <div class="col-md-8">
+            <form class="" style="width:500px;" action="/action/config" method="post">
+                <div class="form-group">
+                    <label for="name">base.avmoo_site</label>
+                    <input type="text" class="form-control" name="base.avmoo_site" value="{{config['base']['avmoo_site']}}" />
+                </div>
+                <div class="form-group">
+                    <label for="name">base.db_file</label>
+                    <input type="text" class="form-control" name="base.db_file" value="{{config['base']['db_file']}}" />
+                </div>
+                <div class="form-group">
+                    <label for="name">spider.sleep</label>
+                    <input type="text" class="form-control" name="spider.sleep" value="{{config['spider']['sleep']}}" />
+                </div>
+                <div class="form-group">
+                    <label for="name">spider.insert_threshold</label>
+                    <input type="text" class="form-control" name="spider.insert_threshold" value="{{config['spider']['insert_threshold']}}" />
+                </div>
+                <div class="form-group">
+                    <label for="name">spider.continued_skip_limit</label>
+                    <input type="text" class="form-control" name="spider.continued_skip_limit" value="{{config['spider']['continued_skip_limit']}}" />
+                </div>
+                <div class="form-group">
+                    <label for="name">requests.timeout</label>
+                    <input type="text" class="form-control" name="requests.timeout" value="{{config['requests']['timeout']}}" />
+                </div>
+                <div class="form-group">
+                    <label for="name">requests.user_agent</label>
+                    <input type="text" class="form-control" name="requests.user_agent" value="{{config['requests']['user_agent']}}" />
+                </div>
+                <div class="form-group">
+                    <label for="name">website.use_cache</label>
+                    <div class="form-group">
+                        <label class="radio-inline">
+                            <input type="radio" name="website.use_cache" value="True" {% if config['website']['use_cache'] == 'True' %}checked{% endif %}> 打开
+                        </label>
+                        <label class="radio-inline">
+                            <input type="radio" name="website.use_cache" value="False" {% if config['website']['use_cache'] == 'False' %}checked{% endif %}> 关闭
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="name">website.auto_open_site_on_run</label>
+                    <div class="form-group">
+                        <label class="radio-inline">
+                            <input type="radio" name="website.auto_open_site_on_run" value="True" {% if config['website']['auto_open_site_on_run'] == 'True' %}checked{% endif %}> 打开
+                        </label>
+                        <label class="radio-inline">
+                            <input type="radio" name="website.auto_open_site_on_run" value="False" {% if config['website']['auto_open_site_on_run'] == 'False' %}checked{% endif %}> 关闭
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-default">提交修改</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
 
 </div>

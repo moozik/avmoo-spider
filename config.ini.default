@@ -8,6 +8,8 @@ country = cn
 [spider]
 sleep = 1.5
 insert_threshold = 10
+# continued skip count > continued_skip_limit, crawl end
+continued_skip_limit = 30
 
 [requests]
 timeout = 3

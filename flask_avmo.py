@@ -436,6 +436,24 @@ def action_catch_switch():
         common.config_init()
         return '已打开缓存'
 
+# 缓存开关
+@app.route('/action/config', methods=['POST'])
+def action_config():
+    key_list = [
+        "base.avmoo_site",
+        "base.db_file",
+        "spider.sleep",
+        "spider.insert_threshold",
+        "spider.continued_skip_limit",
+        "requests.timeout",
+        "requests.user_agent",
+        "website.use_cache",
+        "website.auto_open_site_on_run",
+    ]
+    # todo   
+    print(request.form)
+    return 'ok'
+
 # 本地打开
 @app.route('/action/explorer')
 def action_explorer():

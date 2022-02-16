@@ -29,6 +29,8 @@ class Avmo:
             'image_len', 'len', 'title', 'bigimage', 'release_date', ]
         # 表结构str
         self.column_str = ",".join(self.column)
+        # 上次插入
+        self.last_insert_list = []
         # 创建会话对象
         self.s = requests.Session()
         # 超时时间
@@ -40,7 +42,7 @@ class Avmo:
         self.s.proxies = {
             # 'https':'http://127.0.0.1:1080'
         }
-        self.last_insert_list = []
+
     def init_db(self):
         # 链接数据库
         self.CONN = sqlite3.connect(common.CONFIG.get(
@@ -99,6 +101,7 @@ class Avmo:
         insert_count = 0
         skip_count = 0
         banned_count = 0
+        continued_skip_count = 0
         for movie_linkid in self.linkid_general(page_type, keyword, page_start):
             # 跳过已存在的
             if movie_linkid in exist_linkid_dict:
@@ -106,8 +109,14 @@ class Avmo:
                 if is_increment:
                     break
                 skip_count += 1
+                continued_skip_count += 1
                 print("SKIP EXIST,URL:{}".format(common.get_local_url("movie", movie_linkid)))
+                # 连续跳过到指定数量，则跳出抓取
+                if continued_skip_count >= common.CONFIG.getint("spider", "continued_skip_limit"):
+                    break
                 continue
+            
+            continued_skip_count = 0
             time.sleep(common.CONFIG.getfloat("spider", "sleep"))
             
             (status_code, data) = self.crawl_by_movie_linkid(movie_linkid)
