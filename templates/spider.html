@@ -14,80 +14,32 @@
     </div>
     <div class="row">
         <div class="col-md-4">
-            <div class="input-group" style="">
-                <textarea class="form-control" id="input_text" placeholder="完整链接,例:
+            <form class="" style="width:500px;" action="/action/crawl" method="post">
+                <div class="form-group">
+                    <textarea class="form-control" name="url_text" placeholder="完整链接,例:
 https://avmoo.sbs/cn/movie/9fed39545dc47840
 https://avmoo.sbs/cn/star/26532bc87b4ce1d1/page/2
 https://avmoo.sbs/cn/genre/dd21aefe7ae3228c
 https://avmoo.sbs/cn/studio/ce25ddc3a9caca20
 https://avmoo.sbs/cn/label/8eab1a64464779ff
 https://avmoo.sbs/cn/director/63a8f4da6e22cc09
-https://avmoo.sbs/cn/search/ABP/page/25" style="width: 500px;height: 200px;" title="link text"></textarea>
-                <button class="btn btn-default" onclick='crawlLink(document.querySelector("#input_text").value);document.querySelector("#input_text").value="";' title="crawl by whole link">下载指定链接</button>
+https://avmoo.sbs/cn/search/ABP/page/25" style="width: 500px;height: 200px;" title="url text"></textarea>
+                </div>
+                <div class="form-group">
+                    <label title="crawl pagenum limit">最大抓取页数</label>
+                    <input type="text" class="form-control" name="crawl_pagenum_limit" value="100"/>
+                </div>
+                <button type="submit" class="btn btn-default" title="crawl by whole link">下载指定链接</button>
+            </form>
+        </div>
+        <div class="col-md-4">
+            <h4 title="work list">等待中任务</h4>
+            <div>
+                <ul id="queue_list">
+                </ul>
             </div>
         </div>
     </div>
-    <div class="row">
-        <div class="col-md-8">
-            <form class="" style="width:500px;" action="/action/config" method="post">
-                <div class="form-group">
-                    <label for="name">base.avmoo_site</label>
-                    <input type="text" class="form-control" name="base.avmoo_site" value="{{config['base']['avmoo_site']}}" />
-                </div>
-                <div class="form-group">
-                    <label for="name">base.db_file</label>
-                    <input type="text" class="form-control" name="base.db_file" value="{{config['base']['db_file']}}" />
-                </div>
-                <div class="form-group">
-                    <label for="name">spider.sleep</label>
-                    <input type="text" class="form-control" name="spider.sleep" value="{{config['spider']['sleep']}}" />
-                </div>
-                <div class="form-group">
-                    <label for="name">spider.insert_threshold</label>
-                    <input type="text" class="form-control" name="spider.insert_threshold" value="{{config['spider']['insert_threshold']}}" />
-                </div>
-                <div class="form-group">
-                    <label for="name">spider.continued_skip_limit</label>
-                    <input type="text" class="form-control" name="spider.continued_skip_limit" value="{{config['spider']['continued_skip_limit']}}" />
-                </div>
-                <div class="form-group">
-                    <label for="name">requests.timeout</label>
-                    <input type="text" class="form-control" name="requests.timeout" value="{{config['requests']['timeout']}}" />
-                </div>
-                <div class="form-group">
-                    <label for="name">requests.user_agent</label>
-                    <input type="text" class="form-control" name="requests.user_agent" value="{{config['requests']['user_agent']}}" />
-                </div>
-                <div class="form-group">
-                    <label for="name">website.use_cache</label>
-                    <div class="form-group">
-                        <label class="radio-inline">
-                            <input type="radio" name="website.use_cache" value="True" {% if config['website']['use_cache'] == 'True' %}checked{% endif %}> 打开
-                        </label>
-                        <label class="radio-inline">
-                            <input type="radio" name="website.use_cache" value="False" {% if config['website']['use_cache'] == 'False' %}checked{% endif %}> 关闭
-                        </label>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="name">website.auto_open_site_on_run</label>
-                    <div class="form-group">
-                        <label class="radio-inline">
-                            <input type="radio" name="website.auto_open_site_on_run" value="True" {% if config['website']['auto_open_site_on_run'] == 'True' %}checked{% endif %}> 打开
-                        </label>
-                        <label class="radio-inline">
-                            <input type="radio" name="website.auto_open_site_on_run" value="False" {% if config['website']['auto_open_site_on_run'] == 'False' %}checked{% endif %}> 关闭
-                        </label>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <button type="submit" class="btn btn-default">提交修改</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-
 </div>
 {% endblock %}
 
@@ -95,8 +47,10 @@ https://avmoo.sbs/cn/search/ABP/page/25" style="width: 500px;height: 200px;" tit
 <script>
 function frash_last_insert_list(){
     $.getJSON("/action/last/insert", function(data){
+        console.log(data);
+
         $("#waterfall").html("");
-        data.forEach(item => {
+        data["last_insert_list"].forEach(item => {
             $("#waterfall").append(
                 '<div class="item" style="position: relative;">'+
                     '<a class="movie-box" href="/movie/' + item.linkid + '" target="_blank">'+
@@ -118,8 +72,15 @@ function frash_last_insert_list(){
                     '</a>'+
                 '</div>'
             );
-        })
-        console.log(data);
+        });
+        $("#queue_list").html("");
+        data["queue_list"].forEach(item => {
+            $("#queue_list").append(
+                '<li>' +
+                    '<a href="'+item.url+'" target="_blank">'+item.url+'</a>'+ (item.page_limit > 0? ' page_limit:'+item.page_limit:'') +
+                '</li>'
+            );
+        });
     });
 }
 frash_last_insert_list()

@@ -5,7 +5,7 @@
     <div class="row">
         <div style="width: 500px;margin-left: 60px;">
             <div class="input-group" style="margin-top:20px;">
-                <form action="/action/scandisk" method="get">
+                <form action="/scandisk" method="get">
                     <p>
                         扫描本地磁盘中目标文件，自动识别番号文件名，可直接搜索，或打开。
                     </p>
@@ -52,7 +52,7 @@
                             <td><span style="color: coral;">{{resource.file_path}}</span></td>
                             <td><button class="btn btn-default" onclick="explorerLocal(this.getAttribute('data-val'))" data-val="{{resource.file_path}}" title="play">播放</button></td>
                             <td>
-                                {{resource.info|safe}}
+                                {{resource.info|safe}} <button class="btn btn-default insert_movie_res" data-val="{{resource.file_path}}" data-key="{{resource.av_id}}" title="add resource">添加到资源</button>
                                 <a class="movie-box" href="/movie/{{ av_data_map[resource.av_id].linkid }}">
                                     <div class="photo-frame">
                                         <img src="{{config['website']['cdn']}}/digital/video{{ av_data_map[resource.av_id].smallimage }}" title="title:{{ av_data_map[resource.av_id].title }}
@@ -66,7 +66,6 @@
                                         </span>
                                     </div>
                                 </a>
-                                <button class="btn btn-default insert_movie_res" data-val="{{resource.file_path}}" data-key="{{resource.av_id}}" title="add resource">添加到资源</button>
                             </td>
                         </tr>
                     {% endif %}

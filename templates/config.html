@@ -1,0 +1,78 @@
+{% extends "main.html" %}
+
+{% block title %} 配置 {% endblock %}
+{% block container %}
+<div class="container-fluid">
+    <div class="row" style="margin-top: 20px;">
+        <div class="col-md-8">
+            <form class="" style="width:500px;" action="/action/config" method="post">
+                <div class="form-group">
+                    <label>base.avmoo_site</label>
+                    <input type="text" class="form-control" name="base.avmoo_site" value="{{config['base']['avmoo_site']}}" />
+                </div>
+                <div class="form-group">
+                    <label>base.db_file</label>
+                    <input type="text" class="form-control" name="base.db_file" value="{{config['base']['db_file']}}" />
+                </div>
+                <div class="form-group">
+                    <label>spider.sleep(爬虫休眠时间,过小会导致403)</label>
+                    <input type="text" class="form-control" name="spider.sleep" value="{{config['spider']['sleep']}}" />
+                </div>
+                <div class="form-group">
+                    <label>spider.insert_threshold(批量插入最大值)</label>
+                    <input type="text" class="form-control" name="spider.insert_threshold" value="{{config['spider']['insert_threshold']}}" />
+                </div>
+                <div class="form-group">
+                    <label>spider.continued_skip_limit(连续*个存在则自动跳出爬取)</label>
+                    <input type="text" class="form-control" name="spider.continued_skip_limit" value="{{config['spider']['continued_skip_limit']}}" />
+                </div>
+                <div class="form-group">
+                    <label>requests.timeout(请求超时时间)</label>
+                    <input type="text" class="form-control" name="requests.timeout" value="{{config['requests']['timeout']}}" />
+                </div>
+                <div class="form-group">
+                    <label>requests.user_agent</label>
+                    <input type="text" class="form-control" name="requests.user_agent" value="{{config['requests']['user_agent']}}" />
+                </div>
+                <div class="form-group">
+                    <label>website.cdn(图片cdn源)</label>
+                    <div class="form-group">
+                        <select name="website.cdn" class="form-control">
+                            <option {% if config['website']['cdn'] == '//jp.netcdn.space' %}selected{% endif %}>//jp.netcdn.space</option>
+                            <option {% if config['website']['cdn'] == '//pics.dmm.co.jp' %}selected{% endif %}>//pics.dmm.co.jp</option>
+                            <option {% if config['website']['cdn'] == '//pics.dmm.com' %}selected{% endif %}>//pics.dmm.com</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>website.use_cache(是否启用sql缓存)</label>
+                    <div class="form-group">
+                        <label class="radio-inline">
+                            <input type="radio" name="website.use_cache" value="True" {% if config['website']['use_cache'] == 'True' %}checked{% endif %}> on
+                        </label>
+                        <label class="radio-inline">
+                            <input type="radio" name="website.use_cache" value="False" {% if config['website']['use_cache'] == 'False' %}checked{% endif %}> off
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>website.auto_open_site_on_run(运行时自动打开主页)</label>
+                    <div>
+                        <label class="radio-inline">
+                            <input type="radio" name="website.auto_open_site_on_run" value="True" {% if config['website']['auto_open_site_on_run'] == 'True' %}checked{% endif %}> on
+                        </label>
+                        <label class="radio-inline">
+                            <input type="radio" name="website.auto_open_site_on_run" value="False" {% if config['website']['auto_open_site_on_run'] == 'False' %}checked{% endif %}> off
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-default">提交修改</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+</div>
+{% endblock %}

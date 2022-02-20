@@ -6,9 +6,14 @@ db_file = avmoo.db
 country = cn
 
 [spider]
-sleep = 1.5
+# could by a decimal number
+sleep = 2
+
+# integer
 insert_threshold = 10
+
 # continued skip count > continued_skip_limit, crawl end
+# integer
 continued_skip_limit = 30
 
 [requests]
@@ -16,8 +21,8 @@ timeout = 3
 user_agent = Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36
 
 [website]
-# image server,//jp.netcdn.space, //pics.dmm.com
-cdn = //pics.dmm.co.jp
+# image server,//jp.netcdn.space, //pics.dmm.com, //pics.dmm.co.jp
+cdn = //pics.dmm.com
 
 # page item limit
 page_limit = 30

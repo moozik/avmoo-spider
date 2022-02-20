@@ -1,19 +1,10 @@
-def buildSqliteDb(conn, cur):
+def build_sqlite_db(conn, cur):
     cur.execute('''
 CREATE TABLE IF NOT EXISTS "av_genre" (
   "linkid" TEXT(16) NOT NULL,
   "name" TEXT,
   "title" TEXT,
   PRIMARY KEY ("linkid")
-);
-    ''')
-
-    cur.execute('''
-CREATE TABLE IF NOT EXISTS "av_like" (
-  "type" TEXT(20) NOT NULL,
-  "val" TEXT(300) NOT NULL,
-  "time" TEXT(50),
-  PRIMARY KEY ("type", "val")
 );
     ''')
 

@@ -3,54 +3,76 @@ import configparser
 import os
 import re
 import sqlite3
-from install import buildSqliteDb
+from install import build_sqlite_db
 from lxml import etree
 import webbrowser
 import threading
-from urllib.parse import quote, unquote
+from urllib.parse import quote
 
 CONFIG_FILE = "config.ini"
 CONFIG_FILE_DEFAULT = "config.ini.default"
-CONFIG = None
+CONFIG = configparser.ConfigParser()
+
+CONFIG_NAME_LIST = [
+    "base.avmoo_site",
+    "base.db_file",
+    "base.country",
+
+    "spider.sleep",
+    "spider.insert_threshold",
+    "spider.continued_skip_limit",
+
+    "requests.timeout",
+    "requests.user_agent",
+
+    "website.cdn",
+    "website.page_limit",
+    "website.actresses_page_limit",
+    "website.use_cache",
+    "website.auto_open_site_on_run",
+]
+
 DB = {}
 NETWORK_CONNECT = False
 
 STATIC_FILE = []
 
 COUNTRY_MAP = {
-    'en' : 'English',
-    'ja' : '日本语',
-    'tw' : '正體中文',
-    'cn' : '简体中文',
+    'en': 'English',
+    'ja': '日本语',
+    'tw': '正體中文',
+    'cn': '简体中文',
 }
 
 ESCAPT_LIST = (
-    ("/","//"),
-    ("'","''"),
-    ("[","/["),
-    ("]","/]"),
-    ("%","/%"),
-    ("&","/&"),
-    ("_","/_"),
-    ("(","/("),
-    (")","/)"),
+    ("/", "//"),
+    ("'", "''"),
+    ("[", "/["),
+    ("]", "/]"),
+    ("%", "/%"),
+    ("&", "/&"),
+    ("_", "/_"),
+    ("(", "/("),
+    (")", "/)"),
 )
 
 LOCAL_IP = "127.0.0.1"
 DEFAULT_PORT = 5000
 
+
 def init():
     print("common.init")
     global CONFIG, DB, NETWORK_CONNECT, STATIC_FILE
     # 初始化配置
+    config_check()
     config_init()
-    
+
     # 初始化db
     DB['CONN'] = sqlite3.connect(CONFIG.get(
         "base", "db_file"), check_same_thread=False)
     DB['CUR'] = DB['CONN'].cursor()
     # 如果不存在则新建表
-    buildSqliteDb(DB['CONN'], DB['CUR'])
+    build_sqlite_db(DB['CONN'], DB['CUR'])
     print("common.init.db")
 
     # # 检查配置的地址是否可访问
@@ -82,6 +104,7 @@ def init():
     #         f.write(resp.content)
     #         print("fetch:" + link)
 
+
 def config_path() -> str:
     global CONFIG_FILE, CONFIG_FILE_DEFAULT
     if os.path.exists(CONFIG_FILE):
@@ -92,17 +115,32 @@ def config_path() -> str:
 def config_init() -> None:
     global CONFIG, COUNTRY_MAP
     # 初始化配置
-    cf = configparser.ConfigParser()
-    cf.read(config_path())
-    CONFIG = cf
+    CONFIG.read(config_path())
     CONFIG.set("base", "country_name", COUNTRY_MAP[CONFIG.get("base", "country")])
 
 
-def config_save() -> None:
+def config_check():
+    global CONFIG_FILE, CONFIG_FILE_DEFAULT
+    if not os.path.exists(CONFIG_FILE):
+        return
+    config = configparser.ConfigParser()
+    config.read(CONFIG_FILE)
+    config_default = configparser.ConfigParser()
+    config_default.read(CONFIG_FILE_DEFAULT)
+    for (section, option) in [x.split('.') for x in CONFIG_NAME_LIST]:
+        if not config.has_section(section):
+            config.add_section(section)
+        if not config.has_option(section, option):
+            config.set(section, option, config_default.get(section, option))
+    config_save(config)
+
+
+def config_save(config):
     global CONFIG_FILE
-    CONFIG.remove_option("base", "country_name")
+    if config.has_option("base", "country_name"):
+        config.remove_option("base", "country_name")
     with open(CONFIG_FILE, "w") as fp:
-        CONFIG.write(fp)
+        config.write(fp)
 
 
 def show_column_name(data, description) -> list:
@@ -130,7 +168,7 @@ def get_new_avmoo_site() -> str:
     return avmoo_site
 
 
-def list_in_str(target_list: list[str], target_string: str) -> bool:
+def list_in_str(target_list: tuple, target_string: str) -> bool:
     for item in target_list:
         if item in target_string:
             return True
@@ -140,7 +178,7 @@ def list_in_str(target_list: list[str], target_string: str) -> bool:
 def get_url(page_type: str = "", keyword: str = "", page_no: int = 1) -> str:
     global CONFIG
     ret = '{}/{}'.format(CONFIG.get("base", "avmoo_site"),
-                                CONFIG.get("base", "country"),)
+                         CONFIG.get("base", "country"), )
     if page_type == "search":
         if keyword != "":
             ret += '/{}/{}'.format(page_type, keyword)
@@ -168,18 +206,20 @@ def get_local_url(page_type: str = "", keyword: str = "", page_no: int = 1) -> s
 def search_where(key_item: str) -> str:
     key_item = sql_escape(key_item)
     return "(av_list.title LIKE '%{0}%' OR ".format(key_item) + \
-            "av_list.director = '{0}' OR ".format(key_item) + \
-            "av_list.studio = '{0}' OR ".format(key_item) + \
-            "av_list.label = '{0}' OR ".format(key_item) + \
-            "av_list.series LIKE '%{0}%' OR ".format(key_item) + \
-            "av_list.genre LIKE '%|{0}|%' OR ".format(key_item) + \
-            "av_list.stars LIKE '%{0}%')".format(key_item)
+           "av_list.director = '{0}' OR ".format(key_item) + \
+           "av_list.studio = '{0}' OR ".format(key_item) + \
+           "av_list.label = '{0}' OR ".format(key_item) + \
+           "av_list.series LIKE '%{0}%' OR ".format(key_item) + \
+           "av_list.genre LIKE '%|{0}|%' OR ".format(key_item) + \
+           "av_list.stars LIKE '%{0}%')".format(key_item)
 
 
 def open_browser_tab(url):
     print("open_browser_tab:", url)
-    def _open_tab(url):
-        webbrowser.open_new_tab(url)
+
+    def _open_tab(url_param):
+        webbrowser.open_new_tab(url_param)
+
     thread = threading.Thread(target=_open_tab, args=(url,))
     thread.daemon = True
     thread.start()
@@ -192,10 +232,10 @@ def sql_escape(keyword: str) -> str:
 
 
 def parse_url(url: str) -> tuple:
-    if url == None or url == "":
+    if url is None or url == "":
         return "", "", -1
     res = re.findall(
-        "https?://[^/]+/[^/]+/(movie|star|genre|series|studio|label|director|search)/([^/]+)(/page/(\d+))?", url)
+        "https?://[^/]+/[^/]+/(movie|star|genre|series|studio|label|director|search)/([^/]+)(/page/(\\d+))?", url)
     if len(res) == 0:
         print("wrong url:{}".format(url))
         return "", "", -1
@@ -209,7 +249,7 @@ def get_exist_linkid(page_type: str, keyword: str) -> dict:
     sql = ''
     exist_linkid_dict = {}
     # 查询已存在的
-    if page_type in ['director','studio','label','series']:
+    if page_type in ['director', 'studio', 'label', 'series']:
         sql = "SELECT linkid FROM av_list WHERE {}_url='{}'".format(page_type, keyword)
     if page_type == 'genre':
         genre = fetchall(DB["CUR"], "SELECT * FROM av_genre WHERE linkid='{}'".format(keyword))
@@ -223,5 +263,5 @@ def get_exist_linkid(page_type: str, keyword: str) -> dict:
         sql = "SELECT linkid FROM av_list WHERE " + " AND ".join(where)
     if sql != '':
         ret = fetchall(DB["CUR"], sql)
-        exist_linkid_dict = {x["linkid"]:True for x in ret}
+        exist_linkid_dict = {x["linkid"]: True for x in ret}
     return exist_linkid_dict

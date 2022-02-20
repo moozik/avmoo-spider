@@ -44,7 +44,7 @@
     transition: all .2s;
 }
 .movie-box:hover .movie-desc {
-	opacity: 0.9;
+	opacity: 0.8;
 	top: 10px;
 }
 </style>
@@ -77,8 +77,8 @@
 
           <ul class="nav navbar-nav navbar-right">
               <li><a href="/spider" style="font-weight: bold;color:#f44336;" title="spider"><span class="glyphicon glyphicon-tasks" style="font-size:12px;"></span> 爬虫</a></li>
-              <li><a href="/action/scandisk" style="font-weight: bold;" title="scan local files"><span class="glyphicon glyphicon-search" style="font-size:12px;"></span> 扫描</a></li>
-              <li><a href="#" onclick="catchSwitch()"><span class="glyphicon glyphicon-wrench" style="font-size:12px;"></span> 缓存</a></li>
+              <li><a href="/scandisk" style="font-weight: bold;" title="scan local files"><span class="glyphicon glyphicon-search" style="font-size:12px;"></span> 扫描</a></li>
+              <li><a href="/config" title="config"><span class="glyphicon glyphicon-wrench" style="font-size:12px;"></span> 配置</a></li>
                 {% if origin_link %}
                 <li><a href="{{ origin_link }}" target="_blank" title="origin link"><span class="glyphicon glyphicon-link" style="font-size:12px;"></span> 链接</a></li>
                 {% else %}
@@ -119,37 +119,37 @@
 		<ul class="pagination pagination-lg mtb-0">
             {% if page.head > 0 %}
             <li>
-                <a name="prepage" href="{{page.pageroot}}/page/1">
+                <a href="{{page.pageroot}}/page/1">
                     <span class="glyphicon glyphicon-fast-backward"></span> 首页</a>
             </li>
             {% endif %}
             {% if page.left>0 %}
             <li>
-                <a name="prepage" href="{{page.pageroot}}/page/{{page.left}}">
+                <a href="{{page.pageroot}}/page/{{page.left}}">
                     <span class="glyphicon glyphicon-chevron-left"></span> 上一页</a>
             </li>
             {% endif %}
             {% for item in page.list %}
                 {% if page.now == item %}
                     <li class="active">
-                        <a name="numbar" href="{{page.pageroot}}/page/{{item}}">{{item}}</a>
+                        <a href="{{page.pageroot}}/page/{{item}}">{{item}}</a>
                     </li>
                 {% else %}
                     <li>
-                        <a name="numbar" href="{{page.pageroot}}/page/{{item}}">{{item}}</a>
+                        <a href="{{page.pageroot}}/page/{{item}}">{{item}}</a>
                     </li>
                 {% endif %}
             {% endfor %}
 
             {% if page.right>0 %}
                 <li>
-                <a name="nextpage" href="{{page.pageroot}}/page/{{page.right}}">
+                <a href="{{page.pageroot}}/page/{{page.right}}">
                     <span class="glyphicon glyphicon-chevron-right"></span> 下一页</a>
                 </li>
             {% endif %}
             {% if page.tail > 0 %}
             <li>
-                <a name="prepage" href="{{page.pageroot}}/page/{{page.tail}}">
+                <a href="{{page.pageroot}}/page/{{page.tail}}">
                     <span class="glyphicon glyphicon-fast-forward"></span> 尾页</a>
             </li>
             {% endif %}
@@ -228,8 +228,8 @@
     }
     function analyseStar(linkid){
         $.get("/action/analyse/star/" + linkid, function (data) {
-            var starName = data.starName;
-            var html = "<p style='font-weight: 700;margin-top:10px;'>总时长</p>";
+            let starName = data.starName;
+            let html = "<p style='font-weight: 700;margin-top:10px;'>总时长</p>";
             html += "<p>" + data.minuteSum + " min</p>";
 
             html += "<p style='font-weight: 700;margin-top:10px;'>分类</p>";
