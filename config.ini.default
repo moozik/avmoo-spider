@@ -30,6 +30,12 @@ page_limit = 30
 # /actresses item limit
 actresses_page_limit = 36
 
+# /group item limit
+group_page_limit = 30
+
+# release_date or count
+group_page_order_by = count
+
 # cache enable or not
 use_cache = False
 

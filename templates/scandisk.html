@@ -50,9 +50,9 @@
                         <tr>
                             <!-- 视频文件 命中avid 有页面 -->
                             <td><span style="color: coral;">{{resource.file_path}}</span></td>
-                            <td><button class="btn btn-default" onclick="explorerLocal(this.getAttribute('data-val'))" data-val="{{resource.file_path}}" title="play">播放</button></td>
+                            <td><button class="btn btn-default btn-sm" onclick="explorerLocal(this.getAttribute('data-val'))" data-val="{{resource.file_path}}" title="play">播放</button></td>
                             <td>
-                                {{resource.info|safe}} <button class="btn btn-default insert_movie_res" data-val="{{resource.file_path}}" data-key="{{resource.av_id}}" title="add resource">添加到资源</button>
+                                {{resource.info|safe}} <button class="btn btn-default btn-sm insert_movie_res" data-val="{{resource.file_path}}" data-key="{{resource.av_id}}" title="add resource">添加到资源</button>
                                 <a class="movie-box" href="/movie/{{ av_data_map[resource.av_id].linkid }}">
                                     <div class="photo-frame">
                                         <img src="{{config['website']['cdn']}}/digital/video{{ av_data_map[resource.av_id].smallimage }}" title="title:{{ av_data_map[resource.av_id].title }}
@@ -75,7 +75,7 @@
                         <tr>
                             <!-- 视频文件 命中avid 无页面 -->
                             <td><span style="color: coral;">{{resource.file_path}}</span></td>
-                            <td><button class="btn btn-default" onclick="explorerLocal(this.getAttribute('data-val'))" data-val="{{resource.file_path}}" title="play">播放</button></td>
+                            <td><button class="btn btn-default btn-sm" onclick="explorerLocal(this.getAttribute('data-val'))" data-val="{{resource.file_path}}" title="play">播放</button></td>
                             <td><a href="{{config['base']['avmoo_site']}}/cn/search/{{resource.av_id}}" target="_blank">{{resource.av_id}}</a>|{{resource.info|safe}}</td>
                         </tr>
                     {% endif %}
@@ -85,7 +85,7 @@
                         <tr>
                             <!-- 视频文件 未命中avid -->
                             <td>{{resource.file_path}}</td>
-                            <td><button class="btn btn-default" onclick="explorerLocal(this.getAttribute('data-val'))" data-val="{{resource.file_path}}" title="play">播放</button></td>
+                            <td><button class="btn btn-default btn-sm" onclick="explorerLocal(this.getAttribute('data-val'))" data-val="{{resource.file_path}}" title="play">播放</button></td>
                             <td></td>
                         </tr>
                     {% endif %}
@@ -96,7 +96,7 @@
                     <tr>
                         <!-- 其他文件 -->
                         <td>{{resource.file_path}}</td>
-                        <td><button class="btn btn-default explorer-local" data-val="{{resource.file_path}}" title="explorer">本地打开</button></td>
+                        <td><button class="btn btn-default btn-sm explorer-local" data-val="{{resource.file_path}}" title="explorer">本地打开</button></td>
                     </tr>
                 {% endfor %}
             {% endif %}

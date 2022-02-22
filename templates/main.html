@@ -47,6 +47,9 @@
 	opacity: 0.8;
 	top: 10px;
 }
+.info a {
+    color: #0015af;
+}
 </style>
 {% block head %} {% endblock %}
 </head>
@@ -73,11 +76,12 @@
             <li><a href="/actresses" title="Actresses">女优</a></li>
             <li><a href="/search/收藏影片" title="Favorites">收藏</a></li>
             <li><a href="/genre" title="Genre">类别</a></li>
+            <li><a href="/group" title="group">番号</a></li>
           </ul>
 
           <ul class="nav navbar-nav navbar-right">
               <li><a href="/spider" style="font-weight: bold;color:#f44336;" title="spider"><span class="glyphicon glyphicon-tasks" style="font-size:12px;"></span> 爬虫</a></li>
-              <li><a href="/scandisk" style="font-weight: bold;" title="scan local files"><span class="glyphicon glyphicon-search" style="font-size:12px;"></span> 扫描</a></li>
+              <li><a href="/scandisk" title="scan local files"><span class="glyphicon glyphicon-search" style="font-size:12px;"></span> 扫描</a></li>
               <li><a href="/config" title="config"><span class="glyphicon glyphicon-wrench" style="font-size:12px;"></span> 配置</a></li>
                 {% if origin_link %}
                 <li><a href="{{ origin_link }}" target="_blank" title="origin link"><span class="glyphicon glyphicon-link" style="font-size:12px;"></span> 链接</a></li>
@@ -211,13 +215,6 @@
             showMessage(data,"");
         });
     }
-    function crawlStar(linkid){
-        $.post("/action/crawl/star", {
-            linkid: linkid
-        }, function (data) {
-            showMessage(data,"");
-        });
-    }
     function crawlAccurate(page_type, keyword){
         $.post("/action/crawl/accurate", {
             page_type: page_type,
@@ -226,20 +223,20 @@
             showMessage(data,"");
         });
     }
-    function analyseStar(linkid){
-        $.get("/action/analyse/star/" + linkid, function (data) {
+    function analyse(page_type, linkid){
+        $.get("/action/analyse/" + page_type + "/" + linkid, function (data) {
             let starName = data.starName;
             let html = "<p style='font-weight: 700;margin-top:10px;'>总时长</p>";
-            html += "<p>" + data.minuteSum + " min</p>";
+            html += '<span class="tag-style">' + data.minuteSum + ' min</span>';
 
             html += "<p style='font-weight: 700;margin-top:10px;'>分类</p>";
             data.genreCounter.forEach(item => {
-                html += Link(item.name + span('('+item.count+')', 'red'), '/search/' + starName + '%20' + item.name) + ' ';
+                html += Link(item.name + span('('+item.count+')', 'red'), '/search/' + page_type + '=' + linkid + '%20' + item.name) + ' ';
             })
 
-            html += "<p style='font-weight: 700;margin-top:10px;'>合作演员</p>";
+            html += "<p style='font-weight: 700;margin-top:10px;'>演员</p>";
             data.starsCounter.forEach(item => {
-                html += Link(item.name + span('('+item.count+')', 'red'), '/search/' + starName + '%20' + item.name) + ' ';
+                html += Link(item.name + span('('+item.count+')', 'red'), '/search/' + page_type + '=' + linkid + '%20' + item.name) + ' ';
             })
             showMessage("分析结果", html);
         });

@@ -6,7 +6,8 @@
 <div class="container-fluid">
       <div class="row">
 		  <div id="waterfall">
-				{% if data.av_stars %}
+                {#演员信息#}
+				{% if data.av_stars and page.now == 1 %}
 					<div class="item">
 						<div class="avatar-box">
 							<div class="photo-frame">
@@ -27,17 +28,24 @@
 								{% if data.av_stars.hips %}<p>臀围: {{ data.av_stars.hips }}</p>{% endif %}
 								{% if data.av_stars.hometown %}<p>出生地: {{ data.av_stars.hometown }}</p>{% endif %}
 								{% if data.av_stars.hobby %}<p>爱好: {{ data.av_stars.hobby }}</p>{% endif %}
-								<p>影片数量: <b style="color:red;">{{page.count}}</b></p>
-								<p><button class="btn btn-success" onclick="crawlStar('{{data.av_stars.linkid}}')" title="update movie list">更新影片列表</button></p>
-								<p><button class="btn btn-success" onclick="analyseStar('{{data.av_stars.linkid}}')" title="analyse Actresses">分析影片</button></p>
-								<p><a class="btn btn-default" href="{{config['base']['avmoo_site']}}/cn/star/{{data.av_stars.linkid}}" title="origin movie link" target="_blank">源站链接</a></p>
 							</div>
 						</div>
 					</div>
-					<div class="item" id="analyseResult">
-						<!-- <p>影片数量: <b style="color:red;">{{page.count}}</b></p> -->
-					</div>
 				{% endif %}
+
+                {% if data.page_type != 'index' and page.now == 1 %}
+                <div class="item">
+                    <div class="avatar-box">
+                        <div class="photo-info">
+                            <p><button class="btn btn-success" onclick="crawlAccurate('{{ data.page_type }}', '{{ data.keyword }}')" title="update movie list">更新影片</button></p>
+                            <p><button class="btn btn-success" onclick="analyse('{{ data.page_type }}', '{{data.keyword}}')" title="analyse">分析影片</button></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="item" id="analyseResult">
+                </div>
+                {% endif %}
+
 				{% for item in data.av_list %}
 					<div class="item">
 						<a class="movie-box" href="/movie/{{ item.linkid }}">

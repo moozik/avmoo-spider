@@ -3,7 +3,7 @@
 {% block container %}
 <div class="container">
     <h3 id="av_title">{{data.title}}</h3>
-    <button class="btn btn-default" onclick="translateTitle('{{data.av_id}}')">翻译</button>
+    <button class="btn btn-default btn-sm" onclick="translateTitle('{{data.av_id}}')">翻译</button>
     <div class="row movie">
         <div class="col-md-9 screencap">
             <a class="bigImage" href="{{config['website']['cdn']}}/digital/video{{data.bigimage}}" title="{{data.title}}">
@@ -14,6 +14,10 @@
             <p>
                 <span class="header">识别码:</span>
                 <span style="color:#CC0000;">{{data.av_id}}</span>
+            </p>
+            <p>
+                <span class="header">番号:</span>
+                <a href="/group/{{data.av_group}}">{{data.av_group}}</a>
             </p>
             {% if data.release_date %}
                 <p>
@@ -61,28 +65,28 @@
             {% endif %}
             <p class="header" title="action">操作:</p>
             <p>
-                <button class="btn btn-default" type="submit" onclick="insertMovieExtend('like', 'av_id', '{{data.av_id}}')" title="add Favorites">收藏</button>
-                <button class="btn btn-default" type="submit" onclick="crawlAccurate('movie', '{{data.linkid}}');setTimeout(function(){location.reload()}, 3000);" title="crawl again">重新抓取</button>
+                <button class="btn btn-default btn-sm" type="submit" onclick="insertMovieExtend('like', 'av_id', '{{data.av_id}}')" title="add Favorites">收藏</button>
+                <button class="btn btn-default btn-sm" type="submit" onclick="crawlAccurate('movie', '{{data.linkid}}');setTimeout(function(){location.reload()}, 3000);" title="crawl again">重新抓取</button>
             </p>
         </div>
     </div>
 
     <h4 title="search tools">搜索资源</h4>
     <div>
-        <a class="btn btn-default" href="https://btsow.rest/search/{{data.av_id}}" target="_blank">BTSO</a>
-        <a class="btn btn-default" href="http://www.haociso.top/s/{{data.av_id}}" target="_blank">haociso</a>
+        <a class="btn btn-default btn-sm" href="https://btsow.rest/search/{{data.av_id}}" target="_blank">BTSO</a>
+        <a class="btn btn-default btn-sm" href="http://www.haociso.top/s/{{data.av_id}}" target="_blank">haociso</a>
     </div>
 
     <h4 title="resource">影片资源</h4>
     <div>
         <input id="movie_resource" type="text" class="form-control" style="max-width: 400px;" placeholder="磁力链接 | 本地路径 | 在线地址" title="magnet | local movie path | url"/>
-        <button class="btn btn-default insert-movie-local" type="submit" onclick="insertMovieExtend('movie_res', '{{data.av_id}}', document.querySelector('#movie_resource').value)" title="save extend data">保存</button>
+        <button class="btn btn-default btn-sm insert-movie-local" type="submit" onclick="insertMovieExtend('movie_res', '{{data.av_id}}', document.querySelector('#movie_resource').value)" title="save extend data">保存</button>
         <ul>
         {% for movie_resource in data.movie_resource_list %}
             <li>
                 <a href="{{movie_resource}}" target="_blank">{{movie_resource}}</a>
-                <button class="btn btn-default" onclick="deleteMovieExtend('movie_res','{{data.av_id}}', this.getAttribute('data-val'));setTimeout(function(){location.reload()}, 1000);" data-val="{{movie_resource}}" type="submit" title="del">删除记录</button>
-                <button class="btn btn-default" onclick="explorerLocal(this.getAttribute('data-val'))" data-val="{{movie_resource}}" type="submit" title="explorer local">本地打开</button>
+                <button class="btn btn-default btn-sm" onclick="deleteMovieExtend('movie_res','{{data.av_id}}', this.getAttribute('data-val'));setTimeout(function(){location.reload()}, 1000);" data-val="{{movie_resource}}" type="submit" title="del">删除记录</button>
+                <button class="btn btn-default btn-sm" onclick="explorerLocal(this.getAttribute('data-val'))" data-val="{{movie_resource}}" type="submit" title="explorer local">本地打开</button>
             </li>
         {% endfor %}
         </ul>
@@ -112,7 +116,7 @@
     <p class="info">
     {% for item in data.stars_map %}
         <span class="genre">
-            <a href="/star/{{item.linkid}}" style="color: rgb(239 186 165);" target="_blank">{{item.name}}</a>
+            <a href="/star/{{item.linkid}}" target="_blank">{{item.name}}</a>
         </span>
     {% endfor %}
     </p>

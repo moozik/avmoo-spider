@@ -5,7 +5,7 @@
 <div class="container-fluid">
     <div class="row" style="margin-top: 20px;">
         <div class="col-md-8">
-            <form class="" style="width:500px;" action="/action/config" method="post">
+            <form style="width:500px;" action="/action/config" method="post">
                 <div class="form-group">
                     <label>base.avmoo_site</label>
                     <input type="text" class="form-control" name="base.avmoo_site" value="{{config['base']['avmoo_site']}}" />
@@ -42,6 +42,29 @@
                             <option {% if config['website']['cdn'] == '//pics.dmm.co.jp' %}selected{% endif %}>//pics.dmm.co.jp</option>
                             <option {% if config['website']['cdn'] == '//pics.dmm.com' %}selected{% endif %}>//pics.dmm.com</option>
                         </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>website.page_limit</label>
+                    <input type="text" class="form-control" name="website.page_limit" value="{{config['website']['page_limit']}}" />
+                </div>
+                <div class="form-group">
+                    <label>website.actresses_page_limit</label>
+                    <input type="text" class="form-control" name="website.actresses_page_limit" value="{{config['website']['actresses_page_limit']}}" />
+                </div>
+                <div class="form-group">
+                    <label>website.group_page_limit</label>
+                    <input type="text" class="form-control" name="website.group_page_limit" value="{{config['website']['group_page_limit']}}" />
+                </div>
+                <div class="form-group">
+                    <label>website.group_page_order_by(番号页排序方式)</label>
+                    <div class="form-group">
+                        <label class="radio-inline">
+                            <input type="radio" name="website.group_page_order_by" value="date" {% if config['website']['group_page_order_by'] == 'date' %}checked{% endif %}> date
+                        </label>
+                        <label class="radio-inline">
+                            <input type="radio" name="website.group_page_order_by" value="count" {% if config['website']['group_page_order_by'] == 'count' %}checked{% endif %}> count
+                        </label>
                     </div>
                 </div>
                 <div class="form-group">

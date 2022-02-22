@@ -28,6 +28,8 @@ CONFIG_NAME_LIST = [
     "website.cdn",
     "website.page_limit",
     "website.actresses_page_limit",
+    "website.group_page_limit",
+    "website.group_page_order_by",
     "website.use_cache",
     "website.auto_open_site_on_run",
 ]
@@ -256,6 +258,8 @@ def get_exist_linkid(page_type: str, keyword: str) -> dict:
         sql = "SELECT linkid FROM av_list WHERE genre LIKE '%|{}|%'".format(genre[0]['name'])
     if page_type == 'star':
         sql = "SELECT linkid FROM av_list WHERE stars_url LIKE '%{}%'".format(keyword)
+    if page_type == 'group':
+        sql = "SELECT linkid FROM av_list WHERE av_id LIKE '{}-%'".format(keyword)
     if page_type == 'search':
         where = []
         for key_item in keyword.split(' '):

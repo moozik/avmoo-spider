@@ -13,7 +13,7 @@
         <div class="col-md-1"></div>
         <div class="col-md-1">
             <div class="input-group" style="margin-top:20px;">
-                <button class="btn btn-default" onclick="crawlStar('all')" title="update all movie">更新所有影片</button>
+                <button class="btn btn-default" onclick="crawlAccurate('allStar', '')" title="update all movie">更新所有影片</button>
             </div>
         </div>
     </div>
@@ -33,7 +33,7 @@
                 <span>{{item.name}}</span>
                 <span>作品 <b style="color:red;">{{item.movie_count}}</b></span>
                 <span>最新 <b style="color:red;">{{item.release_date}}</b></span>
-                <span><button class="btn btn-default" onclick="crawlStar('{{item.linkid}}')" title="update movie list">更新影片</button></span>
+                <span><button class="btn btn-default btn-sm" onclick="crawlAccurate('star' ,'{{item.linkid}}')" title="update movie list">更新影片</button></span>
             </div>
             {% endfor %}
         </div>

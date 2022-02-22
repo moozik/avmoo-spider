@@ -88,6 +88,14 @@ def index(keyword='', pagenum=1):
                 where.append(
                     "av_id IN (SELECT distinct val FROM av_extend WHERE extend_name='like' AND key='av_id')")
                 continue
+
+            re_res = re.findall("^(director|studio|label|series|genre|star|group)=(.+)", key_item)
+            if re_res:
+                page_type = re_res[0][0]
+                item_keyword = re_res[0][1]
+                where.append(get_where_by_page_type(page_type, item_keyword))
+                continue
+
             where.append(common.search_where(key_item))
 
     (result, row_count) = select_av_list(column='av_list.*', av_list_where=where,
@@ -96,7 +104,7 @@ def index(keyword='', pagenum=1):
         page_root = '/search/{}'.format(quote(keyword))
     else:
         page_root = ''
-    return render_template('index.html', data={'av_list': result},
+    return render_template('index.html', data={'av_list': result, 'page_type': 'index'},
                            page=pagination(pagenum, row_count, page_root, PAGE_LIMIT), placeholder=keyword,
                            origin_link=common.get_url("search", quote(keyword), pagenum), config=common.CONFIG)
 
@@ -118,58 +126,94 @@ def movie(linkid=''):
 
 
 # 构造电影页
-def movie_build(movie):
-    if 'build' in movie:
-        return movie
+def movie_build(movie_data):
+    # 提前返回
+    if 'build' in movie_data:
+        return movie_data
     # 修复数据
-    if len(movie["genre"]) > 0 and movie["genre"][0] != '|':
+    if len(movie_data["genre"]) > 0 and movie_data["genre"][0] != '|':
         execute_sql(
             "update av_list set genre=('|' || genre || '|')  where genre != '' and genre not like '|%'")
     # 修复数据 20200212
-    if len(movie["stars"]) > 0 and movie["stars"][-1] != '|':
+    if len(movie_data["stars"]) > 0 and movie_data["stars"][-1] != '|':
         execute_sql(
             "update av_list set stars=(stars || '|')  where stars != '' and stars not like '%|'")
     # 系列
-    if movie['genre'] != "":
-        movie['genre_list'] = movie['genre'][1:].split('|')
+    if movie_data['genre'] != "":
+        movie_data['genre_list'] = movie_data['genre'][1:].split('|')
 
     # 演员
-    if movie['stars_url'] != "" and not isinstance(movie['stars_url'], list):
-        movie['stars_url'] = movie['stars_url'].strip('|').split("|")
-        movie['stars'] = movie['stars'].strip('|').split("|")
+    if movie_data['stars_url'] != "" and not isinstance(movie_data['stars_url'], list):
+        movie_data['stars_url'] = movie_data['stars_url'].strip('|').split("|")
+        movie_data['stars'] = movie_data['stars'].strip('|').split("|")
 
         sqltext = "SELECT linkid,name,headimg FROM av_stars WHERE linkid IN ('{}')".format(
-            "','".join(movie['stars_url'])
+            "','".join(movie_data['stars_url'])
         )
-        movie['stars_data'] = query_sql(sqltext)
+        movie_data['stars_data'] = query_sql(sqltext)
         # 其他所有演员
-        if len(movie['stars_data']) < len(movie['stars_url']):
-            movie['stars_map'] = []
-            linkid_list = [x["linkid"] for x in movie['stars_data']]
-            for i in range(len(movie['stars_url'])):
-                if movie['stars_url'][i] in linkid_list:
+        if len(movie_data['stars_data']) < len(movie_data['stars_url']):
+            movie_data['stars_map'] = []
+            linkid_list = [x["linkid"] for x in movie_data['stars_data']]
+            for i in range(len(movie_data['stars_url'])):
+                if movie_data['stars_url'][i] in linkid_list:
                     continue
-                movie['stars_map'].append({
-                    "linkid": movie['stars_url'][i],
-                    "name": movie['stars'][i]
+                movie_data['stars_map'].append({
+                    "linkid": movie_data['stars_url'][i],
+                    "name": movie_data['stars'][i]
                 })
 
     # 图片
-    movie['imglist'] = []
-    if movie['image_len'] != '0':
-        count = int(movie['image_len'])
-        img_url = common.CONFIG.get("website", "cdn") + '/digital/video' + movie['bigimage'].replace('pl.jpg', '')
+    movie_data['imglist'] = []
+    if movie_data['image_len'] != '0':
+        count = int(movie_data['image_len'])
+        img_url = common.CONFIG.get("website", "cdn") + '/digital/video' + movie_data['bigimage'].replace('pl.jpg', '')
         for i in range(1, count + 1):
-            movie['imglist'].append({
+            movie_data['imglist'].append({
                 'small': '{}-{}.jpg'.format(img_url, i),
                 'big': '{}jp-{}.jpg'.format(img_url, i)
             })
 
     # 影片资源
-    movie['movie_resource_list'] = select_extend_value(
-        'movie_res', movie['av_id'])
-    movie['build'] = True
-    return movie
+    movie_data['movie_resource_list'] = select_extend_value(
+        'movie_res', movie_data['av_id'])
+
+    movie_data['av_group'] = movie_data['av_id'].split('-', 1)[0]
+
+    # 标记
+    movie_data['build'] = True
+    return movie_data
+
+
+@app.route('/group')
+@app.route('/group/page/<int:page_num>')
+def page_group(page_num=1):
+    page_limit = common.CONFIG.getint('website', 'group_page_limit')
+    order_by = common.CONFIG.get('website', 'group_page_order_by')
+    if order_by not in ['release_date', 'count']:
+        order_by = 'count'
+    sql_text = '''
+    SELECT number,release_date,bigimage,av_id,count(1) AS count FROM(
+    SELECT
+    substr(av_id, 0, instr(av_id, '-')) AS number,
+    release_date,bigimage,av_id
+    FROM av_list
+    ORDER BY release_date DESC,av_id DESC
+    )
+    GROUP BY number
+    ORDER BY {} DESC
+    LIMIT {},{}
+    '''.format(
+        order_by, (page_num - 1) * page_limit, page_limit
+    )
+    count_res = query_sql(
+        "SELECT count(1) AS co FROM (SELECT DISTINCT substr(av_id, 0, instr(av_id, '-')) FROM av_list)")
+    result = query_sql(sql_text)
+    for i in range(len(result)):
+        # 图片地址
+        result[i]['smallimage'] = result[i]['bigimage'].replace(
+            'pl.jpg', 'ps.jpg')
+    return render_template('group.html', data=result, page=pagination(page_num, count_res[0]['co'], '/group', page_limit), config=common.CONFIG)
 
 
 # 分类页
@@ -185,6 +229,8 @@ def movie_build(movie):
 @app.route('/genre/<keyword>/page/<int:pagenum>')
 @app.route('/star/<keyword>')
 @app.route('/star/<keyword>/page/<int:pagenum>')
+@app.route('/group/<keyword>')
+@app.route('/group/<keyword>/page/<int:pagenum>')
 def search(keyword='', pagenum=1):
     if pagenum < 1:
         return redirect(url_for('index'), 404)
@@ -201,6 +247,11 @@ def search(keyword='', pagenum=1):
         ret = common.fetchall(DB['CUR'], "SELECT * FROM av_genre WHERE name='{}'".format(keyword))
         if len(ret) > 0:
             origin_link = common.get_url(page_type, ret[0]['linkid'], pagenum)
+
+    if page_type == 'group':
+        placeholder = keyword
+        where = ["av_list.av_id LIKE '{}-%'".format(keyword)]
+        origin_link = common.get_url("search", keyword, pagenum)
 
     if page_type == 'star':
         where = ["av_list.stars_url LIKE '%|{}%'".format(keyword)]
@@ -229,7 +280,8 @@ def search(keyword='', pagenum=1):
                 star_data['age'] = math.ceil(
                     (datetime.date.today() - birthday_data).days / 365)
 
-    return render_template('index.html', data={'av_list': result, 'av_stars': star_data},
+    return render_template('index.html',
+                           data={'av_list': result, 'av_stars': star_data, 'page_type': page_type, 'keyword': keyword},
                            page=pagination(pagenum, row_count, page_root, PAGE_LIMIT), placeholder=placeholder,
                            origin_link=origin_link, config=common.CONFIG)
 
@@ -294,15 +346,13 @@ def page_config():
 @app.route('/action/config', methods=['POST'])
 def action_config():
     # 表单存在的配置项name
-    for name in common.CONFIG_NAME_LIST:
-        if name not in request.form:
-            continue
+    for name in request.form:
         (section, option) = name.split(".")
         common.CONFIG.set(section=section, option=option, value=request.form[name])
     common.config_save(common.CONFIG)
     common.config_init()
     print("new config:", list(request.form))
-    return redirect(url_for('page_config'))
+    return redirect(request.referrer)
 
 
 # 爬虫页
@@ -316,17 +366,17 @@ def page_spider():
 @app.route('/action/crawl', methods=['POST'])
 def action_crawl():
     url_text = request.form['url_text']
-    crawl_pagenum_limit = request.form['crawl_pagenum_limit']
+    crawl_page_num_limit = request.form['crawl_page_num_limit']
     link_list = [x.strip() for x in url_text.split("\n") if x.strip() != ""]
     if len(link_list) == 0:
         return '请输入有效id'
-    crawl_pagenum_limit_int = 100
-    if crawl_pagenum_limit.isnumeric() and int(crawl_pagenum_limit) <= 100:
-        crawl_pagenum_limit_int = int(crawl_pagenum_limit)
+    crawl_page_num_limit_int = 100
+    if crawl_page_num_limit.isnumeric() and int(crawl_page_num_limit) <= 100:
+        crawl_page_num_limit_int = int(crawl_page_num_limit)
     for link in link_list:
         QUEUE.put((
             "crawl_by_url",
-            (link, crawl_pagenum_limit_int)
+            (link, crawl_page_num_limit_int)
         ))
     return redirect(url_for("page_spider"))
 
@@ -338,42 +388,28 @@ def action_crawl_accurate():
     global QUEUE, SQL_CACHE, SPIDER_AVMO
     page_type = request.form['page_type']
     keyword = request.form['keyword']
-    if page_type not in ['movie', 'star', 'genre', 'series', 'studio', 'label', 'director', 'search']:
+    if page_type not in ['movie', 'star', 'genre', 'series', 'studio', 'label', 'director', 'search', 'group', 'allStar']:
         return 'wrong'
+
+    if page_type == 'group':
+        page_type = 'search'
+        keyword = keyword + '-'
+
+    if page_type == 'allStar':
+        star_list = query_sql("SELECT linkid,name FROM av_stars")
+        for item in star_list:
+            # 遍历所有演员
+            QUEUE.put((
+                "crawl_accurate",
+                ('star', item["linkid"], 1, 100, common.get_exist_linkid("star", item["linkid"]))
+            ))
+        return '正在下载({})...'.format(len(star_list))
+
     QUEUE.put((
         "crawl_accurate",
         (page_type, keyword, 1, 100, common.get_exist_linkid(page_type, keyword))
     ))
     return '正在下载...'
-
-
-# 演员爬虫接口
-# /actresses 演员页全量按钮，演员页指定按钮
-# /star/linkid 更新按钮
-@app.route('/action/crawl/star', methods=['POST'])
-def action_crawl_star():
-    global QUEUE, SPIDER_AVMO
-    linkid = request.form['linkid']
-
-    if linkid == 'all':
-        star_list = query_sql("SELECT linkid,name FROM av_stars")
-        for item in star_list:
-            # 增量更新
-            QUEUE.put((
-                "crawl_accurate",
-                ('star', item["linkid"], 1, 100, common.get_exist_linkid("star", item["linkid"]))
-            ))
-        return '正在下载({})...'.format(','.join([x['name'] for x in star_list]))
-
-    if not is_linkid(linkid):
-        return '请输入有效id'
-    star_list = query_sql("SELECT linkid,name FROM av_stars WHERE linkid='{}'".format(linkid))
-    # 全量更新
-    QUEUE.put((
-        "crawl_accurate",
-        ("star", linkid, 1, 100, common.get_exist_linkid("star", linkid))
-    ))
-    return '正在下载({})...'.format(star_list[0]["name"])
 
 
 # 类目爬虫接口
@@ -595,9 +631,10 @@ def action_translate():
 
 
 # 分析演员
-@app.route('/action/analyse/star/<linkid>')
-def action_analyse_star(linkid=''):
-    sql = "SELECT * FROM av_list WHERE stars_url like '%|{}%';".format(linkid)
+@app.route('/action/analyse/<page_type>/<keyword>')
+def action_analyse_star(page_type='', keyword=''):
+    sql = "SELECT * FROM av_list WHERE {};".format(get_where_by_page_type(page_type, keyword))
+
     data = query_sql(sql, False)
     genre_all = []
     stars_all = []
@@ -621,18 +658,18 @@ def action_analyse_star(linkid=''):
             'count': genre_counter[key]
         })
 
-    head_list = list(stars_counter.keys())[:21]
     for key in list(stars_counter.keys()):
-        if key in head_list:
+        if key != '':
             stars_list.append({
                 'name': key,
                 'count': stars_counter[key]
             })
     return {
-        "starName": stars_list[0]['name'],
+        "page_type": page_type,
+        "keyword": keyword,
         "minuteSum": minute_sum,
         "genreCounter": genre_list,
-        "starsCounter": stars_list[1:]
+        "starsCounter": stars_list
     }
 
 
@@ -675,6 +712,16 @@ def spider_thread():
 
         print("=" * 10, function_name, "=" * 10, "end\n")
 
+
+def get_where_by_page_type(page_type: str, keyword: str) -> str:
+    if page_type == 'star':
+        return "stars_url like '%|{}%'".format(keyword)
+    if page_type == 'group':
+        return "av_id like '{}-%'".format(keyword)
+    if page_type == 'genre':
+        return "genre like '%|{}|%'".format(keyword)
+    if page_type in ['director', 'studio', 'label', 'series']:
+        return "{} = '{}'".format(page_type + '_url', keyword)
 
 def upper_path(path):
     # 如果为windows环境路径，则路径首字母大写
