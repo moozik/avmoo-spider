@@ -723,6 +723,7 @@ def get_where_by_page_type(page_type: str, keyword: str) -> str:
     if page_type in ['director', 'studio', 'label', 'series']:
         return "{} = '{}'".format(page_type + '_url', keyword)
 
+
 def upper_path(path):
     # 如果为windows环境路径，则路径首字母大写
     if re.match("^[a-z]:\\\\", path):

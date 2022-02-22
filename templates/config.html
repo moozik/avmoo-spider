@@ -60,7 +60,7 @@
                     <label>website.group_page_order_by(番号页排序方式)</label>
                     <div class="form-group">
                         <label class="radio-inline">
-                            <input type="radio" name="website.group_page_order_by" value="date" {% if config['website']['group_page_order_by'] == 'date' %}checked{% endif %}> date
+                            <input type="radio" name="website.group_page_order_by" value="date" {% if config['website']['group_page_order_by'] == 'release_date' %}checked{% endif %}> release_date
                         </label>
                         <label class="radio-inline">
                             <input type="radio" name="website.group_page_order_by" value="count" {% if config['website']['group_page_order_by'] == 'count' %}checked{% endif %}> count
