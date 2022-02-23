@@ -288,7 +288,7 @@ class Avmo:
         data = {
             'linkid': '',
             # 番号
-            'av_id': html.xpath('/html/body/div[2]/div[1]/div[2]/p[1]/span[2]/text()')[0],
+            'av_id': html.xpath('/html/body/div[2]/div[1]/div[2]/p[1]/span[2]/text()')[0].strip(),
             'director': '',
             'director_url': '',
             'studio': '',
@@ -304,9 +304,9 @@ class Avmo:
             'image_len': str(len(html.xpath('//div[@id="sample-waterfall"]/a'))),
             'len': '0',
             # 标题
-            'title': html.xpath('/html/body/div[2]/h3/text()')[0],
+            'title': html.xpath('/html/body/div[2]/h3/text()')[0].strip(),
             # 封面 截取域名之后的部分
-            'bigimage': '/' + html.xpath('/html/body/div[2]/div[1]/div[1]/a/img/@src')[0].split('/', 5)[5],
+            'bigimage': '/' + html.xpath('/html/body/div[2]/div[1]/div[1]/a/img/@src')[0].split('/', 5)[5].strip(),
             # 发行时间
             'release_date': html.xpath('/html/body/div[2]/div[1]/div[2]/p[2]/text()')[0].strip()
         }
@@ -326,19 +326,19 @@ class Avmo:
 
             if "/director/" in tmp_href:
                 # 导演
-                data['director'] = i.text
+                data['director'] = i.text.strip()
                 data['director_url'] = tmp_href[-16:]
             elif "/studio/" in tmp_href:
                 # 制作商
-                data['studio'] = i.text
+                data['studio'] = i.text.strip()
                 data['studio_url'] = tmp_href[-16:]
             elif "/label/" in tmp_href:
                 # 发行商
-                data['label'] = i.text
+                data['label'] = i.text.strip()
                 data['label_url'] = tmp_href[-16:]
             elif "/series/" in tmp_href:
                 # 系列
-                data['series'] = i.text
+                data['series'] = i.text.strip()
                 data['series_url'] = tmp_href[-16:]
 
         # 获取类别列表genre 类别列表genre_url
@@ -346,9 +346,10 @@ class Avmo:
             '/html/body/div[2]/div[1]/div[2]/p/span/a/text()'))
         if data['genre'] != '':
             data['genre'] = '|' + data['genre'] + '|'
+
         # 演员stars
-        data['stars'] = '|'.join(html.xpath(
-            '//div[@id="avatar-waterfall"]/a/span/text()'))
+        star_list = html.xpath('//div[@id="avatar-waterfall"]/a/span/text()')
+        data['stars'] = '|'.join([x.strip() for x in star_list])
         if data['stars'] != '':
             data['stars'] = '|' + data['stars'] + '|'
 

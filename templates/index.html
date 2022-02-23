@@ -38,7 +38,7 @@
                     <div class="avatar-box">
                         <div class="photo-info">
                             <p><button class="btn btn-success" onclick="crawlAccurate('{{ data.page_type }}', '{{ data.keyword }}')" title="update movie list">更新影片</button></p>
-                            <p><button class="btn btn-success" onclick="analyse('{{ data.page_type }}', '{{data.keyword}}')" title="analyse">分析影片</button></p>
+                            <p><a class="btn btn-success" href="/analyse/{{data.page_type}}/{{data.keyword}}" title="analyse" target="_blank">分析影片</a></p>
                         </div>
                     </div>
                 </div>

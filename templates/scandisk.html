@@ -1,9 +1,18 @@
 {% extends "main.html" %}
 {% block title %}扫描硬盘{% endblock %}
+
+{% block head %}
+<style>
+    td {
+        border-style: groove;
+    }
+</style>
+{% endblock %}
+
 {% block container %}
 <div class="container-fluid">
     <div class="row">
-        <div style="width: 500px;margin-left: 60px;">
+        <div class="col-md-10 col-md-offset-1">
             <div class="input-group" style="margin-top:20px;">
                 <form action="/scandisk" method="get">
                     <p>
@@ -26,16 +35,7 @@
                     </span>
                 </form>
             </div>
-        </div>
-    </div>
 
-    
-    <div class="row">
-        <style>
-            td {
-                border-style: groove;
-            }
-        </style>
         <table>
             <tr>
                 <th style="width: 500px">路径</th>
@@ -90,7 +90,7 @@
                         </tr>
                     {% endif %}
                 {% endfor %}
-                
+
             {% else %}
                 {% for resource in file_res %}
                     <tr>
@@ -102,6 +102,9 @@
             {% endif %}
 
         </table>
+
+
+        </div>
     </div>
 </div>
 {% endblock %}

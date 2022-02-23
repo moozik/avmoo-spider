@@ -20,15 +20,6 @@
     padding: 3px;
     border-radius: 6px;
 }
-.tag-style{
-    display: inline-block;
-    color: #000;
-    background-color: #d8d8d8;
-    border: 2px solid #d8d8d8;
-    padding: 2px;
-    margin: 2px;
-    border-radius: 7px;
-}
 .movie-desc {
     position: absolute;
     width: 167px;
@@ -164,11 +155,6 @@
 
 {% block other %}{% endblock %}
 
-<footer class="footer hidden-xs">
-	<div class="container-fluid">
-	</div>
-</footer>
-
 <div class="modal fade" id="message" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -231,12 +217,17 @@
 
             html += "<p style='font-weight: 700;margin-top:10px;'>分类</p>";
             data.genreCounter.forEach(item => {
-                html += Link(item.name + span('('+item.count+')', 'red'), '/search/' + page_type + '=' + linkid + '%20' + item.name) + ' ';
+                html += Link(item.name + span('('+item.count+')', 'red'), '/search/' + page_type + '=' + linkid + '%20genre=' + item.name) + ' ';
             })
 
             html += "<p style='font-weight: 700;margin-top:10px;'>演员</p>";
             data.starsCounter.forEach(item => {
-                html += Link(item.name + span('('+item.count+')', 'red'), '/search/' + page_type + '=' + linkid + '%20' + item.name) + ' ';
+                html += Link(item.name + span('('+item.count+')', 'red'), '/search/' + page_type + '=' + linkid + '%20star=' + item.name) + ' ';
+            })
+
+            html += "<p style='font-weight: 700;margin-top:10px;'>系列</p>";
+            data.seriesCounter.forEach(item => {
+                html += Link(item.name + span('('+item.count+')', 'red'), '/search/' + page_type + '=' + linkid + '%20series=' + item.name) + ' ';
             })
             showMessage("分析结果", html);
         });

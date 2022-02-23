@@ -81,7 +81,7 @@ def index(keyword='', pagenum=1):
 
             if key_item == '已下载':
                 where.append(
-                    "av_id IN (SELECT distinct key FROM av_extend WHERE extend_name='movie_res' AND val NOT LIKE 'magnet%' AND val NOT LIKE 'http%')")
+                    "av_id IN (SELECT distinct key FROM av_extend WHERE extend_name='movie_res' AND val LIKE '_:\\%')")
                 continue
 
             if key_item == '收藏影片':
@@ -471,7 +471,7 @@ def page_scandisk():
     extend_file_list = {}
     if file_target == "mp4":
         ret = query_sql(
-            "SELECT key,val FROM av_extend WHERE extend_name='movie_res' AND (val LIKE '_:\\%' OR val LIKE '/%')",
+            "SELECT key,val FROM av_extend WHERE extend_name='movie_res' AND val LIKE '_:\\%' ",
             False)
         for row in ret:
             if row['key'] in extend_file_list:
@@ -631,46 +631,50 @@ def action_translate():
 
 
 # 分析演员
-@app.route('/action/analyse/<page_type>/<keyword>')
+@app.route('/analyse/<page_type>/<keyword>')
 def action_analyse_star(page_type='', keyword=''):
     sql = "SELECT * FROM av_list WHERE {};".format(get_where_by_page_type(page_type, keyword))
-
     data = query_sql(sql, False)
+
     genre_all = []
     stars_all = []
+    series_all = []
     minute_sum = 0
     for row in data:
         genre_all.extend(row["genre"].strip('|').split("|"))
         stars_all.extend(row["stars"].strip('|').split("|"))
+        if row["series"]:
+            series_all.append(row["series"])
         minute_sum = minute_sum + int(row["len"])
 
     genre_counter = collections.OrderedDict(
         sorted(collections.Counter(genre_all).items(), key=lambda x: x[1], reverse=True))
     stars_counter = collections.OrderedDict(
         sorted(collections.Counter(stars_all).items(), key=lambda x: x[1], reverse=True))
+    series_counter = collections.OrderedDict(
+        sorted(collections.Counter(series_all).items(), key=lambda x: x[1], reverse=True))
 
-    genre_list = []
-    stars_list = []
+    genre_counter = [{'name': x.replace(' ', '__'), 'count': genre_counter[x]} for x in genre_counter]
+    stars_counter = [{'name': x, 'count': stars_counter[x]} for x in stars_counter if x != '']
+    series_counter = [{'name': x.replace(' ', '__'), 'count': series_counter[x]} for x in series_counter if x != '']
 
-    for key in list(genre_counter.keys()):
-        genre_list.append({
-            'name': key,
-            'count': genre_counter[key]
-        })
+    # group genre 为默认
+    analyse_name = keyword
+    if page_type == 'star':
+        analyse_name = stars_counter[0]['name']
+    if page_type in ['director', 'studio', 'label', 'series']:
+        analyse_name = data[0][page_type]
 
-    for key in list(stars_counter.keys()):
-        if key != '':
-            stars_list.append({
-                'name': key,
-                'count': stars_counter[key]
-            })
-    return {
+    data = {
+        "analyse_name": analyse_name,
         "page_type": page_type,
         "keyword": keyword,
-        "minuteSum": minute_sum,
-        "genreCounter": genre_list,
-        "starsCounter": stars_list
+        "minute_sum": minute_sum,
+        "genre_counter": genre_counter,
+        "stars_counter": stars_counter,
+        "series_counter": series_counter
     }
+    return render_template('analyse.html', data=data, config=common.CONFIG)
 
 
 @app.route('/action/change/language')
@@ -714,14 +718,21 @@ def spider_thread():
 
 
 def get_where_by_page_type(page_type: str, keyword: str) -> str:
-    if page_type == 'star':
-        return "stars_url like '%|{}%'".format(keyword)
     if page_type == 'group':
         return "av_id like '{}-%'".format(keyword)
     if page_type == 'genre':
-        return "genre like '%|{}|%'".format(keyword)
+        return "genre like '%|{}|%'".format(keyword.replace('__', ' '))
+    if page_type == 'star':
+        if is_linkid(keyword):
+            return "stars_url like '%|{}%'".format(keyword)
+        else:
+            return "stars like '%|{}|%'".format(keyword)
+
     if page_type in ['director', 'studio', 'label', 'series']:
-        return "{} = '{}'".format(page_type + '_url', keyword)
+        if is_linkid(keyword):
+            return "{}_url = '{}'".format(page_type, keyword)
+        else:
+            return "{} = '{}'".format(page_type, keyword.replace('__', ' '))
 
 
 def upper_path(path):

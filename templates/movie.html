@@ -96,7 +96,7 @@
     <h4 title="actresses">演员</h4>
     <div id="avatar-waterfall">
         {% for item in data.stars_data %}
-        <a class="avatar-box" href="/star/{{item.linkid}}" target="_blank">
+        <a class="avatar-box" href="/star/{{item.linkid}}">
             <div class="photo-frame">
                 {% if item.headimg %}
                 <img src="{{config['website']['cdn']}}/{{item.headimg}}" title="">
@@ -116,7 +116,7 @@
     <p class="info">
     {% for item in data.stars_map %}
         <span class="genre">
-            <a href="/star/{{item.linkid}}" target="_blank">{{item.name}}</a>
+            <a href="/star/{{item.linkid}}">{{item.name}}</a>
         </span>
     {% endfor %}
     </p>
