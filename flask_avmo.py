@@ -242,10 +242,14 @@ def search(keyword='', pagenum=1):
         where = ["av_list.{}_url='{}'".format(page_type, keyword)]
 
     if page_type == 'genre':
-        placeholder = keyword
-        where = ["av_list.genre LIKE '%|{}|%'".format(keyword)]
-        ret = common.fetchall(DB['CUR'], "SELECT * FROM av_genre WHERE name='{}'".format(keyword))
+        if is_linkid(keyword):
+            sql = "SELECT * FROM av_genre WHERE linkid='{}'".format(keyword)
+        else:
+            sql = "SELECT * FROM av_genre WHERE name='{}'".format(keyword)
+        ret = common.fetchall(DB['CUR'], sql)
         if len(ret) > 0:
+            where = ["av_list.genre LIKE '%|{}|%'".format(ret[0]['name'])]
+            placeholder = ret[0]['name']
             origin_link = common.get_url(page_type, ret[0]['linkid'], pagenum)
 
     if page_type == 'group':

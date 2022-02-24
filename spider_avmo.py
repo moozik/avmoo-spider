@@ -6,7 +6,7 @@ import re
 import common
 import sqlite3
 from lxml import etree
-from typing import Iterator, List
+from typing import Iterator, Tuple
 
 class Avmo:
 
@@ -43,6 +43,11 @@ class Avmo:
             "base", "db_file"), check_same_thread=False)
         self.CUR = self.CONN.cursor()
 
+        # 如果genre为空则抓取
+        res = common.fetchall(self.CUR, "SELECT * FROM av_genre")
+        if not res:
+            self.crawl_genre()
+    
     # 根据链接参数抓取
     def crawl_accurate(self, page_type: str, keyword: str, page_start: int, page_limit: int,
                        exist_linkid_dict: dict) -> bool:
@@ -132,7 +137,7 @@ class Avmo:
             len(exist_linkid_dict), insert_count, skip_count))
 
     # 根据linkid抓取一个movie页面
-    def crawl_by_movie_linkid(self, movie_linkid: str) -> List[int, dict]:
+    def crawl_by_movie_linkid(self, movie_linkid: str) -> tuple:
         url = common.get_url('movie', movie_linkid)
         (status_code, html) = self.get_html_by_url(url)
         if status_code != 200:
