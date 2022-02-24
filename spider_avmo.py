@@ -6,8 +6,7 @@ import re
 import common
 import sqlite3
 from lxml import etree
-from typing import Iterator
-
+from typing import Iterator, List
 
 class Avmo:
 
@@ -133,7 +132,7 @@ class Avmo:
             len(exist_linkid_dict), insert_count, skip_count))
 
     # 根据linkid抓取一个movie页面
-    def crawl_by_movie_linkid(self, movie_linkid: str) -> (int, dict):
+    def crawl_by_movie_linkid(self, movie_linkid: str) -> List[int, dict]:
         url = common.get_url('movie', movie_linkid)
         (status_code, html) = self.get_html_by_url(url)
         if status_code != 200:
@@ -266,13 +265,13 @@ class Avmo:
             if not next_page:
                 break
 
-    def stars_save(self, data: dict[str, str]) -> None:
+    def stars_save(self, data: dict) -> None:
         insert_sql = 'REPLACE INTO av_stars VALUES(?,?,?,?,?,?,?,?,?,?,?,?);'
         self.CUR.execute(insert_sql, tuple(data.values()))
         self.CONN.commit()
 
     # 插入数据库
-    def movie_save(self, insert_list: list[dict]) -> None:
+    def movie_save(self, insert_list: list) -> None:
         if len(insert_list) == 0:
             return
         self.last_insert_list = insert_list
