@@ -28,17 +28,17 @@
 
             <h3 style="font-weight: 700;margin-top:20px;">分类</h3>
             {% for item in data.genre_counter %}
-                <a class="tag-style" href="/search/{{data.page_type}}={{data.keyword}}%20genre={{item.name}}" target="_blank">{{item.name}}<span style="color:red">({{item.count}})</span></a>
+                <a class="tag-style" href="/search/genre={{item.name}}%20{{data.page_type}}={{data.keyword}}" target="_blank">{{item.name}}<span style="color:red">({{item.count}})</span></a>
             {% endfor %}
 
-            <h3 style="font-weight: 700;margin-top:20px;">女优</h3>
+            <h3 style="font-weight: 700;margin-top:20px;">演员</h3>
             {% for item in data.stars_counter %}
-                <a class="tag-style" href="/search/{{data.page_type}}={{data.keyword}}%20star={{item.name}}" target="_blank">{{item.name}}<span style="color:red">({{item.count}})</span></a>
+                <a class="tag-style" href="/search/star={{item.name}}%20{{data.page_type}}={{data.keyword}}" target="_blank">{{item.name}}<span style="color:red">({{item.count}})</span></a>
             {% endfor %}
 
             <h3 style="font-weight: 700;margin-top:20px;">系列</h3>
             {% for item in data.series_counter %}
-                <a class="tag-style" href="/search/{{data.page_type}}={{data.keyword}}%20series={{item.name}}" target="_blank">{{item.name}}<span style="color:red">({{item.count}})</span></a>
+                <a class="tag-style" href="/search/series={{item.name}}%20{{data.page_type}}={{data.keyword}}" target="_blank">{{item.name}}<span style="color:red">({{item.count}})</span></a>
             {% endfor %}
         </div>
     </div>

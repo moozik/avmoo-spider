@@ -19,10 +19,8 @@ pip install flask
 
 
 ## 打开方法
-命令行运行`python flask_avmo.py`启动本地web(首次打开会创建db)
+命令行运行`python run.py`启动本地web(首次打开会创建db)
 打开`http://127.0.0.1:5000`即可看到主页
-
-如果遇到运行错误，尝试删除`config.ini`，可能有新增配置项
 
 
 ## 查看数据库数据

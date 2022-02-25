@@ -5,49 +5,91 @@ import requests
 import re
 import common
 import sqlite3
+import threading
 from lxml import etree
 from typing import Iterator, Tuple
+from common import *
 
-class Avmo:
+class Spider:
+    # 单例模式
+    def __new__(cls, *args, **kwargs):
+        if not hasattr(Spider, 'instance'):
+            cls.instance = super(Spider, cls).__new__(cls)
+        return cls.instance
 
-    def __init__(self):
+    def init(self):
         print('avmo.init')
-        # 表结构
-        self.column = [
-            'linkid',
-            'av_id',
-            'director', 'director_url',
-            'studio', 'studio_url',
-            'label', 'label_url',
-            'series', 'series_url',
-            'genre',
-            'stars', 'stars_url',
-            'image_len', 'len', 'title', 'bigimage', 'release_date', ]
-        # 表结构str
-        self.column_str = ",".join(self.column)
         # 上次插入
         self.last_insert_list = []
         # 创建会话对象
         self.s = requests.Session()
         # 超时时间
-        self.s.timeout = common.CONFIG.getint("requests", "timeout")
+        self.s.timeout = CONFIG.getint("requests", "timeout")
         self.s.headers = {
-            'User-Agent': common.CONFIG.get("requests", "user_agent"),
+            'User-Agent': CONFIG.get("requests", "user_agent"),
         }
         # 代理
         self.s.proxies = {
             # 'https':'http://127.0.0.1:1080'
         }
         # 链接数据库
-        self.CONN = sqlite3.connect(common.CONFIG.get(
+        self.CONN = sqlite3.connect(CONFIG.get(
             "base", "db_file"), check_same_thread=False)
         self.CUR = self.CONN.cursor()
 
         # 如果genre为空则抓取
-        res = common.fetchall(self.CUR, "SELECT * FROM av_genre")
+        res = self.fetchall("SELECT * FROM av_genre")
         if not res:
             self.crawl_genre()
-    
+
+        # 启动爬虫线程
+        thread = threading.Thread(target=self.spider_thread, args=())
+        thread.daemon = True
+        thread.start()
+
+    # 爬虫线程
+    def spider_thread(self):
+        print("spider_thread.start")
+        while True:
+            time.sleep(CONFIG.getfloat("spider", "sleep"))
+
+            (function_name, param) = QUEUE.get()
+            print("=" * 10, function_name, "=" * 10, "start")
+            if function_name == "crawl_accurate":
+                print("page_type: {0[0]}, keyword: {0[1]}, page_start: {0[2]}, page_limit: {0[3]}, exist_count: {1}".format(
+                    param, len(param[4])))
+                self.crawl_accurate(param[0], param[1], param[2], param[3], param[4])
+
+            if function_name == "crawl_by_url":
+                print("url:{},page_limit:{}".format(param[0], param[1]))
+                page_type, keyword, page_start = parse_url(param[0])
+                self.crawl_accurate(page_type, keyword, page_start, param[1],
+                                        get_exist_linkid(page_type, keyword))
+                # 打开浏览器提醒抓取完成
+                if CONFIG.getboolean("website", "use_cache"):
+                    SQL_CACHE.clear()
+                page_type, keyword, page_start = parse_url(param[0])
+                common.open_browser_tab(get_local_url(page_type, keyword, page_start))
+
+            if function_name == "crawl_genre":
+                self.crawl_genre()
+
+            print("=" * 10, function_name, "=" * 10, "end\n")
+
+    def fetchall(self, sql) -> list:
+        self.CUR.execute(sql)
+        rows = self.CUR.fetchall()
+        if not rows:
+            return []
+        
+        result = []
+        for row in rows:
+            row_dict = {}
+            for i in range(len(self.CUR.description)):
+                row_dict[self.CUR.description[i][0]] = row[i]
+            result.append(row_dict)
+        return result
+
     # 根据链接参数抓取
     def crawl_accurate(self, page_type: str, keyword: str, page_start: int, page_limit: int,
                        exist_linkid_dict: dict) -> bool:
@@ -68,7 +110,7 @@ class Avmo:
 
     # 获取所有类别
     def crawl_genre(self) -> None:
-        genre_url = common.get_url('genre', '')
+        genre_url = get_url('genre', '')
         print("get:{}".format(genre_url))
         (status_code, html) = self.get_html_by_url(genre_url)
         insert_list = []
@@ -106,14 +148,14 @@ class Avmo:
             if movie_linkid in exist_linkid_dict:
                 skip_count += 1
                 continued_skip_count += 1
-                print("SKIP EXIST,URL:{}".format(common.get_local_url("movie", movie_linkid)))
+                print("SKIP EXIST,URL:{}".format(get_local_url("movie", movie_linkid)))
                 # 连续跳过到指定数量，则跳出抓取
-                if continued_skip_count >= common.CONFIG.getint("spider", "continued_skip_limit"):
+                if continued_skip_count >= CONFIG.getint("spider", "continued_skip_limit"):
                     break
                 continue
 
             continued_skip_count = 0
-            time.sleep(common.CONFIG.getfloat("spider", "sleep"))
+            time.sleep(CONFIG.getfloat("spider", "sleep"))
 
             (status_code, data) = self.crawl_by_movie_linkid(movie_linkid)
             if status_code == 403:
@@ -126,7 +168,7 @@ class Avmo:
                 continue
             insert_list.append(data)
             # 存储数据
-            if len(insert_list) == common.CONFIG.getint("spider", "insert_threshold"):
+            if len(insert_list) == CONFIG.getint("spider", "insert_threshold"):
                 self.movie_save(insert_list)
                 insert_count += len(insert_list)
                 insert_list = []
@@ -138,7 +180,7 @@ class Avmo:
 
     # 根据linkid抓取一个movie页面
     def crawl_by_movie_linkid(self, movie_linkid: str) -> tuple:
-        url = common.get_url('movie', movie_linkid)
+        url = get_url('movie', movie_linkid)
         (status_code, html) = self.get_html_by_url(url)
         if status_code != 200:
             return status_code, None
@@ -162,14 +204,14 @@ class Avmo:
 
     # 获取一个明星的信息
     def stars_one(self, linkid: str):
-        stars_res = common.fetchall(self.CUR, "SELECT * FROM av_stars WHERE linkid='{}'".format(linkid))
+        stars_res = self.fetchall("SELECT * FROM av_stars WHERE linkid='{}'".format(linkid))
         if len(stars_res) == 1:
             return stars_res[0]
 
         def get_val(str_param):
             return str_param.split(':')[1].strip()
 
-        url = common.get_url('star', linkid)
+        url = get_url('star', linkid)
         data = {
             'linkid': linkid,
             'name': '',
@@ -241,6 +283,7 @@ class Avmo:
             data['name'].ljust(15),
             data['hometown']
         )
+        common.DATA_STORAGE["av_stars"].append(data)
         self.stars_save(data)
         return data
 
@@ -248,9 +291,9 @@ class Avmo:
     def linkid_general(self, page_type: str, keyword: str, page_start: int = 1, page_limit: int = 100) -> Iterator[str]:
         # 网站限制最多100页
         for page_no in range(page_start, page_limit + 1):
-            time.sleep(common.CONFIG.getfloat("spider", "sleep"))
+            time.sleep(CONFIG.getfloat("spider", "sleep"))
 
-            url = common.get_url(page_type, keyword, page_no)
+            url = get_url(page_type, keyword, page_no)
             print("get:{}".format(url))
 
             (status_code, html) = self.get_html_by_url(url)
@@ -271,7 +314,7 @@ class Avmo:
                 break
 
     def stars_save(self, data: dict) -> None:
-        insert_sql = 'REPLACE INTO av_stars VALUES(?,?,?,?,?,?,?,?,?,?,?,?);'
+        insert_sql = insert_sql_build("av_stars", data)
         self.CUR.execute(insert_sql, tuple(data.values()))
         self.CONN.commit()
 
@@ -280,8 +323,8 @@ class Avmo:
         if len(insert_list) == 0:
             return
         self.last_insert_list = insert_list
-        insert_sql = 'REPLACE INTO av_list({})VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);'.format(
-            self.column_str)
+        
+        insert_sql = insert_sql_build("av_list", insert_list[0])
         self.CUR.executemany(insert_sql, [tuple(x.values()) for x in insert_list])
         self.CONN.commit()
         print('INSERT:', len(insert_list))

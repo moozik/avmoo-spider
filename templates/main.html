@@ -183,11 +183,6 @@
         $("#message").find(".modal-body").html(body);
         $('#message').modal('show');
     }
-    function catchSwitch(){
-        $.get('/action/catch/switch',function(data){
-            showMessage(data,"");
-        });
-    }
     $('#confirm').click(function(){
         $('#message').modal('hide');
     });
@@ -208,35 +203,6 @@
         }, function (data) {
             showMessage(data,"");
         });
-    }
-    function analyse(page_type, linkid){
-        $.get("/action/analyse/" + page_type + "/" + linkid, function (data) {
-            let starName = data.starName;
-            let html = "<p style='font-weight: 700;margin-top:10px;'>总时长</p>";
-            html += '<span class="tag-style">' + data.minuteSum + ' min</span>';
-
-            html += "<p style='font-weight: 700;margin-top:10px;'>分类</p>";
-            data.genreCounter.forEach(item => {
-                html += Link(item.name + span('('+item.count+')', 'red'), '/search/' + page_type + '=' + linkid + '%20genre=' + item.name) + ' ';
-            })
-
-            html += "<p style='font-weight: 700;margin-top:10px;'>演员</p>";
-            data.starsCounter.forEach(item => {
-                html += Link(item.name + span('('+item.count+')', 'red'), '/search/' + page_type + '=' + linkid + '%20star=' + item.name) + ' ';
-            })
-
-            html += "<p style='font-weight: 700;margin-top:10px;'>系列</p>";
-            data.seriesCounter.forEach(item => {
-                html += Link(item.name + span('('+item.count+')', 'red'), '/search/' + page_type + '=' + linkid + '%20series=' + item.name) + ' ';
-            })
-            showMessage("分析结果", html);
-        });
-    }
-    function Link(name, link){
-        return '<a class="tag-style" href="'+link+'" target="_blank">'+name+'</a>'
-    }
-    function span(name, color){
-        return '<span style="color:'+color+'">'+name+'</span>'
     }
     function insertMovieExtend(extend_name, key, val){
         $.get("/action/extend/insert", {

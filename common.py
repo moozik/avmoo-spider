@@ -7,7 +7,9 @@ from install import build_sqlite_db
 from lxml import etree
 import webbrowser
 import threading
+import binascii
 from urllib.parse import quote
+from queue import Queue
 
 CONFIG_FILE = "config.ini"
 CONFIG_FILE_DEFAULT = "config.ini.default"
@@ -35,9 +37,8 @@ CONFIG_NAME_LIST = [
 ]
 
 DB = {}
-NETWORK_CONNECT = False
 
-STATIC_FILE = []
+NETWORK_CONNECT = False
 
 COUNTRY_MAP = {
     'en': 'English',
@@ -61,6 +62,17 @@ ESCAPT_LIST = (
 LOCAL_IP = "127.0.0.1"
 DEFAULT_PORT = 5000
 
+DATA_STORAGE = {
+    "av_genre": [],
+    "av_stars": [],
+    "av_extend": [],
+}
+
+# 缓存
+SQL_CACHE = {}
+
+# 任务队列
+QUEUE = Queue(maxsize=0)
 
 def init():
     print("common.init")
@@ -73,38 +85,31 @@ def init():
     DB['CONN'] = sqlite3.connect(CONFIG.get(
         "base", "db_file"), check_same_thread=False)
     DB['CUR'] = DB['CONN'].cursor()
+    
     # 如果不存在则新建表
     build_sqlite_db(DB['CONN'], DB['CUR'])
     print("common.init.db")
+    
+    # 打开主页
+    if CONFIG.getboolean("website", "auto_open_site_on_run"):
+        open_browser_tab(get_local_url())
 
-    # # 检查配置的地址是否可访问
-    # avmoo_site = CONFIG["base"]["avmoo_site"]
-    # try:
-    #     res = requests.get(avmoo_site, timeout=5)
-    #     if res == None or res.status_code != 200:
-    #         avmoo_site = ""
-    # except Exception as e:
-    #     print("Exception:{}".format(e))
-    #     avmoo_site = ""
 
-    # # 更新最新地址
-    # if avmoo_site == "":
-    #     avmoo_site = get_new_avmoo_site()
-    #     print("common.check.avmoo_site,newSite:{}".format(avmoo_site))
-    #     CONFIG["base"]["avmoo_site"] = avmoo_site
-    #     config_save()
+def storege_init(table: str) -> None:
+    global DATA_STORAGE
+    if table not in DATA_STORAGE:
+        DATA_STORAGE[table] = fetchall("SELECT * FROM " + table)
 
-    # # 下载静态资源
-    # for item in STATIC_FILE:
-    #     if os.path.exists(item[0]):
-    #         continue
-    #     with open(item[0], "wb") as f:
-    #         link = item[1]
-    #         if link[:4] != 'http':
-    #             link = avmoo_site + link
-    #         resp = requests.get(link)
-    #         f.write(resp.content)
-    #         print("fetch:" + link)
+def storage(table: str, cond: dict) -> list:
+    global DATA_STORAGE
+    storege_init(table)
+    return [x for x in DATA_STORAGE[table] if [1 for y in cond if x[y] in cond[y]]]
+
+
+def storage_col(table: str, cond: dict, col: str) -> list:
+    global DATA_STORAGE
+    storege_init(table)
+    return [x[col] for x in DATA_STORAGE[table] if [1 for y in cond if x[y] in cond[y]]]
 
 
 def config_path() -> str:
@@ -145,21 +150,47 @@ def config_save(config):
         config.write(fp)
 
 
-def show_column_name(data, description) -> list:
+def insert_sql_build(table: str, data: dict) -> str:
+    sql = "REPLACE INTO {} ({}) VALUES ({})".format(
+        table, ','.join(list(data)), ("?," * len(data))[:-1]
+    )
+    return sql
+
+
+# 插入sql
+def insert(table: str, data: list):
+    global DB
+    if not data:
+        return
+    sql = insert_sql_build(table, data[0])
+    print("SQL INSERT:{}".format(sql))
+    DB['CUR'].executemany(sql, [tuple(x.values()) for x in data])
+    DB['CONN'].commit()
+
+
+# 执行sql
+def execute(sql):
+    global DB
+    print("SQL EXEC:{}".format(sql))
+    DB['CUR'].execute(sql)
+    DB['CONN'].commit()
+
+
+# 查询sql
+def fetchall(sql) -> list:
+    global DB
+    DB["CUR"].execute(sql)
+    rows = DB["CUR"].fetchall()
+    if not rows:
+        return []
+    
     result = []
-    for row in data:
+    for row in rows:
         row_dict = {}
-        for i in range(len(description)):
-            row_dict[description[i][0]] = row[i]
+        for i in range(len(DB["CUR"].description)):
+            row_dict[DB["CUR"].description[i][0]] = row[i]
         result.append(row_dict)
     return result
-
-
-def fetchall(cur, sql) -> list:
-    global DB
-    cur.execute(sql)
-    ret = cur.fetchall()
-    return show_column_name(ret, cur.description)
 
 
 def get_new_avmoo_site() -> str:
@@ -254,7 +285,7 @@ def get_exist_linkid(page_type: str, keyword: str) -> dict:
     if page_type in ['director', 'studio', 'label', 'series']:
         sql = "SELECT linkid FROM av_list WHERE {}_url='{}'".format(page_type, keyword)
     if page_type == 'genre':
-        genre = fetchall(DB["CUR"], "SELECT * FROM av_genre WHERE linkid='{}'".format(keyword))
+        genre = fetchall("SELECT * FROM av_genre WHERE linkid='{}'".format(keyword))
         if genre:
             sql = "SELECT linkid FROM av_list WHERE genre LIKE '%|{}|%'".format(genre[0]['name'])
     if page_type == 'star':
@@ -267,6 +298,47 @@ def get_exist_linkid(page_type: str, keyword: str) -> dict:
             where.append(search_where(key_item))
         sql = "SELECT linkid FROM av_list WHERE " + " AND ".join(where)
     if sql != '':
-        ret = fetchall(DB["CUR"], sql)
+        ret = fetchall(sql)
         exist_linkid_dict = {x["linkid"]: True for x in ret}
     return exist_linkid_dict
+
+
+# 获取sql中的表名
+def get_table_name(sql):
+    return list(set(re.findall("(av_[a-z]+)", sql)))
+
+
+# 获取缓存key
+def gen_cache_key(sql):
+    return '|'.join(get_table_name(sql)) + ':' + str(binascii.crc32(sql.encode()) & 0xffffffff)
+
+
+# 查询sql
+def query_sql(sql, if_cache=True) -> list:
+    cache_key = gen_cache_key(sql)
+    # 是否使用缓存
+    if CONFIG.getboolean("website", "use_cache") and if_cache:
+        # 是否有缓存
+        if cache_key in SQL_CACHE.keys():
+            print('SQL CACHE[{}]'.format(cache_key))
+            return SQL_CACHE[cache_key][:]
+        else:
+            print('SQL EXEC[{}]:{}'.format(cache_key, sql))
+            ret = fetchall(sql)
+            if CONFIG.getboolean("website", "use_cache") and ret != []:
+                SQL_CACHE[cache_key] = ret
+            return ret[:]
+    else:
+        print('SQL EXEC:{}'.format(sql))
+        return fetchall(sql)
+
+if __name__ == "__main__":
+    # test
+    init()
+    print(DATA_STORAGE)
+    print("test:", storage("av_genre", {"name":["企画"]}))
+    print("test:", storage("av_genre", {"linkid":["1f0ed55a63eecde5"]}))
+    print("test:", storage("av_genre", {"title":["类别"]}))
+    print("test:", storage_col("av_genre", {"title":["类别"]}, "linkid"))
+    print("test:", storage_col("av_genre", {"title":["类别"]}, "name"))
+    
