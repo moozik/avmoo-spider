@@ -1,8 +1,8 @@
 *.db
+*.ini
 .vscode/
 .idea/
 __pycache__/
 /*.js
 /*.json
-config.ini
 test.py

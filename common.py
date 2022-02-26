@@ -1,3 +1,5 @@
+from sqlite3 import Connection
+
 import requests
 import configparser
 import os
@@ -18,11 +20,15 @@ CONFIG = configparser.ConfigParser()
 CONFIG_NAME_LIST = [
     "base.avmoo_site",
     "base.db_file",
+    "base.port",
+    "base.debug_mode",
+    "base.readonly",
     "base.country",
 
     "spider.sleep",
     "spider.insert_threshold",
     "spider.continued_skip_limit",
+    "spider.minimum_movie_duration",
 
     "requests.timeout",
     "requests.user_agent",
@@ -31,12 +37,16 @@ CONFIG_NAME_LIST = [
     "website.page_limit",
     "website.actresses_page_limit",
     "website.group_page_limit",
+    "website.spider_page_interval_timeout",
+
     "website.group_page_order_by",
     "website.use_cache",
     "website.auto_open_site_on_run",
+    "website.auto_open_link_when_crawl_done",
+    "website.efficiency_mode",
 ]
 
-DB = {}
+DB: Connection
 
 NETWORK_CONNECT = False
 
@@ -47,7 +57,7 @@ COUNTRY_MAP = {
     'cn': '简体中文',
 }
 
-ESCAPT_LIST = (
+ESCAPE_LIST = (
     ("/", "//"),
     ("'", "''"),
     ("[", "/["),
@@ -60,13 +70,8 @@ ESCAPT_LIST = (
 )
 
 LOCAL_IP = "127.0.0.1"
-DEFAULT_PORT = 5000
 
-DATA_STORAGE = {
-    "av_genre": [],
-    "av_stars": [],
-    "av_extend": [],
-}
+DATA_STORAGE = {}
 
 # 缓存
 SQL_CACHE = {}
@@ -74,60 +79,79 @@ SQL_CACHE = {}
 # 任务队列
 QUEUE = Queue(maxsize=0)
 
-def init():
+
+def init(argv):
+    global CONFIG_FILE
     print("common.init")
-    global CONFIG, DB, NETWORK_CONNECT, STATIC_FILE
+    if len(argv) > 1:
+        CONFIG_FILE = argv[1]
     # 初始化配置
     config_check()
     config_init()
 
+    print("common.init.db")
     # 初始化db
-    DB['CONN'] = sqlite3.connect(CONFIG.get(
+    global DB
+    DB = sqlite3.connect(CONFIG.get(
         "base", "db_file"), check_same_thread=False)
-    DB['CUR'] = DB['CONN'].cursor()
     
     # 如果不存在则新建表
-    build_sqlite_db(DB['CONN'], DB['CUR'])
-    print("common.init.db")
-    
+    if not CONFIG.getboolean("base", "readonly"):
+        build_sqlite_db(DB)
+
     # 打开主页
     if CONFIG.getboolean("website", "auto_open_site_on_run"):
         open_browser_tab(get_local_url())
 
 
-def storege_init(table: str) -> None:
-    global DATA_STORAGE
+def storage_init(table: str) -> None:
     if table not in DATA_STORAGE:
         DATA_STORAGE[table] = fetchall("SELECT * FROM " + table)
 
-def storage(table: str, cond: dict) -> list:
-    global DATA_STORAGE
-    storege_init(table)
-    return [x for x in DATA_STORAGE[table] if [1 for y in cond if x[y] in cond[y]]]
 
-
-def storage_col(table: str, cond: dict, col: str) -> list:
-    global DATA_STORAGE
-    storege_init(table)
-    return [x[col] for x in DATA_STORAGE[table] if [1 for y in cond if x[y] in cond[y]]]
+# 仅av_genre和av_extend使用
+def storage(table: str, conditions: dict = None, col: str = None) -> list:
+    storage_init(table)
+    ret = []
+    if not conditions:
+        return DATA_STORAGE[table]
+    # 每条记录
+    for row in DATA_STORAGE[table]:
+        hit = True
+        # 每个条件
+        for col_item, val in conditions.items():
+            if isinstance(val, str):
+                if val != row[col_item]:
+                    hit = False
+                    break
+            elif isinstance(val, list):
+                if row[col_item] not in val:
+                    hit = False
+                    break
+            else:
+                print("wrong type")
+        if not hit:
+            continue
+        if col:
+            ret.append(row[col])
+        else:
+            ret.append(row)
+    return ret
 
 
 def config_path() -> str:
-    global CONFIG_FILE, CONFIG_FILE_DEFAULT
     if os.path.exists(CONFIG_FILE):
         return CONFIG_FILE
     return CONFIG_FILE_DEFAULT
 
 
 def config_init() -> None:
-    global CONFIG, COUNTRY_MAP
     # 初始化配置
     CONFIG.read(config_path())
     CONFIG.set("base", "country_name", COUNTRY_MAP[CONFIG.get("base", "country")])
 
 
 def config_check():
-    global CONFIG_FILE, CONFIG_FILE_DEFAULT
     if not os.path.exists(CONFIG_FILE):
         return
     config = configparser.ConfigParser()
@@ -143,7 +167,6 @@ def config_check():
 
 
 def config_save(config):
-    global CONFIG_FILE
     if config.has_option("base", "country_name"):
         config.remove_option("base", "country_name")
     with open(CONFIG_FILE, "w") as fp:
@@ -159,38 +182,63 @@ def insert_sql_build(table: str, data: dict) -> str:
 
 # 插入sql
 def insert(table: str, data: list):
+    if CONFIG.getboolean("base", "readonly"):
+        return
     global DB
     if not data:
         return
     sql = insert_sql_build(table, data[0])
-    print("SQL INSERT:{}".format(sql))
-    DB['CUR'].executemany(sql, [tuple(x.values()) for x in data])
-    DB['CONN'].commit()
+    print("INSERT,table:{},data:{}".format(table, data))
+    DB.cursor().executemany(sql, [tuple(x.values()) for x in data])
+    DB.commit()
 
 
 # 执行sql
 def execute(sql):
+    if CONFIG.getboolean("base", "readonly"):
+        return
     global DB
     print("SQL EXEC:{}".format(sql))
-    DB['CUR'].execute(sql)
-    DB['CONN'].commit()
+    DB.cursor().execute(sql)
+    DB.commit()
 
 
 # 查询sql
 def fetchall(sql) -> list:
     global DB
-    DB["CUR"].execute(sql)
-    rows = DB["CUR"].fetchall()
+    cur = DB.cursor()
+    cur.execute(sql)
+    rows = cur.fetchall()
     if not rows:
         return []
-    
+
     result = []
     for row in rows:
         row_dict = {}
-        for i in range(len(DB["CUR"].description)):
-            row_dict[DB["CUR"].description[i][0]] = row[i]
+        for i in range(len(cur.description)):
+            row_dict[cur.description[i][0]] = row[i]
         result.append(row_dict)
     return result
+
+
+# 查询sql
+def query_sql(sql, if_cache=True) -> list:
+    cache_key = gen_cache_key(sql)
+    # 是否使用缓存
+    if CONFIG.getboolean("website", "use_cache") and if_cache:
+        # 是否有缓存
+        if cache_key in SQL_CACHE.keys():
+            print('SQL CACHE[{}]'.format(cache_key))
+            return SQL_CACHE[cache_key][:]
+        else:
+            print('SQL EXEC[{}]:{}'.format(cache_key, sql))
+            ret = fetchall(sql)
+            if CONFIG.getboolean("website", "use_cache") and ret != []:
+                SQL_CACHE[cache_key] = ret
+            return ret[:]
+    else:
+        print('SQL EXEC:{}'.format(sql))
+        return fetchall(sql)
 
 
 def get_new_avmoo_site() -> str:
@@ -226,7 +274,9 @@ def get_url(page_type: str = "", keyword: str = "", page_no: int = 1) -> str:
 
 
 def get_local_url(page_type: str = "", keyword: str = "", page_no: int = 1) -> str:
-    ret = 'http://{}:{}'.format(LOCAL_IP, DEFAULT_PORT)
+    ret = 'http://{}:{}'.format(LOCAL_IP, CONFIG.getint("base", "port"))
+    if page_type == "popular":
+        return None
     if page_type != "":
         ret += '/{}'.format(page_type)
     if keyword != "":
@@ -248,6 +298,8 @@ def search_where(key_item: str) -> str:
 
 
 def open_browser_tab(url):
+    if not url:
+        return
     print("open_browser_tab:", url)
 
     def _open_tab(url_param):
@@ -259,23 +311,31 @@ def open_browser_tab(url):
 
 
 def sql_escape(keyword: str) -> str:
-    for item in ESCAPT_LIST:
+    for item in ESCAPE_LIST:
         keyword = keyword.replace(item[0], item[1])
     return keyword
 
-
+# 解析源站url, 返回 page_type, keyword, page_start
 def parse_url(url: str) -> tuple:
     if url is None or url == "":
         return "", "", -1
-    res = re.findall(
-        "https?://[^/]+/[^/]+/(movie|star|genre|series|studio|label|director|search)/([^/]+)(/page/(\\d+))?", url)
-    if len(res) == 0:
-        print("wrong url:{}".format(url))
-        return "", "", -1
+    
+    pattern_1 = "https?://[^/]+/[^/]+/popular(/page/(\\d+))?"
+    pattern_2 = "https?://[^/]+/[^/]+/(movie|star|genre|series|studio|label|director|search)/([^/]+)(/page/(\\d+))?"
     page_start = 1
-    if res[0][3] != "":
-        page_start = int(res[0][3])
-    return res[0][0], res[0][1], page_start
+
+    if re.match(pattern_1, url):
+        res = re.findall(pattern_1, url)
+        page_start = int(res[0][1]) if res[0][1] else 1
+        return "popular", "", page_start
+    
+    if re.match(pattern_2, url):
+        res = re.findall(pattern_2, url)
+        page_start = int(res[0][3]) if res[0][3] else 1
+        return res[0][0], res[0][1], page_start
+
+    print("wrong url:{}".format(url))
+    return "", "", -1
 
 
 def get_exist_linkid(page_type: str, keyword: str) -> dict:
@@ -313,32 +373,8 @@ def gen_cache_key(sql):
     return '|'.join(get_table_name(sql)) + ':' + str(binascii.crc32(sql.encode()) & 0xffffffff)
 
 
-# 查询sql
-def query_sql(sql, if_cache=True) -> list:
-    cache_key = gen_cache_key(sql)
-    # 是否使用缓存
-    if CONFIG.getboolean("website", "use_cache") and if_cache:
-        # 是否有缓存
-        if cache_key in SQL_CACHE.keys():
-            print('SQL CACHE[{}]'.format(cache_key))
-            return SQL_CACHE[cache_key][:]
-        else:
-            print('SQL EXEC[{}]:{}'.format(cache_key, sql))
-            ret = fetchall(sql)
-            if CONFIG.getboolean("website", "use_cache") and ret != []:
-                SQL_CACHE[cache_key] = ret
-            return ret[:]
-    else:
-        print('SQL EXEC:{}'.format(sql))
-        return fetchall(sql)
-
 if __name__ == "__main__":
     # test
     init()
-    print(DATA_STORAGE)
-    print("test:", storage("av_genre", {"name":["企画"]}))
-    print("test:", storage("av_genre", {"linkid":["1f0ed55a63eecde5"]}))
-    print("test:", storage("av_genre", {"title":["类别"]}))
-    print("test:", storage_col("av_genre", {"title":["类别"]}, "linkid"))
-    print("test:", storage_col("av_genre", {"title":["类别"]}, "name"))
-    
+    insert("")
+    pass

@@ -1,6 +1,10 @@
 [base]
 avmoo_site = https://avmoo.sbs
 db_file = avmoo.db
+port = 5000
+debug_mode = False
+# readonly,nothing update in sqlite db
+readonly = False
 
 # cn/tw/en/ja
 country = cn
@@ -15,6 +19,8 @@ insert_threshold = 10
 # continued skip count > continued_skip_limit, crawl end
 # integer
 continued_skip_limit = 30
+
+minimum_movie_duration = 0
 
 [requests]
 timeout = 3
@@ -33,6 +39,9 @@ actresses_page_limit = 36
 # /group item limit
 group_page_limit = 30
 
+# update work list and newest movie, interval time(ms)
+spider_page_interval_timeout = 20000
+
 # release_date or count
 group_page_order_by = count
 
@@ -41,3 +50,9 @@ use_cache = False
 
 # auto open site on run or not
 auto_open_site_on_run = True
+
+# auto open link when spider done work
+auto_open_link_when_crawl_done = True
+
+# fast run,less function
+efficiency_mode = False

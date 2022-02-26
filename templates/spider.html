@@ -16,7 +16,8 @@
         <div class="col-md-5 col-md-offset-1">
             <form class="" style="width:500px;" action="/action/crawl" method="post">
                 <div class="form-group">
-                    <textarea class="form-control" name="url_text" placeholder="完整链接,例:
+                    <textarea class="form-control" name="url_text" placeholder="完整链接或番号,例:
+SSIS-344
 https://avmoo.sbs/cn/movie/9fed39545dc47840
 https://avmoo.sbs/cn/star/26532bc87b4ce1d1/page/2
 https://avmoo.sbs/cn/genre/dd21aefe7ae3228c
@@ -26,16 +27,26 @@ https://avmoo.sbs/cn/director/63a8f4da6e22cc09
 https://avmoo.sbs/cn/search/ABP/page/25" style="width: 500px;height: 200px;" title="url text"></textarea>
                 </div>
                 <div class="form-group">
-                    <label title="crawl page num limit">最大抓取页数</label>
+                    <label title="crawl page num limit">最大抓取页数(源站限制最多100)</label>
                     <input type="text" class="form-control" name="crawl_page_num_limit" value="100"/>
                 </div>
                 <button type="submit" class="btn btn-default" title="crawl by whole link">下载指定链接</button>
             </form>
         </div>
         <div class="col-md-5">
-            <h4 title="work list">等待中任务</h4>
+            <h4 title="working list">运行中任务<button class="btn btn-default btn-sm" type="submit" onclick="crawl_control('exit')" title="exit crawl">结束当前任务</button></h4>
             <div>
-                <ul id="queue_list">
+                <ul id="running_work">
+                </ul>
+            </div>
+            <h4 title="work list">等待中任务<button class="btn btn-default btn-sm" type="submit" onclick="crawl_control('clean')" title="clean">清空</button></h4>
+            <div>
+                <ul id="wait_work">
+                </ul>
+            </div>
+            <h4 title="worked list">已完成任务</h4>
+            <div>
+                <ul id="done_work">
                 </ul>
             </div>
         </div>
@@ -45,11 +56,16 @@ https://avmoo.sbs/cn/search/ABP/page/25" style="width: 500px;height: 200px;" tit
 
 {% block javascript %}
 <script>
+function crawl_control(action){
+    $.get("/action/crawl/control/" + action,function(data){
+        showMessage(data,"");
+    });
+}
 function frash_last_insert_list(){
     $.getJSON("/action/last/insert", function(data){
-        console.log(data);
 
         $("#waterfall").html("");
+        //最新获取的影片
         data["last_insert_list"].forEach(item => {
             $("#waterfall").append(
                 '<div class="item" style="position: relative;">'+
@@ -73,9 +89,29 @@ function frash_last_insert_list(){
                 '</div>'
             );
         });
-        $("#queue_list").html("");
-        data["queue_list"].forEach(item => {
-            $("#queue_list").append(
+        //正在运行的任务
+        $("#running_work").html("");
+        if (data["running_work"]){
+            let item = data["running_work"];
+            $("#running_work").html(
+                    '<li>' +
+                        '<a href="'+item.url+'" target="_blank">'+item.url+'</a>'+ (item.page_limit > 0? ' page_limit:'+item.page_limit:'') +
+                    '</li>');
+        }
+        //等待运行的任务
+        $("#wait_work").html("");
+        data["wait_work"].forEach(item => {
+            $("#wait_work").append(
+                '<li>' +
+                    '<a href="'+item.url+'" target="_blank">'+item.url+'</a>'+ (item.page_limit > 0? ' page_limit:'+item.page_limit:'') +
+                '</li>'
+            );
+        });
+        //执行完毕的任务
+        //等待运行的任务
+        $("#done_work").html("");
+        data["done_work"].forEach(item => {
+            $("#done_work").append(
                 '<li>' +
                     '<a href="'+item.url+'" target="_blank">'+item.url+'</a>'+ (item.page_limit > 0? ' page_limit:'+item.page_limit:'') +
                 '</li>'
@@ -84,6 +120,6 @@ function frash_last_insert_list(){
     });
 }
 frash_last_insert_list()
-setInterval(frash_last_insert_list, 20000);
+setInterval(frash_last_insert_list, {{config['website']['spider_page_interval_timeout']}});
 </script>
 {% endblock %}

@@ -10,102 +10,135 @@ from lxml import etree
 from typing import Iterator, Tuple
 from common import *
 
+
 class Spider:
-    # 单例模式
+    instance = None
+
+    def __init__(self):
+        self.last_insert_list = []
+        self.running_work = None
+        self.done_work = []
+        self.s = None
+        self._db = None
+
     def __new__(cls, *args, **kwargs):
-        if not hasattr(Spider, 'instance'):
+        if not cls.instance:
             cls.instance = super(Spider, cls).__new__(cls)
         return cls.instance
 
-    def init(self):
-        print('avmo.init')
-        # 上次插入
-        self.last_insert_list = []
-        # 创建会话对象
-        self.s = requests.Session()
-        # 超时时间
-        self.s.timeout = CONFIG.getint("requests", "timeout")
-        self.s.headers = {
-            'User-Agent': CONFIG.get("requests", "user_agent"),
-        }
-        # 代理
-        self.s.proxies = {
-            # 'https':'http://127.0.0.1:1080'
-        }
-        # 链接数据库
-        self.CONN = sqlite3.connect(CONFIG.get(
-            "base", "db_file"), check_same_thread=False)
-        self.CUR = self.CONN.cursor()
-
-        # 如果genre为空则抓取
-        res = self.fetchall("SELECT * FROM av_genre")
-        if not res:
-            self.crawl_genre()
-
+    def run(self):
         # 启动爬虫线程
+        if CONFIG.getboolean("base", "readonly"):
+            return
         thread = threading.Thread(target=self.spider_thread, args=())
         thread.daemon = True
         thread.start()
+
+    def db(self):
+        if self._db is None:
+            print('spider.db.init')
+            # 链接数据库
+            self._db = sqlite3.connect(CONFIG.get("base", "db_file"))
+        return self._db
+
+    def requests(self):
+        if self.s is None:
+            print('spider.requests.init')
+            # 创建会话对象
+            self.s = requests.Session()
+            # 超时时间
+            self.s.timeout = CONFIG.getint("requests", "timeout")
+            self.s.headers = {
+                'User-Agent': CONFIG.get("requests", "user_agent"),
+            }
+            # 代理
+            self.s.proxies = {
+                # 'https':'http://127.0.0.1:1080'
+            }
+        return self.s
 
     # 爬虫线程
     def spider_thread(self):
         print("spider_thread.start")
         while True:
             time.sleep(CONFIG.getfloat("spider", "sleep"))
+            work_param = QUEUE.get()
 
-            (function_name, param) = QUEUE.get()
-            print("=" * 10, function_name, "=" * 10, "start")
-            if function_name == "crawl_accurate":
-                print("page_type: {0[0]}, keyword: {0[1]}, page_start: {0[2]}, page_limit: {0[3]}, exist_count: {1}".format(
-                    param, len(param[4])))
-                self.crawl_accurate(param[0], param[1], param[2], param[3], param[4])
+            # 记录运行中任务
+            self.running_work = work_param
+            self.running_work["status"] = "ING"
 
-            if function_name == "crawl_by_url":
-                print("url:{},page_limit:{}".format(param[0], param[1]))
-                page_type, keyword, page_start = parse_url(param[0])
-                self.crawl_accurate(page_type, keyword, page_start, param[1],
-                                        get_exist_linkid(page_type, keyword))
+            print("="*10," crawl start ","=" * 10)
+            if work_param["action"] == "crawl_accurate":
+                print(
+                    "page_type: {0[page_type]}, keyword: {0[keyword]}, page_start: {0[page_start]}, page_limit: {0[page_limit]}, exist_count: {1}".format(
+                        work_param, len(work_param["exist_linkid"])))
+                ret = self.crawl_accurate(work_param)
+
                 # 打开浏览器提醒抓取完成
-                if CONFIG.getboolean("website", "use_cache"):
-                    SQL_CACHE.clear()
-                page_type, keyword, page_start = parse_url(param[0])
-                common.open_browser_tab(get_local_url(page_type, keyword, page_start))
+                if ret:
+                    if CONFIG.getboolean("website", "use_cache"):
+                        SQL_CACHE.clear()
+                    if CONFIG.getboolean("website", "auto_open_link_when_crawl_done"):
+                        common.open_browser_tab(get_local_url(work_param["page_type"], work_param["keyword"], work_param["page_start"]))
 
-            if function_name == "crawl_genre":
+            if work_param["action"] == "crawl_genre":
                 self.crawl_genre()
 
-            print("=" * 10, function_name, "=" * 10, "end\n")
+            print("="*10," crawl end ","=" * 10)
+            print()
+
+            if "exist_linkid" in self.running_work:
+                del self.running_work["exist_linkid"]
+            self.done_work.append(self.running_work)
+            self.running_work = None
+
+    def get_last_insert_list(self):
+        return self.last_insert_list
+
+    def get_running_work(self, action: str = ""):
+        if action:
+            self.running_work["status"] = action
+            return
+        return self.running_work
+
+    def get_done_work(self):
+        return self.done_work
 
     def fetchall(self, sql) -> list:
-        self.CUR.execute(sql)
-        rows = self.CUR.fetchall()
+        cur = self.db().cursor()
+        cur.execute(sql)
+        rows = cur.fetchall()
         if not rows:
             return []
-        
+
         result = []
         for row in rows:
             row_dict = {}
-            for i in range(len(self.CUR.description)):
-                row_dict[self.CUR.description[i][0]] = row[i]
+            for i in range(len(cur.description)):
+                row_dict[cur.description[i][0]] = row[i]
             result.append(row_dict)
         return result
 
     # 根据链接参数抓取
-    def crawl_accurate(self, page_type: str, keyword: str, page_start: int, page_limit: int,
-                       exist_linkid_dict: dict) -> bool:
+    def crawl_accurate(self, work_param: dict) -> bool:
+        page_type = work_param["page_type"]
+        if not page_type:
+            print("wrong param")
+            return False
         # 单个电影
         if page_type == "movie":
-            (status_code, data) = self.crawl_by_movie_linkid(keyword)
+            (status_code, data) = self.crawl_by_movie_linkid(work_param["keyword"])
             if data is None or status_code != 200:
+                print("crawl_by_movie_linkid wrong,data:{},status_code:{}", data, status_code)
                 return False
             self.movie_save([data])
             return True
         # 其他
-        if page_type in ('genre', 'series', 'studio', 'label', 'director', 'search', 'star'):
-            self.crawl_by_page_type(page_type, keyword, page_start, page_limit, exist_linkid_dict)
+        if page_type in ('genre', 'series', 'studio', 'label', 'director', 'search', 'star', 'popular'):
+            self.crawl_by_page_type(work_param)
             return True
-        print("wrong param,page_type:{}, keyword:{}, page_start:{}".format(
-            page_type, keyword, page_start))
+        print("wrong param,work_param:{}".format(work_param))
         return False
 
     # 获取所有类别
@@ -126,26 +159,31 @@ class Spider:
                 g_id = a_item.attrib.get('href')[-16:]
                 insert_list.append((g_id, g_name, g_title))
         sql = "REPLACE INTO av_genre (linkid,name,title)VALUES(?,?,?);"
-        self.CUR.executemany(sql, insert_list)
-        self.CONN.commit()
+        cur = self.db().cursor()
+        cur.executemany(sql, insert_list)
+        self.db().commit()
         print('genre update record:{}'.format(len(insert_list)))
 
     # 根据页面类型抓取所有影片
-    def crawl_by_page_type(self, page_type: str, keyword: str, page_start: int, page_limit: int,
-                           exist_linkid_dict: dict) -> None:
+    def crawl_by_page_type(self, work_param: dict) -> None:
         print("[exist_count:{}]".format(
-            len(exist_linkid_dict)))
-        if page_type == 'star':
-            self.stars_one(keyword)
+            len(work_param["exist_linkid"])))
+        if work_param["page_type"] == 'star':
+            self.stars_one(work_param["keyword"])
         # 待插入
         insert_list = []
         insert_count = 0
         skip_count = 0
         banned_count = 0
         continued_skip_count = 0
-        for movie_linkid in self.linkid_general(page_type, keyword, page_start, page_limit):
+        for movie_linkid in self.linkid_general(work_param):
+            # 跳出
+            if self.running_work["status"] != "ING":
+                # 任务结束
+                break
+            
             # 跳过已存在的
-            if movie_linkid in exist_linkid_dict:
+            if movie_linkid in work_param["exist_linkid"]:
                 skip_count += 1
                 continued_skip_count += 1
                 print("SKIP EXIST,URL:{}".format(get_local_url("movie", movie_linkid)))
@@ -166,6 +204,13 @@ class Spider:
                 continue
             if data is None:
                 continue
+            
+            # 判断影片是否符合要求
+            duration = CONFIG.getint("spider", "minimum_movie_duration")
+            if duration > 0 and data["len"] < duration:
+                print("movie duration non conformance,url:" + get_url("movie", movie_linkid))
+                continue
+
             insert_list.append(data)
             # 存储数据
             if len(insert_list) == CONFIG.getint("spider", "insert_threshold"):
@@ -176,7 +221,7 @@ class Spider:
         self.movie_save(insert_list)
         insert_count += len(insert_list)
         print("[exist_count:{}][fetch_count:{}][skip_count:{}]".format(
-            len(exist_linkid_dict), insert_count, skip_count))
+            len(work_param["exist_linkid"]), insert_count, skip_count))
 
     # 根据linkid抓取一个movie页面
     def crawl_by_movie_linkid(self, movie_linkid: str) -> tuple:
@@ -283,17 +328,17 @@ class Spider:
             data['name'].ljust(15),
             data['hometown']
         )
-        common.DATA_STORAGE["av_stars"].append(data)
+        DATA_STORAGE["av_stars"].append(data)
         self.stars_save(data)
         return data
 
     # 自动翻页返回movie_id
-    def linkid_general(self, page_type: str, keyword: str, page_start: int = 1, page_limit: int = 100) -> Iterator[str]:
+    def linkid_general(self, work_param: dict) -> Iterator[str]:
         # 网站限制最多100页
-        for page_no in range(page_start, page_limit + 1):
+        for page_no in range(work_param["page_start"], work_param["page_limit"] + 1):
             time.sleep(CONFIG.getfloat("spider", "sleep"))
 
-            url = get_url(page_type, keyword, page_no)
+            url = get_url(work_param["page_type"], work_param["keyword"], page_no)
             print("get:{}".format(url))
 
             (status_code, html) = self.get_html_by_url(url)
@@ -315,18 +360,19 @@ class Spider:
 
     def stars_save(self, data: dict) -> None:
         insert_sql = insert_sql_build("av_stars", data)
-        self.CUR.execute(insert_sql, tuple(data.values()))
-        self.CONN.commit()
+        self.db().execute(insert_sql, tuple(data.values()))
+        self.db().commit()
 
     # 插入数据库
     def movie_save(self, insert_list: list) -> None:
         if len(insert_list) == 0:
             return
         self.last_insert_list = insert_list
-        
+
         insert_sql = insert_sql_build("av_list", insert_list[0])
-        self.CUR.executemany(insert_sql, [tuple(x.values()) for x in insert_list])
-        self.CONN.commit()
+        cur = self.db().cursor()
+        cur.executemany(insert_sql, [tuple(x.values()) for x in insert_list])
+        self.db().commit()
         print('INSERT:', len(insert_list))
 
     # 解析html数据
@@ -348,8 +394,8 @@ class Spider:
             'stars': '',
             'stars_url': '',
             # 图片个数image_len
-            'image_len': str(len(html.xpath('//div[@id="sample-waterfall"]/a'))),
-            'len': '0',
+            'image_len': int(len(html.xpath('//div[@id="sample-waterfall"]/a'))),
+            'len': 0,
             # 标题
             'title': html.xpath('/html/body/div[2]/h3/text()')[0].strip(),
             # 封面 截取域名之后的部分
@@ -358,11 +404,11 @@ class Spider:
             'release_date': html.xpath('/html/body/div[2]/div[1]/div[2]/p[2]/text()')[0].strip()
         }
         # 时长len
-        lentext = html.xpath('/html/body/div[2]/div[1]/div[2]/p[3]/text()')
-        if len(lentext) != 0:
-            res = re.findall("(\\d+)", lentext[0])
+        len_text = html.xpath('/html/body/div[2]/div[1]/div[2]/p[3]/text()')
+        if len(len_text) != 0:
+            res = re.findall("(\\d+)", len_text[0])
             if len(res) != 0:
-                data['len'] = res[0].strip()
+                data['len'] = int(res[0].strip())
 
         # 获取：导演、制作商、发行商、系列
         right_info = html.xpath('/html/body/div[2]/div[1]/div[2]/p/a')
@@ -408,18 +454,16 @@ class Spider:
 
         return data
 
-    def get_last_insert_list(self):
-        return self.last_insert_list
-
     def get_html_by_url(self, url: str) -> tuple:
         try:
-            res = self.s.get(url)
+            res = self.requests().get(url)
             if res.status_code != 200:
                 print("status_code = {},url:{}".format(res.status_code, url))
                 return res.status_code, None
 
             return 200, etree.HTML(res.text)
-        except:
+        except Exception as e:
+            print("get_html_by_url except:{}".format(e))
             return 500, None
 
 

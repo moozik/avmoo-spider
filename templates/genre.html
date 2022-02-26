@@ -2,7 +2,7 @@
 {% block title %} 分类 {% endblock %}
 {% block container %}
 <div class="container-fluid pt-10">
-    <button class="btn btn-default genre-download-btn" title="update all">更新类目</button>
+    <button class="btn btn-default genre-download-btn" onclick="crawlAccurate('allGenre', '')" title="update">更新类目</button>
     {% for item in data.av_genre %}
     <h4>{{item.0.title}}</h4>
     <div class="row genre-box">
@@ -16,14 +16,4 @@
 </div>
 {% endblock %}
 {% block pagination %}
-{% endblock %}
-
-{% block javascript %}
-<script>
-$('.genre-download-btn').click(function () {
-    $.get("/action/crawl/genre", function (data) {
-        showMessage('正在更新类目。。。', '');
-    });
-});
-</script>
 {% endblock %}

@@ -35,8 +35,10 @@
                     </div>
                 </a>
                 <span>{{item.name}}</span>
+                {% if item.movie_count %}
                 <span>作品 <b style="color:red;">{{item.movie_count}}</b></span>
                 <span>最新 <b style="color:red;">{{item.release_date}}</b></span>
+                {% endif %}
                 <span><button class="btn btn-default btn-sm" onclick="crawlAccurate('star' ,'{{item.linkid}}')" title="update movie list">更新影片</button></span>
             </div>
             {% endfor %}

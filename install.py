@@ -1,5 +1,5 @@
-def build_sqlite_db(conn, cur):
-    cur.execute('''
+def build_sqlite_db(db):
+    db.cursor().execute('''
 CREATE TABLE IF NOT EXISTS "av_genre" (
   "linkid" CHAR(16) NOT NULL,
   "name" TEXT,
@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS "av_genre" (
 );
     ''')
 
-    cur.execute('''
+    db.cursor().execute('''
 CREATE TABLE IF NOT EXISTS "av_list" (
   "linkid" CHAR(16) NOT NULL,
   "title" TEXT,
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS "av_list" (
 );
     ''')
 
-    cur.execute('''
+    db.cursor().execute('''
 CREATE TABLE IF NOT EXISTS "av_stars" (
   "linkid" CHAR(16) NOT NULL,
   "name" TEXT,
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS "av_stars" (
   PRIMARY KEY ("linkid")
 );
     ''')
-    cur.execute('''
+    db.cursor().execute('''
 CREATE TABLE IF NOT EXISTS "av_extend" (
   "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
   "extend_name" VARCHAR(10) NOT NULL,
@@ -58,4 +58,4 @@ CREATE TABLE IF NOT EXISTS "av_extend" (
 );
     ''')
 
-    conn.commit()
+    db.commit()

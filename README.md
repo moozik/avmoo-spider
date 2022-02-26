@@ -8,9 +8,10 @@ pip install flask
 ```
 ## 功能
 
-- `http://127.0.0.1:5000/spider`输入链接，抓取链接内所有影片，自动翻页，跳过已抓取影片
-- `http://127.0.0.1:5000/action/scandisk`扫描本地硬盘，识别文件名
-- `http://127.0.0.1:5000/search/keyword`多关键字搜索
+- `/spider`输入链接，抓取链接内所有影片
+- `/scandisk`扫描本地硬盘，识别番号文件名
+- `/analyse/star/4d2d8be56df2dead`分析影片
+- `/search/keyword`多关键字搜索
 - 本地视频路径绑定到番号，在网页打开本地视频
 - 标题快捷翻译
 - 电影分析
@@ -20,12 +21,4 @@ pip install flask
 
 ## 打开方法
 命令行运行`python run.py`启动本地web(首次打开会创建db)
-打开`http://127.0.0.1:5000`即可看到主页
-
-
-## 查看数据库数据
-可以用`sqlite-web`这个库
-```bash
-pip install sqlite-web
-sqlite_web avmoo.db
-```
+默认地址为`http://127.0.0.1:5000`，端口可通过配置修改
