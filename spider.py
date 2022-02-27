@@ -3,6 +3,9 @@
 import time
 import requests
 import re
+
+from requests import ReadTimeout, Timeout
+
 import common
 import sqlite3
 import threading
@@ -13,13 +16,13 @@ from common import *
 
 class Spider:
     instance = None
+    requests_ins = None
+    db_ins = None
 
     def __init__(self):
         self.last_insert_list = []
         self.running_work = None
         self.done_work = []
-        self.s = None
-        self._db = None
 
     def __new__(cls, *args, **kwargs):
         if not cls.instance:
@@ -34,58 +37,62 @@ class Spider:
         thread.daemon = True
         thread.start()
 
-    def db(self):
-        if self._db is None:
+    @staticmethod
+    def db():
+        if Spider.db_ins is None:
             print('spider.db.init')
             # 链接数据库
-            self._db = sqlite3.connect(CONFIG.get("base", "db_file"))
-        return self._db
+            Spider.db_ins = sqlite3.connect(CONFIG.get("base", "db_file"))
+        return Spider.db_ins
 
-    def requests(self):
-        if self.s is None:
+    @staticmethod
+    def requests():
+        if Spider.requests_ins is None:
             print('spider.requests.init')
             # 创建会话对象
-            self.s = requests.Session()
-            # 超时时间
-            self.s.timeout = CONFIG.getint("requests", "timeout")
-            self.s.headers = {
+            Spider.requests_ins = requests.Session()
+            Spider.requests_ins.headers = {
                 'User-Agent': CONFIG.get("requests", "user_agent"),
             }
             # 代理
-            self.s.proxies = {
+            Spider.requests_ins.proxies = {
                 # 'https':'http://127.0.0.1:1080'
             }
-        return self.s
+        return Spider.requests_ins
 
     # 爬虫线程
     def spider_thread(self):
         print("spider_thread.start")
         while True:
             time.sleep(CONFIG.getfloat("spider", "sleep"))
+
+            # 获取一个任务
             work_param = QUEUE.get()
+            work_param["url"] = get_url(work_param["page_type"], work_param["keyword"], work_param["page_start"])
+            work_param["status"] = "ING"
 
             # 记录运行中任务
-            self.running_work = work_param
-            self.running_work["status"] = "ING"
+            self.running_work = work_param.copy()
 
-            print("="*10," crawl start ","=" * 10)
-            if work_param["action"] == "crawl_accurate":
-                print(
-                    "page_type: {0[page_type]}, keyword: {0[keyword]}, page_start: {0[page_start]}, page_limit: {0[page_limit]}, exist_count: {1}".format(
-                        work_param, len(work_param["exist_linkid"])))
-                ret = self.crawl_accurate(work_param)
+            work_param["exist_linkid"] = {}
+            # 是否跳过 默认跳过
+            if "skip_exist" not in work_param or work_param.get("skip_exist"):
+                work_param["exist_linkid"] = get_exist_linkid(work_param["page_type"], work_param["keyword"])
 
-                # 打开浏览器提醒抓取完成
-                if ret:
-                    if CONFIG.getboolean("website", "use_cache"):
-                        SQL_CACHE.clear()
-                    if CONFIG.getboolean("website", "auto_open_link_when_crawl_done"):
-                        common.open_browser_tab(get_local_url(work_param["page_type"], work_param["keyword"], work_param["page_start"]))
+            print("="*10, " crawl start ", "=" * 10)
+            print("url:{0[url]} page_limit:{0[page_limit]}, exist_count:{1}".format(
+                    work_param, len(work_param["exist_linkid"])))
+            ret = self.crawl_accurate(work_param)
 
-            if work_param["action"] == "crawl_genre":
-                self.crawl_genre()
+            # 打开浏览器提醒抓取完成
+            if ret:
+                # 清空缓存
+                if CONFIG.getboolean("website", "use_cache"):
+                    SQL_CACHE.clear()
+                if CONFIG.getboolean("website", "auto_open_link_when_crawl_done"):
+                    common.open_browser_tab(get_local_url(work_param["page_type"], work_param["keyword"], work_param["page_start"]))
 
-            print("="*10," crawl end ","=" * 10)
+            print("="*10, " crawl end ", "=" * 10)
             print()
 
             if "exist_linkid" in self.running_work:
@@ -142,10 +149,11 @@ class Spider:
         return False
 
     # 获取所有类别
-    def crawl_genre(self) -> None:
+    @staticmethod
+    def crawl_genre() -> list:
         genre_url = get_url('genre', '')
         print("get:{}".format(genre_url))
-        (status_code, html) = self.get_html_by_url(genre_url)
+        (status_code, html) = Spider().get_html_by_url(genre_url)
         insert_list = []
         h4 = html.xpath('/html/body/div[2]/h4/text()')
         div = html.xpath('/html/body/div[2]/div')
@@ -155,19 +163,16 @@ class Spider:
             for a_item in a_list:
                 if a_item.text is None:
                     continue
-                g_name = a_item.text
-                g_id = a_item.attrib.get('href')[-16:]
-                insert_list.append((g_id, g_name, g_title))
-        sql = "REPLACE INTO av_genre (linkid,name,title)VALUES(?,?,?);"
-        cur = self.db().cursor()
-        cur.executemany(sql, insert_list)
-        self.db().commit()
-        print('genre update record:{}'.format(len(insert_list)))
+                insert_list.append({
+                    "linkid": a_item.attrib.get('href')[-16:],
+                    "name": a_item.text,
+                    "title": g_title
+                })
+        print('genre fetch record:{}'.format(len(insert_list)))
+        return insert_list
 
     # 根据页面类型抓取所有影片
     def crawl_by_page_type(self, work_param: dict) -> None:
-        print("[exist_count:{}]".format(
-            len(work_param["exist_linkid"])))
         if work_param["page_type"] == 'star':
             self.stars_one(work_param["keyword"])
         # 待插入
@@ -358,7 +363,7 @@ class Spider:
                 break
 
     def stars_save(self, data: dict) -> None:
-        insert_sql = insert_sql_build("av_stars", data)
+        insert_sql = replace_sql_build("av_stars", data)
         self.db().execute(insert_sql, tuple(data.values()))
         self.db().commit()
 
@@ -368,7 +373,7 @@ class Spider:
             return
         self.last_insert_list = insert_list
 
-        insert_sql = insert_sql_build("av_list", insert_list[0])
+        insert_sql = replace_sql_build("av_list", insert_list[0])
         cur = self.db().cursor()
         cur.executemany(insert_sql, [tuple(x.values()) for x in insert_list])
         self.db().commit()
@@ -453,17 +458,41 @@ class Spider:
 
         return data
 
-    def get_html_by_url(self, url: str) -> tuple:
-        try:
-            res = self.requests().get(url)
-            if res.status_code != 200:
-                print("status_code = {},url:{}".format(res.status_code, url))
-                return res.status_code, None
+    @staticmethod
+    def get_html_by_url(url: str) -> tuple:
+        retry_limit = 3
+        for i in range(retry_limit):
+            try:
+                res = Spider.requests().get(url, timeout=CONFIG.getint("requests", "timeout"))
+                if res.status_code != 200:
+                    print("status_code = {},url:{}".format(res.status_code, url))
+                    return res.status_code, None
 
-            return 200, etree.HTML(res.text)
-        except Exception as e:
-            print("get_html_by_url except:{}".format(e))
-            return 500, None
+                return 200, etree.HTML(res.text)
+            except Timeout as e:
+                print("requests Timeout,error:{}\nretry url:{}".format(
+                    e, url
+                ))
+                # 休眠
+                time.sleep(10)
+                # 超时重试
+                continue
+
+            except ConnectionError as e:
+                print("requests ConnectionError,error:{}\nretry url:{}".format(
+                    e, url
+                ))
+                # 休眠
+                time.sleep(10)
+                # 链接异常
+                continue
+
+            except Exception as e:
+                print("requests Exception:{}\nurl:{}".format(e, url))
+                time.sleep(10)
+                continue
+        # 返回错误
+        return 500, None
 
 
 if __name__ == '__main__':

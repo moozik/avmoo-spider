@@ -69,6 +69,8 @@ ESCAPE_LIST = (
     (")", "/)"),
 )
 
+PAGE_MAX = 100
+
 LOCAL_IP = "127.0.0.1"
 
 DATA_STORAGE = {}
@@ -173,7 +175,7 @@ def config_save(config):
         config.write(fp)
 
 
-def insert_sql_build(table: str, data: dict) -> str:
+def replace_sql_build(table: str, data: dict) -> str:
     sql = "REPLACE INTO {} ({}) VALUES ({})".format(
         table, ','.join(list(data)), ("?," * len(data))[:-1]
     )
@@ -181,14 +183,14 @@ def insert_sql_build(table: str, data: dict) -> str:
 
 
 # 插入sql
+# av_genre av_extend
 def insert(table: str, data: list):
     if CONFIG.getboolean("base", "readonly"):
         return
-    global DB
     if not data:
         return
-    sql = insert_sql_build(table, data[0])
-    print("INSERT,table:{},data:{}".format(table, data))
+    sql = replace_sql_build(table, data[0])
+    print("INSERT,table:{},count:{}".format(table, len(data)))
     DB.cursor().executemany(sql, [tuple(x.values()) for x in data])
     DB.commit()
 
@@ -197,7 +199,6 @@ def insert(table: str, data: list):
 def execute(sql):
     if CONFIG.getboolean("base", "readonly"):
         return
-    global DB
     print("SQL EXEC:{}".format(sql))
     DB.cursor().execute(sql)
     DB.commit()
@@ -205,7 +206,6 @@ def execute(sql):
 
 # 查询sql
 def fetchall(sql) -> list:
-    global DB
     cur = DB.cursor()
     cur.execute(sql)
     rows = cur.fetchall()
@@ -257,7 +257,6 @@ def list_in_str(target_list: tuple, target_string: str) -> bool:
 
 
 def get_url(page_type: str = "", keyword: str = "", page_no: int = 1) -> str:
-    global CONFIG
     ret = '{}/{}'.format(CONFIG.get("base", "avmoo_site"),
                          CONFIG.get("base", "country"), )
     if page_type == "search":
@@ -280,7 +279,7 @@ def get_local_url(page_type: str = "", keyword: str = "", page_no: int = 1) -> s
     if page_type != "":
         ret += '/{}'.format(page_type)
     if keyword != "":
-        ret += '/{}'.format(quote(keyword))
+        ret += '/{}'.format(keyword)
     if page_no > 1:
         ret += '/page/{}'.format(page_no)
     return ret
@@ -315,6 +314,7 @@ def sql_escape(keyword: str) -> str:
         keyword = keyword.replace(item[0], item[1])
     return keyword
 
+
 # 解析源站url, 返回 page_type, keyword, page_start
 def parse_url(url: str) -> tuple:
     if url is None or url == "":
@@ -322,7 +322,6 @@ def parse_url(url: str) -> tuple:
     
     pattern_1 = "https?://[^/]+/[^/]+/popular(/page/(\\d+))?"
     pattern_2 = "https?://[^/]+/[^/]+/(movie|star|genre|series|studio|label|director|search)/([^/]+)(/page/(\\d+))?"
-    page_start = 1
 
     if re.match(pattern_1, url):
         res = re.findall(pattern_1, url)
@@ -341,6 +340,9 @@ def parse_url(url: str) -> tuple:
 def get_exist_linkid(page_type: str, keyword: str) -> dict:
     sql = ''
     exist_linkid_dict = {}
+    # 必须有值
+    if not keyword:
+        return {}
     # 查询已存在的
     if page_type in ['director', 'studio', 'label', 'series']:
         sql = "SELECT linkid FROM av_list WHERE {}_url='{}'".format(page_type, keyword)
@@ -374,7 +376,4 @@ def gen_cache_key(sql):
 
 
 if __name__ == "__main__":
-    # test
-    init()
-    insert("")
     pass

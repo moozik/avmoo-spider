@@ -8,14 +8,14 @@
 <div class="container-fluid">
     <div class="row">
         <div id="waterfall" style="margin: 20px 60px;">
-            {% for item in data %}
+            {% for item in data.list %}
                 <div class="item">
-                    <a class="movie-box" href="/group/{{ item.number }}">
+                    <a class="movie-box" href="/{{ data.page_type }}/{{ item.linkid }}">
                         <div class="photo-frame">
                             <img class="photo-sm" src="{{config['website']['cdn']}}/digital/video{{ item.smallimage }}">
                         </div>
                         <div class="photo-info">
-                            <span><span style="font-size: 18px;">{{item.number}}<b style="color:red;">({{item.count}})</b></span>
+                            <span><span style="font-size: 18px;">{{item.title}}<b style="color:red;">({{item.count}})</b></span>
                                 <br>
                                 <date>{{ item.av_id }}</date> /
                                 <date>{{ item.release_date }}</date>

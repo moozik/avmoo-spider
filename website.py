@@ -4,7 +4,7 @@ import collections
 import datetime
 import json
 import math
-from re import M
+import re
 import time
 
 from flask import Flask
@@ -12,7 +12,6 @@ from flask import redirect
 from flask import render_template
 from flask import request
 from flask import url_for
-from flask import g
 
 from common import *
 from spider import Spider
@@ -20,7 +19,6 @@ from spider import Spider
 app = Flask(__name__)
 app.jinja_env.auto_reload = True
 app.config['TEMPLATES_AUTO_RELOAD'] = True
-
 
 SPIDER = Spider()
 
@@ -94,7 +92,7 @@ def page_actresses(page_num=1):
     # 性能模式简化sql
     if CONFIG.getboolean("website", "efficiency_mode"):
         sql_text = "SELECT * FROM av_stars"
-    
+
     sql_result = "{} LIMIT {},{}".format(sql_text, (page_num - 1) * page_limit, page_limit)
     result = query_sql(sql_result)
     count = get_sql_count(sql_text)
@@ -104,55 +102,89 @@ def page_actresses(page_num=1):
 
 
 # 番号页
+@app.route('/series')
+@app.route('/series/page/<int:page_num>')
+@app.route('/studio')
+@app.route('/studio/page/<int:page_num>')
+@app.route('/label')
+@app.route('/label/page/<int:page_num>')
 @app.route('/group')
 @app.route('/group/page/<int:page_num>')
 def page_group(page_num=1):
+    # 页面类型
+    page_type = request.path.split('/')[1]
     page_limit = CONFIG.getint('website', 'group_page_limit')
     order_by = CONFIG.get('website', 'group_page_order_by')
     if order_by not in ['release_date', 'count']:
         order_by = 'count'
-    sql_text = '''
-    SELECT number,release_date,bigimage,av_id,count(1) AS count FROM(
-    SELECT
-    substr(av_id, 0, instr(av_id, '-')) AS number,
-    release_date,bigimage,av_id
-    FROM av_list
-    ORDER BY release_date DESC,av_id DESC
-    )
-    GROUP BY number
-    ORDER BY {} DESC
-    LIMIT {},{}
-    '''.format(
-        order_by, (page_num - 1) * page_limit, page_limit
-    )
-    count_res = query_sql("SELECT count(1) AS co FROM (SELECT DISTINCT substr(av_id, 0, instr(av_id, '-')) FROM av_list)")
+
+    if page_type == "group":
+        sql_text = '''
+        SELECT linkid,linkid AS title,release_date,bigimage,av_id,count(1) AS count FROM(
+        SELECT
+        substr(av_id, 0, instr(av_id, '-')) AS linkid,
+        release_date,bigimage,av_id
+        FROM av_list
+        ORDER BY release_date DESC,av_id DESC
+        )
+        GROUP BY linkid
+        ORDER BY {} DESC
+        LIMIT {},{}
+        '''.format(
+            order_by,
+            (page_num - 1) * page_limit,
+            page_limit
+        )
+        count_res = query_sql(
+            "SELECT count(1) AS co FROM (SELECT DISTINCT substr(av_id, 0, instr(av_id, '-')) FROM av_list)")
+    else:
+        sql_text = '''
+        SELECT *,count(*) AS count FROM(SELECT {1} AS linkid,{0} AS title,release_date,bigimage,av_id FROM av_list
+        WHERE {1} != ''
+        ORDER BY release_date DESC)
+        GROUP BY linkid
+        ORDER BY {2} DESC
+        LIMIT {3},{4}
+        '''.format(
+            page_type,
+            page_type + '_url',
+            order_by,
+            (page_num - 1) * page_limit,
+            page_limit
+        )
+        count_res = query_sql(
+            "SELECT count(1) AS co FROM av_list WHERE {} != ''".format(page_type + '_url'))
+
     result = query_sql(sql_text)
     for i in range(len(result)):
         # 图片地址
         result[i]['smallimage'] = result[i]['bigimage'].replace(
             'pl.jpg', 'ps.jpg')
-    return render_template('group.html', data=result,
-                           page=pagination(page_num, count_res[0]['co'], '/group', page_limit))
+    return render_template('group.html', data={
+        "list": result,
+        "page_type": page_type,
+    }, page=pagination(page_num, count_res[0]['co'], '/' + page_type, page_limit))
 
 
 # 标签页
 @app.route('/genre')
 def genre():
+    # 获取类目
+    av_genre_res = query_sql("SELECT linkid,name,title FROM av_genre")
+
+    # 如果genre为空则抓取
+    if not av_genre_res:
+        print('spider.genre.fetch')
+        insert("av_genre", Spider().crawl_genre())
+        return "请刷新"
+
     # 统计标签个数
     genre_list = []
     for row in query_sql("SELECT genre AS genre FROM av_list"):
         genre_list.extend(list(set(row['genre'].strip("|").split("|"))))
-    
-    # 如果genre为空则抓取
-    if not genre_list:
-        print('spider.genre.fetch')
-        crawl_accurate("allGenre")
-        return "请刷新"
-    
     genre_counter = collections.Counter(genre_list)
 
     data = {}
-    av_genre_res = query_sql("SELECT linkid,name,title FROM av_genre")
     for item in av_genre_res:
         if item['title'] not in data:
             data[item['title']] = []
@@ -305,6 +337,8 @@ def action_config():
 def action_analyse_star(page_type='', keyword=''):
     sql = "SELECT * FROM av_list WHERE {};".format(get_where_by_page_type(page_type, keyword))
     data = query_sql(sql, False)
+    if not data:
+        return "没找到数据"
 
     genre_all = []
     stars_all = []
@@ -345,10 +379,10 @@ def action_analyse_star(page_type='', keyword=''):
     analyse_name = keyword
     if page_type == 'star':
         analyse_name = stars_counter[0]['name']
-    
+
     if page_type == 'genre':
         analyse_name = genre_counter[0]['name']
-    
+
     if page_type in ['director', 'studio', 'label', 'series']:
         analyse_name = data[0][page_type]
 
@@ -382,13 +416,13 @@ def av_list_where_build(keyword: str) -> list:
     for item in re_res:
         where.append(get_where_by_page_type(item[1], item[2]))
         keyword = keyword.replace(item[0], '')
-    
+
     keyword = keyword.strip()
     # 通用搜索
     for key_item in keyword.strip().split(' '):
         if key_item == '':
             continue
-        
+
         # 识别linkid
         if is_linkid(key_item):
             genre_data = storage("av_genre", {"linkid": [keyword]})
@@ -465,7 +499,8 @@ def movie_build(movie_data):
         movie_data['genre_list'] = movie_data['genre'][1:].split('|')
 
     # 演员
-    if movie_data['stars_url'] is not None and movie_data['stars_url'] != "" and not isinstance(movie_data['stars_url'], list):
+    if movie_data['stars_url'] is not None and movie_data['stars_url'] != "" and not isinstance(movie_data['stars_url'],
+                                                                                                list):
         movie_data['stars_url'] = movie_data['stars_url'].strip('|').split("|")
         movie_data['stars'] = movie_data['stars'].strip('|').split("|")
 
@@ -508,129 +543,121 @@ def movie_build(movie_data):
     movie_data['build'] = True
     return movie_data
 
+
 # 爬虫控制
 @app.route('/action/crawl/control/<action>')
 def action_crawl_control(action):
     if action == "clean":
         QUEUE.queue.clear()
         return "已清空"
-    
+
     if action == "exit":
         SPIDER.get_running_work("exit")
         return "已跳过当前任务"
+
 
 # 爬虫接口
 # /spider 表单按钮
 @app.route('/action/crawl', methods=['POST'])
 def action_crawl():
     url_text = request.form['url_text']
-    crawl_page_num_limit = request.form['crawl_page_num_limit']
+    input_num_limit = request.form['page_limit']
+    skip_exist = True
+    if request.form['skip_exist'] == "False":
+        skip_exist = False
     link_list = [x.strip() for x in url_text.split("\n") if x.strip() != ""]
-    
+
     if len(link_list) == 0:
         return '请输入有效id'
-    page_limit = 100
-    
-    if crawl_page_num_limit.isnumeric() and int(crawl_page_num_limit) <= 100:
-        page_limit = int(crawl_page_num_limit)
-    
+    page_limit = PAGE_MAX
+
+    if input_num_limit.isnumeric() and int(input_num_limit) <= PAGE_MAX:
+        page_limit = int(input_num_limit)
+
     for link in link_list:
         # 调用搜索查询
         if not re.match("https?://", link):
+            # 构造search链接,编码搜索词
             link = get_url("search", quote(link))
-        
+
         page_type, keyword, page_start = parse_url(link)
         if page_type == "":
             print("wrong link:", link)
             continue
-        
-        QUEUE.put({
-            "action": "crawl_accurate",
-            "page_type": page_type,
-            "keyword": keyword,
-            "page_start": page_start,
-            "page_limit": page_limit,
-            "exist_linkid": {},
-            "url": link
-        })
-    
+        ret = crawl_accurate(page_type, keyword, page_start, page_limit, skip_exist)
+
     return redirect(url_for("page_spider"))
 
 
 # 爬虫精确接口 确定到页面类型
-# /movie/linkid 详情页抓取按钮
+# /genre 更新类目按钮
+# /actresses 更新所有影片按钮
+# /movie/linkid 详情页重新抓取按钮
+# /search/keyword 详情页重新抓取按钮
+# /(star|genre|series|studio|label|director|group)/linkid 更新影片按钮
 @app.route('/action/crawl/accurate', methods=['POST'])
 def action_crawl_accurate():
-    crawl_accurate(request.form['page_type'], request.form['keyword'])
-    return '排队中...'
+    return crawl_accurate(request.form['page_type'], request.form['keyword'])
 
 
-def crawl_accurate(page_type, keyword = ""):
-    if page_type not in ['movie', 'star', 'genre', 'series', 'studio', 'label', 'director', 'search', 'group',
-                         'allStar', 'allGenre']:
+# 爬虫任务统一入口 除了genre
+def crawl_accurate(page_type: str, keyword: str = "", page_start: int = 1, page_limit: int = PAGE_MAX,
+                   skip_exist: bool = True):
+    if page_type not in ['movie', 'star', 'genre', 'series', 'studio', 'label', 'director', 'search', 'popular',
+                         'group', 'all_star']:
         return 'wrong'
 
     if page_type == 'group':
         page_type = 'search'
         keyword = keyword + '-'
 
-    if page_type == 'allStar':
+    if page_type == 'all_star':
         star_list = query_sql("SELECT linkid,name FROM av_stars")
         for item in star_list:
             # 遍历所有演员
-            QUEUE.put({
-                "action": "crawl_accurate",
+            add_work({
                 "page_type": "star",
                 "keyword": item["linkid"],
-                "page_start": 1,
-                "page_limit": 100,
-                "exist_linkid":get_exist_linkid("star", item["linkid"]),
-                "url": get_url("star", item["linkid"]),
+                "skip_exist": True,
             })
         return '排队中({})...'.format(len(star_list))
 
-    if page_type == 'allGenre':
-        QUEUE.put({
-            "action": "crawl_genre",
-            "url": get_url("genre")
-        })
-        return '排队中...'
     if page_type in ['movie', 'star', 'genre', 'series', 'studio', 'label', 'director']:
         if not is_linkid(keyword):
             return
-    QUEUE.put({
-        "action": "crawl_accurate",
+    add_work({
         "page_type": page_type,
         "keyword": keyword,
-        "page_start": 1,
-        "page_limit": 100,
-        "exist_linkid":get_exist_linkid(page_type, keyword),
-        "url": get_url(page_type, keyword),
+        "page_start": page_start,
+        "page_limit": page_limit,
+        "skip_exist": skip_exist,
     })
+    return '排队中...'
+
+
+# 添加任务信息进队列,补充url信息
+def add_work(work: dict):
+    data = {
+        "page_type": work["page_type"],
+        "keyword": work["keyword"],
+        "page_start": 1,
+        "page_limit": PAGE_MAX,
+        "skip_exist": True,
+    }
+    for key in ["page_start", "page_limit", "skip_exist"]:
+        if key in work:
+            data[key] = work[key]
+    data["url"] = get_url(work["page_type"], work["keyword"], work["page_start"])
+    QUEUE.put(data)
 
 
 @app.route('/action/last/insert')
 def action_last_insert():
     global SPIDER
-    # 计算当前等待中的任务
-    queue_wait_list = []
-    for item in QUEUE.queue:
-        queue_wait_list.append({
-            "url": item["url"],
-            "page_limit": item["page_limit"]
-        })
-    
-    running_work_ret = None
-    running_work = SPIDER.get_running_work()
-    if running_work is not None:
-        running_work_ret = {
-            "url": running_work["url"],
-            "page_limit": running_work["page_limit"] if "page_limit" in running_work else 0
-        }
     return json.dumps({
         "last_insert_list": SPIDER.get_last_insert_list(),
-        "wait_work": queue_wait_list,
-        "running_work": running_work_ret,
+        "wait_work": list(QUEUE.queue),
+        "running_work": SPIDER.get_running_work(),
         "done_work": SPIDER.get_done_work(),
     })
 
@@ -882,7 +909,8 @@ def select_av_list(av_list_where: list, page_num: int):
     if av_list_where:
         where_str = " AND ".join(av_list_where)
     sql_text = "SELECT * FROM av_list WHERE {} ".format(where_str)
-    result = query_sql(sql_text + ' ORDER BY {} LIMIT {},{}'.format(sql_order_by, (page_num - 1) * page_limit, page_limit))
+    result = query_sql(
+        sql_text + ' ORDER BY {} LIMIT {},{}'.format(sql_order_by, (page_num - 1) * page_limit, page_limit))
 
     for i in range(len(result)):
         # hover框类目信息

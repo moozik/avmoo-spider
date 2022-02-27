@@ -16,21 +16,35 @@
         <div class="col-md-5 col-md-offset-1">
             <form class="" style="width:500px;" action="/action/crawl" method="post">
                 <div class="form-group">
-                    <textarea class="form-control" name="url_text" placeholder="完整链接或番号,例:
+                    <textarea class="form-control" name="url_text" placeholder="完整链接或搜索词,如果带页码会从指定页码开始,例:
 SSIS-344
+单体作品
+波多野結衣
+https://avmoo.sbs/cn/search/ABP/page/25
+https://avmoo.sbs/cn/popular
 https://avmoo.sbs/cn/movie/9fed39545dc47840
 https://avmoo.sbs/cn/star/26532bc87b4ce1d1/page/2
 https://avmoo.sbs/cn/genre/dd21aefe7ae3228c
 https://avmoo.sbs/cn/studio/ce25ddc3a9caca20
 https://avmoo.sbs/cn/label/8eab1a64464779ff
-https://avmoo.sbs/cn/director/63a8f4da6e22cc09
-https://avmoo.sbs/cn/search/ABP/page/25" style="width: 500px;height: 200px;" title="url text"></textarea>
+https://avmoo.sbs/cn/director/63a8f4da6e22cc09" style="width: 600px;height: 300px;" title="url text"></textarea>
                 </div>
                 <div class="form-group">
                     <label title="crawl page num limit">最大抓取页数(源站限制最多100)</label>
-                    <input type="text" class="form-control" name="crawl_page_num_limit" value="100"/>
+                    <input type="text" class="form-control" name="page_limit" value="100"/>
                 </div>
-                <button type="submit" class="btn btn-default" title="crawl by whole link">下载指定链接</button>
+                <div class="form-group">
+                    <label>是否跳过已存在影片</label>
+                    <div class="form-group">
+                        <label class="radio-inline">
+                            <input type="radio" name="skip_exist" value="True" checked /> True
+                        </label>
+                        <label class="radio-inline">
+                            <input type="radio" name="skip_exist" value="False" /> False
+                        </label>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-default" title="crawl by whole link">添加任务</button>
             </form>
         </div>
         <div class="col-md-5">
