@@ -328,7 +328,6 @@ class Spider:
             data['name'].ljust(15),
             data['hometown']
         )
-        DATA_STORAGE["av_stars"].append(data)
         self.stars_save(data)
         return data
 
