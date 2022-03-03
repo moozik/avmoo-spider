@@ -57,6 +57,66 @@ COUNTRY_MAP = {
     'cn': '简体中文',
 }
 
+PAGE_TYPE_MAP = {
+    # page_type名
+    'director': {
+        # 页面名称
+        'name': '导演',
+        # 是否允许收藏
+        'like_enable': False,
+        # db字段, like key
+        'key': 'director_url',
+        # av_list影片列表查询条件
+        'where': "director_url='{}'",
+    },
+    'movie': {
+        'name': '影片',
+        'like_enable': True,
+        'key': 'av_id',
+        'where': "linkid='{0}' OR av_id = '{0}'",
+    },
+    'studio': {
+        'name': '制作商',
+        'like_enable': True,
+        'key': 'studio_url',
+        'where': "studio_url='{}'",
+    },
+    'label': {
+        'name': '发行商',
+        'like_enable': True,
+        'key': 'label_url',
+        'where': "label_url='{}'",
+    },
+    'series': {
+        'name': '系列',
+        'like_enable': True,
+        'key': 'series_url',
+        'where': "series_url='{}'",
+    },
+    'star': {
+        'name': '女优',
+        'like_enable': False,
+        'key': 'stars_url',
+        'where': "stars_url GLOB '*|{}*'",
+    },
+    'genre': {
+        'name': '分类',
+        'like_enable': False,
+        'key': 'genre_url',
+        'where': "genre GLOB '*|{}|*'",
+    },
+    'group': {
+        'name': '番号',
+        'like_enable': True,
+        'key': 'group',
+        'where': "av_id LIKE '{}-%'",
+    },
+    'like': {
+        'name': '收藏',
+        'like_enable': False,
+    },
+}
+
 ESCAPE_LIST = (
     ("/", "//"),
     ("'", "''"),
@@ -107,8 +167,9 @@ def init(argv):
 
 
 def storage_init(table: str) -> None:
-    if table not in DATA_STORAGE:
-        DATA_STORAGE[table] = fetchall("SELECT * FROM " + table)
+    if table in DATA_STORAGE and DATA_STORAGE[table]:
+        return
+    DATA_STORAGE[table] = fetchall("SELECT * FROM " + table)
 
 
 # 仅av_genre和av_extend使用
@@ -150,7 +211,6 @@ def config_path() -> str:
 def config_init() -> None:
     # 初始化配置
     CONFIG.read(config_path())
-    CONFIG.set("base", "country_name", COUNTRY_MAP[CONFIG.get("base", "country")])
 
 
 def config_check():
@@ -169,8 +229,6 @@ def config_check():
 
 
 def config_save(config):
-    if config.has_option("base", "country_name"):
-        config.remove_option("base", "country_name")
     with open(CONFIG_FILE, "w") as fp:
         config.write(fp)
 
@@ -182,7 +240,7 @@ def replace_sql_build(table: str, data: dict) -> str:
     return sql
 
 
-# 插入sql
+# sql插入操作
 # av_genre av_extend
 def insert(table: str, data: list):
     if CONFIG.getboolean("base", "readonly"):
@@ -193,20 +251,35 @@ def insert(table: str, data: list):
     print("INSERT,table:{},count:{}".format(table, len(data)))
     DB.cursor().executemany(sql, [tuple(x.values()) for x in data])
     DB.commit()
+    if table in DATA_STORAGE:
+        DATA_STORAGE[table].clear()
+
+# sql删除操作
+def delete(table: str, data: dict):
+    if CONFIG.getboolean("base", "readonly"):
+        return
+    if not data:
+        return
+    sql = "DELETE FROM {} WHERE {}".format(
+        table," AND ".join(["{}='{}'".format(field, value) for field, value in data.items()]))
+    execute(sql)
+    if table in DATA_STORAGE:
+        DATA_STORAGE[table].clear()
 
 
 # 执行sql
 def execute(sql):
     if CONFIG.getboolean("base", "readonly"):
         return
-    print("SQL EXEC:{}".format(sql))
+    print("SQL EXECUTE:{}".format(sql))
     DB.cursor().execute(sql)
     DB.commit()
 
 
-# 查询sql
+# 查询sql 没缓存
 def fetchall(sql) -> list:
     cur = DB.cursor()
+    print('SQL FETCH:{}'.format(sql))
     cur.execute(sql)
     rows = cur.fetchall()
     if not rows:
@@ -221,23 +294,21 @@ def fetchall(sql) -> list:
     return result
 
 
-# 查询sql
-def query_sql(sql, if_cache=True) -> list:
+# 查询sql 带缓存
+def query_sql(sql) -> list:
     cache_key = gen_cache_key(sql)
     # 是否使用缓存
-    if CONFIG.getboolean("website", "use_cache") and if_cache:
+    if CONFIG.getboolean("website", "use_cache"):
+        print('CACHE[{}]'.format(cache_key))
         # 是否有缓存
         if cache_key in SQL_CACHE.keys():
-            print('SQL CACHE[{}]'.format(cache_key))
             return SQL_CACHE[cache_key][:]
         else:
-            print('SQL EXEC[{}]:{}'.format(cache_key, sql))
             ret = fetchall(sql)
             if CONFIG.getboolean("website", "use_cache") and ret != []:
                 SQL_CACHE[cache_key] = ret
             return ret[:]
     else:
-        print('SQL EXEC:{}'.format(sql))
         return fetchall(sql)
 
 

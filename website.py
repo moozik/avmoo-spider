@@ -46,7 +46,9 @@ def run():
 @app.context_processor
 def with_config():
     return {
-        'config': CONFIG
+        'config': CONFIG,
+        'page_type_map': PAGE_TYPE_MAP,
+        'country_map': COUNTRY_MAP,
     }
 
 
@@ -61,16 +63,25 @@ def do_quote(val):
 @app.route('/search/<path:keyword>')
 @app.route('/search/<path:keyword>/page/<int:page_num>')
 def index(keyword='', page_num=1):
-    where = av_list_where_build(keyword)
+    where = search_where_build(keyword)
 
     (result, row_count) = select_av_list(av_list_where=where, page_num=page_num)
     if keyword != '':
         page_root = '/search/{}'.format(quote(keyword))
     else:
         page_root = ''
-    return render_template('index.html', data={"av_list": result, 'page_type': 'index'},
-                           page=pagination(page_num, row_count, page_root), placeholder=keyword,
-                           origin_link=get_url("search", quote(keyword), page_num))
+    return render_template('index.html',
+        data={
+            "av_list": result,
+            'page_type': 'index'
+        },
+        frame_data={
+            'title': keyword,
+            'placeholder': keyword,
+            'origin_link': get_url("search", quote(keyword), page_num),
+            'page': pagination(page_num, row_count, page_root)
+        })
+       
 
 
 # 演员页
@@ -95,10 +106,16 @@ def page_actresses(page_num=1):
 
     sql_result = "{} LIMIT {},{}".format(sql_text, (page_num - 1) * page_limit, page_limit)
     result = query_sql(sql_result)
-    count = get_sql_count(sql_text)
-    return render_template('actresses.html', data=result,
-                           page=pagination(page_num, count, "/actresses", page_limit),
-                           origin_link=get_url("actresses"))
+    count = query_sql('SELECT COUNT(*) AS co FROM av_stars')[0]['co']
+    return render_template('actresses.html',
+        data={
+            'av_stars': result
+        },
+        frame_data={
+            'title': '女优',
+            'origin_link': get_url("actresses"),
+            'page': pagination(page_num, count, "/actresses", page_limit)
+        })
 
 
 # 番号页
@@ -113,6 +130,27 @@ def page_actresses(page_num=1):
 def page_group(page_num=1):
     # 页面类型
     page_type = request.path.split('/')[1]
+    result = group_data(page_type, page_num)
+    
+    if page_type == "group":
+        count_res = query_sql(
+            "SELECT count(1) AS co FROM (SELECT DISTINCT substr(av_id, 0, instr(av_id, '-')) FROM av_list)")
+    else:
+        count_res = query_sql(
+            "SELECT count(1) AS co FROM av_list WHERE {} != ''".format(page_type + '_url'))
+    return render_template('group.html',
+        data={
+            "list": result,
+            "page_type": page_type,
+        },
+        frame_data={
+            'title':PAGE_TYPE_MAP[page_type]['name'],
+            'page':pagination(page_num, count_res[0]['co'], '/' + page_type, CONFIG.getint('website', 'group_page_limit'))
+        })
+
+
+# 构造group页面data todo 加参数给like用
+def group_data(page_type: str,page_num: int,where: str = '1'):
     page_limit = CONFIG.getint('website', 'group_page_limit')
     order_by = CONFIG.get('website', 'group_page_order_by')
     if order_by not in ['release_date', 'count']:
@@ -125,22 +163,22 @@ def page_group(page_num=1):
         substr(av_id, 0, instr(av_id, '-')) AS linkid,
         release_date,bigimage,av_id
         FROM av_list
+        WHERE {3}
         ORDER BY release_date DESC,av_id DESC
         )
         GROUP BY linkid
-        ORDER BY {} DESC
-        LIMIT {},{}
+        ORDER BY {0} DESC
+        LIMIT {1},{2}
         '''.format(
             order_by,
             (page_num - 1) * page_limit,
-            page_limit
+            page_limit,
+            where,
         )
-        count_res = query_sql(
-            "SELECT count(1) AS co FROM (SELECT DISTINCT substr(av_id, 0, instr(av_id, '-')) FROM av_list)")
     else:
         sql_text = '''
         SELECT *,count(*) AS count FROM(SELECT {1} AS linkid,{0} AS title,release_date,bigimage,av_id FROM av_list
-        WHERE {1} != ''
+        WHERE {1} != '' AND {5}
         ORDER BY release_date DESC)
         GROUP BY linkid
         ORDER BY {2} DESC
@@ -150,21 +188,16 @@ def page_group(page_num=1):
             page_type + '_url',
             order_by,
             (page_num - 1) * page_limit,
-            page_limit
+            page_limit,
+            where
         )
-        count_res = query_sql(
-            "SELECT count(1) AS co FROM av_list WHERE {} != ''".format(page_type + '_url'))
 
     result = query_sql(sql_text)
     for i in range(len(result)):
         # 图片地址
         result[i]['smallimage'] = result[i]['bigimage'].replace(
             'pl.jpg', 'ps.jpg')
-    return render_template('group.html', data={
-        "list": result,
-        "page_type": page_type,
-    }, page=pagination(page_num, count_res[0]['co'], '/' + page_type, page_limit))
-
+    return result
 
 # 标签页
 @app.route('/genre')
@@ -194,8 +227,15 @@ def genre():
 
         data[item["title"]].append(item)
     data = list(data.values())
-    return render_template('genre.html', data={'av_genre': data},
-                           page={'pageroot': "/genre", 'count': len(av_genre_res)}, origin_link=get_url("genre"))
+    return render_template('genre.html',
+        data={
+            'av_genre': data
+        },
+        frame_data={
+            'title': PAGE_TYPE_MAP['genre']['name'],
+            'origin_link':get_url("genre"),
+            'page':{'count': len(av_genre_res)}
+        })
 
 
 # 分类页
@@ -216,57 +256,68 @@ def search_normal(linkid='', page_num=1):
     page_root = '/{}/{}'.format(page_type, linkid)
 
     # 条件
-    where = ["av_list.{}_url='{}'".format(page_type, linkid)]
+    where = PAGE_TYPE_MAP[page_type]['where'].format(linkid)
     # 查询
-    (result, row_count) = select_av_list(av_list_where=where, page_num=page_num)
+    (result, row_count) = select_av_list(av_list_where=[where], page_num=page_num)
+    # 判空
+    if not result:
+        return '没找到数据<br>{}'.format(a_tag_build(get_url(page_type, linkid)))
+    
     # 设置默认搜索词
     placeholder = result[0][page_type]
-
-    return render_template('index.html', data={
-        'av_list': result,
-        'page_type': page_type,
-        'linkid': linkid
-    }, page=pagination(page_num, row_count, page_root), placeholder=placeholder, origin_link=origin_link)
+    
+    # 是否收藏当前页面
+    is_like = False
+    if PAGE_TYPE_MAP[page_type]["like_enable"] and storage("av_extend", {"extend_name": "like", "key":PAGE_TYPE_MAP[page_type]["key"], "val": linkid}):
+        is_like = True
+    
+    return render_template('index.html',
+        data={
+            'av_list': result,
+            'page_type': page_type,
+            'linkid': linkid,
+            'is_like': is_like
+        },
+        frame_data={
+            'title': placeholder,
+            'placeholder': placeholder,
+            'origin_link': origin_link,
+            'page': pagination(page_num, row_count, page_root)
+        })
 
 
 # 分类页
 @app.route('/star/<keyword>')
 @app.route('/star/<keyword>/page/<int:page_num>')
-@app.route('/group/<keyword>')
-@app.route('/group/<keyword>/page/<int:page_num>')
 @app.route('/genre/<keyword>')
 @app.route('/genre/<keyword>/page/<int:page_num>')
+@app.route('/group/<keyword>')
+@app.route('/group/<keyword>/page/<int:page_num>')
 def search_other(keyword='', page_num=1):
     # group 和 genre 的linkid不是标准linkid
     page_type = request.path.split('/')[1]
     page_root = '/{}/{}'.format(page_type, keyword)
 
-    where = ["1=2"]
     placeholder = ""
+    linkid = keyword
     origin_link = CONFIG.get("base", "avmoo_site")
 
     if page_type == 'genre':
-        if is_linkid(keyword):
-            ret = storage("av_genre", {"linkid": keyword})
-        else:
-            ret = storage("av_genre", {"name": keyword})
-        if len(ret) > 0:
-            where = ["av_list.genre LIKE '%|{}|%'".format(ret[0]['name'])]
-            placeholder = ret[0]['name']
-            origin_link = get_url(page_type, ret[0]['linkid'], page_num)
-            keyword = ret[0]['linkid']
+        keyword = storage("av_genre", {"linkid": keyword})[0]['name']
+        placeholder = keyword
+        origin_link = get_url('genre', keyword)
 
     if page_type == 'group':
-        where = ["av_list.av_id LIKE '{}-%'".format(keyword)]
         placeholder = keyword
-        origin_link = get_url("search", keyword, page_num)
+        origin_link = get_url("search", keyword)
 
     if page_type == 'star':
-        where = ["av_list.stars_url LIKE '%|{}%'".format(keyword)]
-        origin_link = get_url("star", keyword, page_num)
+        origin_link = get_url("star", keyword)
+
+    where = PAGE_TYPE_MAP[page_type]['where'].format(keyword)
 
     # 查询
-    (result, row_count) = select_av_list(av_list_where=where, page_num=page_num)
+    (result, row_count) = select_av_list(av_list_where=[where], page_num=page_num)
 
     star_data = None
     if page_type == 'star':
@@ -283,40 +334,109 @@ def search_other(keyword='', page_num=1):
                 star_data['age'] = math.ceil(
                     (datetime.date.today() - birthday_data).days / 365)
 
-    return render_template('index.html', data={
-        'av_list': result,
-        'av_stars': star_data,
-        'page_type': page_type,
-        'linkid': keyword
-    }, page=pagination(page_num, row_count, page_root), placeholder=placeholder, origin_link=origin_link)
+    # 是否收藏当前页面
+    is_like = False
+    if PAGE_TYPE_MAP[page_type]["like_enable"] and storage("av_extend", {"extend_name": "like", "key":PAGE_TYPE_MAP[page_type]["key"], "val": keyword}):
+        is_like = True
+
+    return render_template('index.html',
+        data={
+            'av_list': result,
+            'av_stars': star_data,
+            'page_type': page_type,
+            'linkid': linkid,
+            'is_like': is_like
+        },
+        frame_data={
+            'title': placeholder,
+            'placeholder': placeholder,
+            'origin_link': origin_link,
+            'page': pagination(page_num, row_count, page_root)
+        })
 
 
 # 电影页
 @app.route('/movie/<linkid>')
 def movie(linkid=''):
-    if linkid == '':
-        return redirect(url_for('index'), 404)
-    if '-' in linkid:
-        where = 'av_list.av_id="{}"'.format(linkid.upper())
-    else:
-        where = 'av_list.linkid="{}"'.format(linkid)
+    where = PAGE_TYPE_MAP['movie']['where'].format(linkid)
     movie_list = query_sql("SELECT * FROM av_list WHERE {}".format(where))
     if not movie_list:
-        return redirect(url_for('index'), 404)
-    return render_template('movie.html', data=movie_build(movie_list[0]),
-                           origin_link=get_url("movie", movie_list[0]["linkid"]))
+        return "没找到影片<br>{}".format(linkid, a_tag_build(get_url('movie', linkid)))
+    movie_data = movie_build(movie_list[0])
+    return render_template('movie.html',
+        data=movie_data,
+        frame_data={
+            'title': movie_data['title'],
+            'origin_link': get_url("movie", movie_list[0]["linkid"])
+        })
+
+# 收藏页 影片
+@app.route('/like/movie')
+@app.route('/like/movie/page/<int:page_num>')
+def page_like_movie(page_num=1):
+    page_root = '/like/movie'
+
+    where = "av_id IN (SELECT distinct val FROM av_extend WHERE extend_name='like' AND key='av_id')"
+    (result, row_count) = select_av_list(av_list_where=[where], page_num=page_num)
+    
+    return render_template('index.html',
+        data={
+            "av_list": result,
+            'page_type': 'like'
+        },
+        frame_data={
+            'title': '收藏影片',
+            'page': pagination(page_num, row_count, page_root)
+        })
+
+
+# 收藏页 番号 系列 发行 制作
+@app.route('/like/<page_type>')
+@app.route('/like/<page_type>/page/<int:page_num>')
+def page_like(page_type='', page_num=1):
+    pmap = PAGE_TYPE_MAP[page_type]
+    if not pmap['like_enable']:
+        return "error"
+    
+    page_root = '/like/' + page_type
+    where = ''
+    # 收藏sql
+    extend_sql = "SELECT distinct val FROM av_extend WHERE extend_name='like' AND key='{}'".format(PAGE_TYPE_MAP[page_type]['key'])
+    
+    if page_type == 'group':
+        where = "substr(av_id, 0, instr(av_id, '-')) IN ({})".format(extend_sql)
+    
+    if page_type in ['series', 'studio', 'label']:
+        where = "{} IN ({})".format(PAGE_TYPE_MAP[page_type]['key'], extend_sql)
+
+    count = len(storage("av_extend", {"extend_name":'like','key': PAGE_TYPE_MAP[page_type]['key']}))
+    return render_template('group.html',
+        data={
+            "list": group_data(page_type, page_num, where),
+            "page_type": page_type,
+        },
+        frame_data={
+            'title': '收藏' + PAGE_TYPE_MAP[page_type]['name'],
+            'page': pagination(page_num, count, page_root, CONFIG.getint('website', 'group_page_limit'))
+        })
 
 
 # 爬虫页
 @app.route('/spider')
 def page_spider():
-    return render_template('spider.html')
+    return render_template('spider.html',
+        frame_data={
+            'title': '爬虫'
+        })
 
 
 # 配置页
 @app.route('/config')
 def page_config():
-    return render_template('config.html')
+    return render_template('config.html',
+        frame_data={
+            'title': '配置'
+        })
 
 
 # 修改配置
@@ -335,10 +455,10 @@ def action_config():
 # 分析
 @app.route('/analyse/<page_type>/<keyword>')
 def action_analyse_star(page_type='', keyword=''):
-    sql = "SELECT * FROM av_list WHERE {};".format(get_where_by_page_type(page_type, keyword))
-    data = query_sql(sql, False)
+    sql = "SELECT * FROM av_list WHERE {};".format(page_type_datail_where_build(page_type, keyword))
+    data = fetchall(sql)
     if not data:
-        return "没找到数据"
+        return "没找到数据<br>{}".format(a_tag_build(get_url(page_type, keyword)))
 
     genre_all = []
     stars_all = []
@@ -397,10 +517,15 @@ def action_analyse_star(page_type='', keyword=''):
         "studio_counter": studio_counter,
         "label_counter": label_counter
     }
-    return render_template('analyse.html', data=data)
+    return render_template('analyse.html',
+        data=data,
+        frame_data={
+            'title': '[{}]分析结果'.format(data['analyse_name'])
+        })
 
 
-def av_list_where_build(keyword: str) -> list:
+# 构造where条件
+def search_where_build(keyword: str) -> list:
     where = []
     keyword = keyword.strip()
 
@@ -414,7 +539,7 @@ def av_list_where_build(keyword: str) -> list:
     # 自定义搜索结构
     re_res = re.findall("((director|studio|label|series|genre|star|group)\\[(.+?)\\])", keyword)
     for item in re_res:
-        where.append(get_where_by_page_type(item[1], item[2]))
+        where.append(page_type_datail_where_build(item[1], item[2]))
         keyword = keyword.replace(item[0], '')
 
     keyword = keyword.strip()
@@ -450,16 +575,11 @@ def av_list_where_build(keyword: str) -> list:
                 "av_id IN (SELECT distinct key FROM av_extend WHERE extend_name='movie_res' AND val LIKE '_:\\%')")
             continue
 
-        if key_item == '收藏影片':
-            where.append(
-                "av_id IN (SELECT distinct val FROM av_extend WHERE extend_name='like' AND key='av_id')")
-            continue
-
         where.append(search_where(key_item))
     return where
 
-
-def get_where_by_page_type(page_type: str, keyword: str) -> str:
+# page_type详情页
+def page_type_datail_where_build(page_type: str, keyword: str) -> str:
     keyword = keyword
 
     if page_type == 'group':
@@ -468,35 +588,42 @@ def get_where_by_page_type(page_type: str, keyword: str) -> str:
     if page_type == 'genre':
         if is_linkid(keyword):
             keyword = storage("av_genre", {"linkid": [keyword]}, "name")[0]
-        return "genre like '%|{}|%'".format(keyword)
+        return "genre like '%|{}|%'".format(sql_escape(keyword))
 
     if page_type == 'star':
         if is_linkid(keyword) or re.match("[a-z0-9]{4}", keyword):
             return "stars_url like '%|{}%'".format(keyword)
         else:
-            return "stars like '%|{}|%'".format(keyword)
+            return "stars like '%|{}|%'".format(sql_escape(keyword))
 
     if page_type in ['director', 'studio', 'label', 'series']:
         if is_linkid(keyword):
             return "{}_url = '{}'".format(page_type, keyword)
         else:
-            return "{} = '{}'".format(page_type, keyword)
+            return "{} = '{}'".format(page_type, sql_escape(keyword))
 
+
+def page_type_group_where_build(page_type: str) -> str:
+    if page_type not in ['movie', 'series', 'studio', 'label']:
+        return '1=1'
+    
 
 # 构造电影页
 def movie_build(movie_data):
-    # 提前返回
-    if 'build' in movie_data:
-        return movie_data
     # 修复数据
-    if len(movie_data["genre"]) > 0 and movie_data["genre"][0] != '|':
+    if movie_data["genre"] and movie_data["genre"][0] != '|':
         execute("update av_list set genre=('|' || genre || '|')  where genre != '' and genre not like '|%'")
     # 修复数据 20200212
-    if len(movie_data["stars"]) > 0 and movie_data["stars"][-1] != '|':
+    if movie_data["stars"] and movie_data["stars"][-1] != '|':
         execute("update av_list set stars=(stars || '|')  where stars != '' and stars not like '%|'")
     # 系列
+    movie_data['genre_data'] = []
     if movie_data['genre'] != "":
-        movie_data['genre_list'] = movie_data['genre'][1:].split('|')
+        for item in movie_data['genre'].strip('|').split('|'):
+            movie_data['genre_data'].append({
+                "linkid": storage("av_genre", {"name":item},"linkid")[0],
+                "name": item
+            })
 
     # 演员
     if movie_data['stars_url'] is not None and movie_data['stars_url'] != "" and not isinstance(movie_data['stars_url'],
@@ -536,9 +663,12 @@ def movie_build(movie_data):
                                                 "val")
 
     movie_data['av_group'] = movie_data['av_id'].split('-', 1)[0]
-    # 修复不带avid的标题
-    if movie_data['av_id'] not in movie_data['title']:
-        movie_data['title'] = movie_data['av_id'] + " " + movie_data['title']
+
+    # 是否已收藏
+    movie_data["is_like"] = False
+    if storage("av_extend", {"extend_name": "like", "key": "av_id", "val": movie_data['av_id']}):
+        movie_data["is_like"] = True
+    
     # 标记
     movie_data['build'] = True
     return movie_data
@@ -666,12 +796,12 @@ def action_last_insert():
 @app.route('/scandisk')
 def page_scandisk():
     if 'path_target' not in request.values or 'file_target' not in request.values:
-        return render_template('scandisk.html')
+        return render_template('scandisk.html', frame_data={'title': '扫描硬盘'})
 
     path_target = request.values['path_target']
     path_target = upper_path(path_target)
     if not os.path.exists(path_target):
-        return render_template('scandisk.html')
+        return render_template('scandisk.html', frame_data={'title': '扫描硬盘'})
 
     # 文件目标类型
     file_target = request.values['file_target']
@@ -706,11 +836,15 @@ def page_scandisk():
         # 格式化avid
         av_id = av_check.group(0).upper()
         exist = (av_id in extend_file_list and now_path in extend_file_list[av_id])
-        info = ''
+        info = {
+            # 是否已存储路径
+            "has_res_extend": False,
+            # 是否已抓取影片
+            "has_fetch_movie": False,
+        }
         if exist:
-            info += span_color("[已存储路径]", "green")
-        else:
-            info += span_color("[未存储路径]", "red")
+            
+            info["has_res_extend"] = True
 
         file_res.append({
             'file_path': now_path,
@@ -722,7 +856,7 @@ def page_scandisk():
         av_id_list = [x["av_id"] for x in file_res if "av_id" in x]
         sql_text = "SELECT * FROM av_list WHERE av_id in ('{}')".format(
             "','".join(av_id_list))
-        for row in query_sql(sql_text, False):
+        for row in fetchall(sql_text):
             # 图片地址
             row['smallimage'] = row['bigimage'].replace(
                 'pl.jpg', 'ps.jpg')
@@ -733,44 +867,44 @@ def page_scandisk():
             continue
         if file_target == "mp4":
             if file_res[i]['av_id'] in av_data_map:
-                file_res[i]['info'] += span_color("[影片已抓取]", "green")
-            else:
-                file_res[i]['info'] += span_color("[影片未抓取]", "red")
-        file_res[i]['info'] = file_res[i]['info'].strip(',')
+                file_res[i]['info']['has_fetch_movie'] = True
 
-    return render_template('scandisk.html', file_res=file_res, av_data_map=av_data_map, file_target=file_target,
-                           path_target=path_target)
+    return render_template('scandisk.html',
+        file_res=file_res,
+        av_data_map=av_data_map,
+        file_target=file_target,
+        path_target=path_target,
+        frame_data={'title': '扫描硬盘'})
 
 
 # 本地打开
 @app.route('/action/explorer')
 def action_explorer():
     # 打开指定路径
-    os.startfile(request.values["path"])
+    try:
+        os.startfile(request.values["path"])
+    except FileNotFoundError as e:
+        print('FileNotFoundError,error:', e)
+        return '文件未找到'
     return 'ok'
 
 
 # 添加扩展信息接口
 @app.route('/action/extend/insert')
 def action_extend_insert():
-    data = {
-        "extend_name": request.values["extend_name"],
-        "key": request.values["key"],
-        "val": request.values["val"],
-    }
-
+    data = dict(request.values)
     biz_name = ""
-    # 格式化
+    # 影片资源
     if data["extend_name"] == "movie_res":
         # key目前只会存avid所以upper无碍
         data["val"] = upper_path(data["val"])
         biz_name = "资源"
-
+    # 收藏
     if data["extend_name"] == "like":
         biz_name = "收藏"
 
     val_list = storage("av_extend", {"extend_name": data["extend_name"], "key": [data["key"]]}, "val")
-
+    
     if data["val"] in val_list:
         return "已存在不能重复添加"
     else:
@@ -782,22 +916,14 @@ def action_extend_insert():
 # 删除扩展信息接口
 @app.route('/action/extend/delete')
 def action_extend_delete():
-    extend_name = request.values["extend_name"]
-    key = request.values["key"]
-    val = request.values["val"]
-    sql_text = "DELETE from av_extend WHERE extend_name='{}' AND key='{}' AND val='{}'".format(
-        extend_name, key, val
-    )
-    execute(sql_text)
-    DATA_STORAGE.clear()
+    delete("av_extend", dict(request.values))
     return '已删除'
 
 
 # 删除影片 仅限手动调用
 @app.route('/action/delete/movie/<linkid>')
 def action_delete_movie(linkid=''):
-    sql_text = "DELETE FROM av_list WHERE linkid='{}'".format(linkid)
-    execute(sql_text)
+    delete("av_list", {"linkid": linkid})
     return 'movie已删除'
 
 
@@ -810,8 +936,8 @@ def action_delete_stars(linkid=''):
             item['stars_url'].strip('|').replace('|', "','")
         ))
         if len(move_star_list) == 1:
-            execute("DELETE FROM av_list WHERE linkid='{}'".format(item['linkid']))
-    execute("DELETE FROM av_stars WHERE linkid='{}'".format(linkid))
+            delete("av_list", {"linkid": item['linkid']})
+    delete("av_stars", {"linkid": linkid})
     return 'star已删除'
 
 
@@ -851,8 +977,8 @@ def upper_path(path: str) -> str:
 
 
 # 上色
-def span_color(content, color):
-    return '<span style="color:{}">{}</span>'.format(color, content)
+def a_tag_build(link):
+    return '<a href="{}">{}</a>'.format(link, link)
 
 
 # 识别linkid

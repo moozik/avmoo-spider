@@ -1,7 +1,5 @@
 {% extends "main.html" %}
 
-{% block title %} 番号 {% endblock %}
-{% block keyword %}{{keyword}}{% endblock %}
 {% block container %}
 <style>
 </style>
@@ -15,7 +13,7 @@
                             <img class="photo-sm" src="{{config['website']['cdn']}}/digital/video{{ item.smallimage }}">
                         </div>
                         <div class="photo-info">
-                            <span><span style="font-size: 18px;">{{item.title}}<b style="color:red;">({{item.count}})</b></span>
+                            <span><span>{{item.title}}<b style="color:red;">({{item.count}})</b></span>
                                 <br>
                                 <date>{{ item.av_id }}</date> /
                                 <date>{{ item.release_date }}</date>

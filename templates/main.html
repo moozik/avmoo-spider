@@ -4,7 +4,7 @@
 <meta http-equiv="x-dns-prefetch-control" content="on">
 <meta name="renderer" content="webkit">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %} {% endblock %}  avmoo-spider</title>
+<title>{% if frame_data.title %}{{frame_data.title}}  {% endif %}avmoo-spider</title>
 <link rel="shortcut Icon" href="/static/icon.png">
 <link rel="bookmark" href="/static/icon.png">
 <link rel="dns-prefetch" href="http://jp.netcdn.space">
@@ -41,6 +41,15 @@
 .info a {
     color: #0015af;
 }
+.tag-style{
+    display: inline-block;
+    color: #000;
+    background-color: #d8d8d8;
+    border: 2px solid #d8d8d8;
+    padding: 2px;
+    margin: 2px;
+    border-radius: 7px;
+}
 </style>
 {% block head %} {% endblock %}
 </head>
@@ -54,38 +63,47 @@
         <div class="collapse navbar-collapse">
           <form class="navbar-form navbar-left fullsearch-form" action="/search" onsubmit="return false">
             <div class="input-group">
-              <input name="keyword" type="text" class="form-control" placeholder="演员ID,类型,演员" value="{% block placeholder %}{% endblock %}">
+              <input name="keyword" type="text" class="form-control" placeholder="演员ID,类型,演员" value="{% if frame_data.placeholder %}{{frame_data.placeholder}}{% endif %}">
               <span class="input-group-btn">
                 <button class="btn btn-default" type="submit">查找</button>
               </span>
             </div>
           </form>
           <ul class="nav navbar-nav">
-            <li><a>{% if page %}总数:(<b style="color:red;">{{page.count}}</b>){% endif %}</a></li>
+            <li><a>{% if frame_data.page %}总数:(<b style="color:red;">{{frame_data.page.count}}</b>){% endif %}</a></li>
             <li><a href="/">全部</a></li>
             <li><a href="/search/已发布" title="Released">已发布</a></li>
             <li><a href="/search/已下载" title="Already downloaded">已下载</a></li>
             <li><a href="/search/有资源" title="Resources">有资源</a></li>
             <li><a href="/actresses" title="Actresses">女优</a></li>
-            <li><a href="/search/收藏影片" title="Favorites">收藏</a></li>
             <li><a href="/genre" title="Genre">类别</a></li>
             <li><a href="/group" title="group">番号</a></li>
             <li><a href="/studio" title="studio">制作商</a></li>
             <li><a href="/label" title="label">发行商</a></li>
             <li><a href="/series" title="series">系列</a></li>
+            <li class="dropdown">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><span class="glyphicon glyphicon-star" style="font-size:12px;"></span> <span class="hidden-sm">收藏</span> <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                    {% for page_type in page_type_map %}
+                    {% if page_type_map[page_type].like_enable %}
+                    <li><a href="/like/{{page_type}}">{{page_type_map[page_type].name}}</a></li>
+                    {% endif %}
+                    {% endfor %}
+                </ul>
+            </li>
           </ul>
 
           <ul class="nav navbar-nav navbar-right">
               <li><a href="/spider" style="font-weight: bold;color:#f44336;" title="spider"><span class="glyphicon glyphicon-tasks" style="font-size:12px;"></span> 爬虫</a></li>
               <li><a href="/scandisk" title="scan local files"><span class="glyphicon glyphicon-search" style="font-size:12px;"></span> 扫描</a></li>
               <li><a href="/config" title="config"><span class="glyphicon glyphicon-wrench" style="font-size:12px;"></span> 配置</a></li>
-                {% if origin_link %}
-                <li><a href="{{ origin_link }}" target="_blank" title="origin link"><span class="glyphicon glyphicon-link" style="font-size:12px;"></span> 链接</a></li>
+                {% if frame_data.origin_link %}
+                <li><a href="{{ frame_data.origin_link }}" target="_blank" title="origin link"><span class="glyphicon glyphicon-link" style="font-size:12px;"></span> 链接</a></li>
                 {% else %}
                 <li><a href="{{config['base']['avmoo_site']}}" target="_blank" title="origin link"><span class="glyphicon glyphicon-link" style="font-size:12px;"></span> 链接</a></li>
                 {% endif %}
               <li class="dropdown">
-                <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><span class="glyphicon glyphicon-globe" style="font-size:12px;"></span> <span class="hidden-sm">{{config['base']['country_name']}}</span> <span class="caret"></span></a>
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><span class="glyphicon glyphicon-globe" style="font-size:12px;"></span> <span class="hidden-sm">{{country_map[config['base']['country']]}}</span> <span class="caret"></span></a>
                 <ul class="dropdown-menu" role="menu">
                   <li><a onclick="changeLanguage('cn')">简体中文</a></li>
                   <li><a onclick="changeLanguage('en')">English</a></li>
@@ -101,52 +119,50 @@
 {% block container %}
 {% endblock %}
 
-{% block pagination %}
-    {% if page %}
-	<div class="text-center hidden-xs mtb-20">
-		<ul class="pagination pagination-lg mtb-0">
-            {% if page.head > 0 %}
-            <li>
-                <a href="{{page.pageroot}}/page/1">
-                    <span class="glyphicon glyphicon-fast-backward"></span> 首页</a>
-            </li>
-            {% endif %}
-            {% if page.left>0 %}
-            <li>
-                <a href="{{page.pageroot}}/page/{{page.left}}">
-                    <span class="glyphicon glyphicon-chevron-left"></span> 上一页</a>
-            </li>
-            {% endif %}
-            {% for item in page.list %}
-                {% if page.now == item %}
-                    <li class="active">
-                        <a href="{{page.pageroot}}/page/{{item}}">{{item}}</a>
-                    </li>
-                {% else %}
-                    <li>
-                        <a href="{{page.pageroot}}/page/{{item}}">{{item}}</a>
-                    </li>
-                {% endif %}
-            {% endfor %}
 
-            {% if page.right>0 %}
+{% block pagination %}
+{% if frame_data.page %}
+<div class="text-center hidden-xs mtb-20">
+    <ul class="pagination pagination-lg mtb-0">
+        {% if frame_data.page.head > 0 %}
+        <li>
+            <a href="{{frame_data.page.pageroot}}/page/1">
+                <span class="glyphicon glyphicon-fast-backward"></span> 首页</a>
+        </li>
+        {% endif %}
+        {% if frame_data.page.left>0 %}
+        <li>
+            <a href="{{frame_data.page.pageroot}}/page/{{frame_data.page.left}}">
+                <span class="glyphicon glyphicon-chevron-left"></span> 上一页</a>
+        </li>
+        {% endif %}
+        {% for item in frame_data.page.list %}
+            {% if frame_data.page.now == item %}
+                <li class="active">
+                    <a href="{{frame_data.page.pageroot}}/page/{{item}}">{{item}}</a>
+                </li>
+            {% else %}
                 <li>
-                <a href="{{page.pageroot}}/page/{{page.right}}">
-                    <span class="glyphicon glyphicon-chevron-right"></span> 下一页</a>
+                    <a href="{{frame_data.page.pageroot}}/page/{{item}}">{{item}}</a>
                 </li>
             {% endif %}
-            {% if page.tail > 0 %}
+        {% endfor %}
+        {% if frame_data.page.right>0 %}
             <li>
-                <a href="{{page.pageroot}}/page/{{page.tail}}">
-                    <span class="glyphicon glyphicon-fast-forward"></span> 尾页</a>
+            <a href="{{frame_data.page.pageroot}}/page/{{frame_data.page.right}}">
+                <span class="glyphicon glyphicon-chevron-right"></span> 下一页</a>
             </li>
-            {% endif %}
-		</ul>
-  </div>
-  {% endif %}
+        {% endif %}
+        {% if frame_data.page.tail > 0 %}
+        <li>
+            <a href="{{frame_data.page.pageroot}}/page/{{frame_data.page.tail}}">
+                <span class="glyphicon glyphicon-fast-forward"></span> 尾页</a>
+        </li>
+        {% endif %}
+    </ul>
+</div>
+{% endif %}
 {% endblock %}
-
-{% block other %}{% endblock %}
 
 <div class="modal fade" id="message" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -185,7 +201,11 @@
         $('#message').modal('hide');
     });
     function explorerLocal(path){
-        $.get("/action/explorer",{"path":path});
+        $.get("/action/explorer",{"path":path}, function(data){
+            if(data != 'ok') {
+                showMessage(data,"");
+            }
+        });
     }
     function crawlLink(input_text){
         $.post("/action/crawl", {

@@ -1,21 +1,5 @@
 {% extends "main.html" %}
 
-{% block title %}({{data.analyse_name}}) 分析结果 {% endblock %}
-
-{% block head %}
-<style>
-.tag-style{
-    display: inline-block;
-    color: #000;
-    background-color: #d8d8d8;
-    border: 2px solid #d8d8d8;
-    padding: 2px;
-    margin: 2px;
-    border-radius: 7px;
-}
-</style>
-{% endblock %}
-
 {% block container %}
 <div class="container-fluid">
     <div class="row" style="margin-top: 20px;">
@@ -28,27 +12,27 @@
 
             <h3 style="font-weight: 700;margin-top:20px;">分类</h3>
             {% for item in data.genre_counter %}
-                <a class="tag-style" href="/search/genre[{{item.name}}]%20{{data.page_type}}[{{data.keyword}}]" target="_blank">{{item.name}}<span style="color:red">({{item.count}})</span></a>
+                <a class="tag-style" href="/search/genre[{{item.name}}]%20{{data.page_type}}[{{data.analyse_name}}]" target="_blank">{{item.name}}<span style="color:red">({{item.count}})</span></a>
             {% endfor %}
 
             <h3 style="font-weight: 700;margin-top:20px;">演员</h3>
             {% for item in data.stars_counter %}
-                <a class="tag-style" href="/search/star[{{item.name}}]%20{{data.page_type}}[{{data.keyword}}]" target="_blank">{{item.name}}<span style="color:red">({{item.count}})</span></a>
+                <a class="tag-style" href="/search/star[{{item.name}}]%20{{data.page_type}}[{{data.analyse_name}}]" target="_blank">{{item.name}}<span style="color:red">({{item.count}})</span></a>
             {% endfor %}
 
             <h3 style="font-weight: 700;margin-top:20px;">系列</h3>
             {% for item in data.series_counter %}
-                <a class="tag-style" href="/search/series[{{item.name}}]%20{{data.page_type}}[{{data.keyword}}]" target="_blank">{{item.name}}<span style="color:red">({{item.count}})</span></a>
+                <a class="tag-style" href="/search/series[{{item.name}}]%20{{data.page_type}}[{{data.analyse_name}}]" target="_blank">{{item.name}}<span style="color:red">({{item.count}})</span></a>
             {% endfor %}
 
             <h3 style="font-weight: 700;margin-top:20px;">制作商</h3>
             {% for item in data.studio_counter %}
-                <a class="tag-style" href="/search/studio[{{item.name}}]%20{{data.page_type}}[{{data.keyword}}]" target="_blank">{{item.name}}<span style="color:red">({{item.count}})</span></a>
+                <a class="tag-style" href="/search/studio[{{item.name}}]%20{{data.page_type}}[{{data.analyse_name}}]" target="_blank">{{item.name}}<span style="color:red">({{item.count}})</span></a>
             {% endfor %}
 
             <h3 style="font-weight: 700;margin-top:20px;">发行商</h3>
             {% for item in data.label_counter %}
-                <a class="tag-style" href="/search/label[{{item.name}}]%20{{data.page_type}}[{{data.keyword}}]" target="_blank">{{item.name}}<span style="color:red">({{item.count}})</span></a>
+                <a class="tag-style" href="/search/label[{{item.name}}]%20{{data.page_type}}[{{data.analyse_name}}]" target="_blank">{{item.name}}<span style="color:red">({{item.count}})</span></a>
             {% endfor %}
         </div>
     </div>

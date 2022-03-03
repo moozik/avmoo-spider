@@ -1,8 +1,5 @@
 {% extends "main.html" %}
 
-{% block title %} 女优 {% endblock %}
-{% block keyword %}{{keyword}}{% endblock %}
-{% block container %}
 
 {% block head %}
 <style>
@@ -10,8 +7,9 @@
         height:290px;
     }
 </style>
-
 {% endblock %}
+
+{% block container %}
 <div class="container-fluid">
     <div class="row">
         <div class="col-md-1"></div>
@@ -23,7 +21,7 @@
     </div>
     <div class="row">
         <div id="avatar-waterfall" style="margin: 20px 60px;">
-            {% for item in data %}
+            {% for item in data.av_stars %}
             <div class="avatar-box">
                 <a class="" href="/star/{{item.linkid}}" title="{{item.time}}">
                     <div class="photo-frame">

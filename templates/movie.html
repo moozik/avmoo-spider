@@ -1,9 +1,7 @@
 {% extends "main.html" %}
-{% block title %}{{data.title}} - {% endblock %}
 {% block container %}
 <div class="container">
-    <h3 id="av_title">{{data.title}}</h3>
-    <button class="btn btn-default btn-sm" onclick="translateTitle('{{data.av_id}}')">翻译</button>
+    <h3><button class="btn btn-success btn-sm" onclick="translateTitle('{{data.av_id}}')">翻译</button><span id="av_title">{{data.title}}</span></h3>
     <div class="row movie">
         <div class="col-md-9 screencap">
             <a class="bigImage" href="{{config['website']['cdn']}}/digital/video{{data.bigimage}}" title="{{data.title}}">
@@ -53,40 +51,47 @@
                     <a href="/series/{{data.series_url}}">{{data.series}}</a>
                 </p>
             {% endif %}
-            {% if data.genre_list %}
+            {% if data.genre_data %}
             <p class="header" title="genre">类别:</p>
             <p>
-                 {% for item in data.genre_list %}
+                 {% for item in data.genre_data %}
                     <span class="genre">
-                        <a href="/genre/{{item}}">{{item}}</a>
+                        <a href="/genre/{{item.linkid}}">{{item.name}}</a>
                     </span>
                  {% endfor %}
             </p>
             {% endif %}
             <p class="header" title="action">操作:</p>
             <p>
-                <button class="btn btn-default btn-sm" type="submit" onclick="insertMovieExtend('like', 'av_id', '{{data.av_id}}')" title="add Favorites">收藏</button>
-                <button class="btn btn-default btn-sm" type="submit" onclick="crawlAccurate('movie', '{{data.linkid}}');setTimeout(function(){location.reload()}, 3000);" title="crawl again">重新抓取</button>
+                {% if data.is_like %}
+                    <button class="btn btn-danger btn-sm" type="submit" onclick="deleteMovieExtend('like', 'av_id', '{{data.av_id}}');location.reload()" title="add Favorites">取消收藏</button>
+                {% else %}
+                    <button class="btn btn-success btn-sm" type="submit" onclick="insertMovieExtend('like', 'av_id', '{{data.av_id}}');location.reload()" title="add Favorites">收藏</button>
+                {% endif %}
+                <button class="btn btn-warning btn-sm" type="submit" onclick="crawlAccurate('movie', '{{data.linkid}}');setTimeout(function(){location.reload()}, 3000);" title="crawl again">更新影片</button>
             </p>
         </div>
     </div>
 
     <h4 title="search tools">搜索资源</h4>
     <div>
-        <a class="btn btn-default btn-sm" href="https://btsow.rest/search/{{data.av_id}}" target="_blank">BTSO</a>
-        <a class="btn btn-default btn-sm" href="http://www.haociso.top/s/{{data.av_id}}" target="_blank">haociso</a>
+        <a class="btn btn btn-success btn-sm" href="https://btsow.rest/search/{{data.av_id}}" target="_blank">BTSO</a>
+        <a class="btn btn btn-success btn-sm" href="http://www.haociso.top/s/{{data.av_id}}" target="_blank">haociso</a>
     </div>
 
     <h4 title="resource">影片资源</h4>
     <div>
-        <input id="movie_resource" type="text" class="form-control" style="max-width: 400px;" placeholder="磁力链接 | 本地路径 | 在线地址" title="magnet | local movie path | url"/>
-        <button class="btn btn-default btn-sm insert-movie-local" type="submit" onclick="insertMovieExtend('movie_res', '{{data.av_id}}', document.querySelector('#movie_resource').value)" title="save extend data">保存</button>
-        <ul>
+        
+        <form class="form-inline">
+            <input id="movie_resource" type="text" class="form-control" style="width: 600px;" placeholder="磁力链接 magnet | 本地路径 D:\down | 在线地址 http://" title="magnet | local movie path | url"/>
+            <button class="btn btn-success btn-sm insert-movie-local" type="submit" onclick="insertMovieExtend('movie_res', '{{data.av_id}}', document.querySelector('#movie_resource').value);location.reload();" title="save extend data">保存</button>
+        </form>
+        <ul class="list-unstyled info">
         {% for movie_resource in data.movie_resource_list %}
             <li>
-                <a href="{{movie_resource}}" target="_blank">{{movie_resource}}</a>
-                <button class="btn btn-default btn-sm" onclick="deleteMovieExtend('movie_res','{{data.av_id}}', this.getAttribute('data-val'));setTimeout(function(){location.reload()}, 1000);" data-val="{{movie_resource}}" type="submit" title="del">删除记录</button>
-                <button class="btn btn-default btn-sm" onclick="explorerLocal(this.getAttribute('data-val'))" data-val="{{movie_resource}}" type="submit" title="explorer local">本地打开</button>
+                <a class="tag-style" href="{{movie_resource}}" target="_blank">{{movie_resource}}</a>
+                <button class="btn btn-danger btn-sm" onclick="deleteMovieExtend('movie_res','{{data.av_id}}', this.getAttribute('data-val'));location.reload();" data-val="{{movie_resource}}" type="submit" title="delete">删除</button>
+                <button class="btn btn-success btn-sm" onclick="explorerLocal(this.getAttribute('data-val'))" data-val="{{movie_resource}}" type="submit" title="explorer local">本地打开</button>
             </li>
         {% endfor %}
         </ul>
@@ -140,10 +145,7 @@
 
 </div>
 {% endblock %}
-
-{% block pagination %}
-{% endblock %}
-
+{% block pagination %}{% endblock %}
 {% block javascript %}
 <script>
     function translateTitle(avid){

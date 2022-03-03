@@ -1,5 +1,4 @@
 {% extends "main.html" %}
-{% block title %}扫描硬盘{% endblock %}
 
 {% block head %}
 <style>
@@ -52,7 +51,17 @@
                             <td><span style="color: coral;">{{resource.file_path}}</span></td>
                             <td><button class="btn btn-default btn-sm" onclick="explorerLocal(this.getAttribute('data-val'))" data-val="{{resource.file_path}}" title="play">播放</button></td>
                             <td>
-                                {{resource.info|safe}} <button class="btn btn-default btn-sm insert_movie_res" data-val="{{resource.file_path}}" data-key="{{resource.av_id}}" title="add resource">添加到资源</button>
+                                {% if resource.info.has_fetch_movie %}
+                                    <span style="color: green;">[影片已抓取]</span>
+                                {% else %}
+                                    <span style="color: red;">[影片未抓取]</span>
+                                {% endif %}
+                                {% if resource.info.has_res_extend %}
+                                    <span style="color: green;">[已存储资源]</span>
+                                {% else %}
+                                    <span style="color: red;">[未存储资源]</span>
+                                    <button class="btn btn-default btn-sm insert_movie_res" data-val="{{resource.file_path}}" data-key="{{resource.av_id}}" title="add resource">添加到资源</button>
+                                {% endif %}
                                 <a class="movie-box" href="/movie/{{ av_data_map[resource.av_id].linkid }}">
                                     <div class="photo-frame">
                                         <img src="{{config['website']['cdn']}}/digital/video{{ av_data_map[resource.av_id].smallimage }}" title="title:{{ av_data_map[resource.av_id].title }}
@@ -76,7 +85,7 @@
                             <!-- 视频文件 命中avid 无页面 -->
                             <td><span style="color: coral;">{{resource.file_path}}</span></td>
                             <td><button class="btn btn-default btn-sm" onclick="explorerLocal(this.getAttribute('data-val'))" data-val="{{resource.file_path}}" title="play">播放</button></td>
-                            <td><a href="{{config['base']['avmoo_site']}}/cn/search/{{resource.av_id}}" target="_blank">{{resource.av_id}}</a>|{{resource.info|safe}}</td>
+                            <td><a href="{{config['base']['avmoo_site']}}/cn/search/{{resource.av_id}}" target="_blank">{{resource.av_id}}</a> <span style="color: red;">[影片未抓取]</span></td>
                         </tr>
                     {% endif %}
                 {% endfor %}
