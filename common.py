@@ -5,134 +5,21 @@ import configparser
 import os
 import re
 import sqlite3
-from install import build_sqlite_db
 from lxml import etree
 import webbrowser
 import threading
 import binascii
 from urllib.parse import quote
 from queue import Queue
+from define import *
 
 CONFIG_FILE = "config.ini"
 CONFIG_FILE_DEFAULT = "config.ini.default"
 CONFIG = configparser.ConfigParser()
 
-CONFIG_NAME_LIST = [
-    "base.avmoo_site",
-    "base.db_file",
-    "base.port",
-    "base.debug_mode",
-    "base.readonly",
-    "base.country",
+DB: Connection = None
 
-    "spider.sleep",
-    "spider.insert_threshold",
-    "spider.continued_skip_limit",
-    "spider.minimum_movie_duration",
-
-    "requests.timeout",
-    "requests.user_agent",
-
-    "website.cdn",
-    "website.page_limit",
-    "website.actresses_page_limit",
-    "website.group_page_limit",
-    "website.spider_page_interval_timeout",
-
-    "website.group_page_order_by",
-    "website.use_cache",
-    "website.auto_open_site_on_run",
-    "website.auto_open_link_when_crawl_done",
-    "website.efficiency_mode",
-]
-
-DB: Connection
-
-NETWORK_CONNECT = False
-
-COUNTRY_MAP = {
-    'en': 'English',
-    'ja': '日本语',
-    'tw': '正體中文',
-    'cn': '简体中文',
-}
-
-PAGE_TYPE_MAP = {
-    # page_type名
-    'director': {
-        # 页面名称
-        'name': '导演',
-        # 是否允许收藏
-        'like_enable': False,
-        # db字段, like key
-        'key': 'director_url',
-        # av_list影片列表查询条件
-        'where': "director_url='{}'",
-    },
-    'movie': {
-        'name': '影片',
-        'like_enable': True,
-        'key': 'av_id',
-        'where': "linkid='{0}' OR av_id = '{0}'",
-    },
-    'studio': {
-        'name': '制作商',
-        'like_enable': True,
-        'key': 'studio_url',
-        'where': "studio_url='{}'",
-    },
-    'label': {
-        'name': '发行商',
-        'like_enable': True,
-        'key': 'label_url',
-        'where': "label_url='{}'",
-    },
-    'series': {
-        'name': '系列',
-        'like_enable': True,
-        'key': 'series_url',
-        'where': "series_url='{}'",
-    },
-    'star': {
-        'name': '女优',
-        'like_enable': False,
-        'key': 'stars_url',
-        'where': "stars_url GLOB '*|{}*'",
-    },
-    'genre': {
-        'name': '分类',
-        'like_enable': False,
-        'key': 'genre_url',
-        'where': "genre GLOB '*|{}|*'",
-    },
-    'group': {
-        'name': '番号',
-        'like_enable': True,
-        'key': 'group',
-        'where': "av_id LIKE '{}-%'",
-    },
-    'like': {
-        'name': '收藏',
-        'like_enable': False,
-    },
-}
-
-ESCAPE_LIST = (
-    ("/", "//"),
-    ("'", "''"),
-    ("[", "/["),
-    ("]", "/]"),
-    ("%", "/%"),
-    ("&", "/&"),
-    ("_", "/_"),
-    ("(", "/("),
-    (")", "/)"),
-)
-
-PAGE_MAX = 100
-
-LOCAL_IP = "127.0.0.1"
-
+# 存储 av_genre,av_extend数据，用户快速查找
 DATA_STORAGE = {}
 
 # 缓存
@@ -146,24 +33,21 @@ def init(argv):
     global CONFIG_FILE
     print("common.init")
     if len(argv) > 1:
+        # 命令行指定配置文件
         CONFIG_FILE = argv[1]
     # 初始化配置
     config_check()
     config_init()
+    db_init()
 
+
+def db_init():
     print("common.init.db")
     # 初始化db
     global DB
-    DB = sqlite3.connect(CONFIG.get(
-        "base", "db_file"), check_same_thread=False)
-    
-    # 如果不存在则新建表
-    if not CONFIG.getboolean("base", "readonly"):
-        build_sqlite_db(DB)
-
-    # 打开主页
-    if CONFIG.getboolean("website", "auto_open_site_on_run"):
-        open_browser_tab(get_local_url())
+    db_file = CONFIG.get("base", "db_file")
+    if os.path.exists(db_file):
+        DB = sqlite3.connect(db_file, check_same_thread=False)
 
 
 def storage_init(table: str) -> None:
@@ -210,11 +94,13 @@ def config_path() -> str:
 
 def config_init() -> None:
     # 初始化配置
+    print('CONFIG FILE:', config_path())
     CONFIG.read(config_path())
 
 
 def config_check():
     if not os.path.exists(CONFIG_FILE):
+        print("配置文件缺失")
         return
     config = configparser.ConfigParser()
     config.read(CONFIG_FILE)
@@ -254,6 +140,7 @@ def insert(table: str, data: list):
     if table in DATA_STORAGE:
         DATA_STORAGE[table].clear()
 
+
 # sql删除操作
 def delete(table: str, data: dict):
     if CONFIG.getboolean("base", "readonly"):
@@ -261,7 +148,7 @@ def delete(table: str, data: dict):
     if not data:
         return
     sql = "DELETE FROM {} WHERE {}".format(
-        table," AND ".join(["{}='{}'".format(field, value) for field, value in data.items()]))
+        table, " AND ".join(["{}='{}'".format(field, value) for field, value in data.items()]))
     execute(sql)
     if table in DATA_STORAGE:
         DATA_STORAGE[table].clear()
@@ -278,6 +165,9 @@ def execute(sql):
 
 # 查询sql 没缓存
 def fetchall(sql) -> list:
+    if DB is None:
+        raise IOError('db')
+
     cur = DB.cursor()
     print('SQL FETCH:{}'.format(sql))
     cur.execute(sql)
@@ -327,29 +217,29 @@ def list_in_str(target_list: tuple, target_string: str) -> bool:
     return False
 
 
-def get_url(page_type: str = "", keyword: str = "", page_no: int = 1) -> str:
+def get_url(page_type: str = '', keyword: str = '', page_no: int = 1) -> str:
     ret = '{}/{}'.format(CONFIG.get("base", "avmoo_site"),
                          CONFIG.get("base", "country"), )
     if page_type == "search":
-        if keyword != "":
+        if keyword != '':
             ret += '/{}/{}'.format(page_type, keyword)
     else:
-        if page_type != "":
+        if page_type != '':
             ret += '/{}'.format(page_type)
-        if keyword != "":
+        if keyword != '':
             ret += '/{}'.format(keyword)
     if page_no > 1:
         ret += '/page/{}'.format(page_no)
     return ret
 
 
-def get_local_url(page_type: str = "", keyword: str = "", page_no: int = 1) -> str:
+def get_local_url(page_type: str = '', keyword: str = '', page_no: int = 1) -> str:
     ret = 'http://{}:{}'.format(LOCAL_IP, CONFIG.getint("base", "port"))
     if page_type == "popular":
-        return None
-    if page_type != "":
+        return ''
+    if page_type != '':
         ret += '/{}'.format(page_type)
-    if keyword != "":
+    if keyword != '':
         ret += '/{}'.format(keyword)
     if page_no > 1:
         ret += '/page/{}'.format(page_no)
@@ -388,8 +278,8 @@ def sql_escape(keyword: str) -> str:
 
 # 解析源站url, 返回 page_type, keyword, page_start
 def parse_url(url: str) -> tuple:
-    if url is None or url == "":
-        return "", "", -1
+    if url is None or url == '':
+        return '', '', -1
     
     pattern_1 = "https?://[^/]+/[^/]+/popular(/page/(\\d+))?"
     pattern_2 = "https?://[^/]+/[^/]+/(movie|star|genre|series|studio|label|director|search)/([^/]+)(/page/(\\d+))?"
@@ -397,7 +287,7 @@ def parse_url(url: str) -> tuple:
     if re.match(pattern_1, url):
         res = re.findall(pattern_1, url)
         page_start = int(res[0][1]) if res[0][1] else 1
-        return "popular", "", page_start
+        return "popular", '', page_start
     
     if re.match(pattern_2, url):
         res = re.findall(pattern_2, url)
@@ -405,7 +295,7 @@ def parse_url(url: str) -> tuple:
         return res[0][0], res[0][1], page_start
 
     print("wrong url:{}".format(url))
-    return "", "", -1
+    return '', '', -1
 
 
 def get_exist_linkid(page_type: str, keyword: str) -> dict:

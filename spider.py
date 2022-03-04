@@ -1,16 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 import time
-import requests
-import re
 
-from requests import ReadTimeout, Timeout
+from requests import Timeout
 
-import common
-import sqlite3
-import threading
-from lxml import etree
-from typing import Iterator, Tuple
+from typing import Iterator
 from common import *
 
 
@@ -90,7 +84,7 @@ class Spider:
                 if CONFIG.getboolean("website", "use_cache"):
                     SQL_CACHE.clear()
                 if CONFIG.getboolean("website", "auto_open_link_when_crawl_done"):
-                    common.open_browser_tab(get_local_url(work_param["page_type"], work_param["keyword"], work_param["page_start"]))
+                    open_browser_tab(get_local_url(work_param["page_type"], work_param["keyword"], work_param["page_start"]))
 
             print("="*10, " crawl end ", "=" * 10)
             print()
@@ -103,7 +97,7 @@ class Spider:
     def get_last_insert_list(self):
         return self.last_insert_list
 
-    def get_running_work(self, action: str = ""):
+    def get_running_work(self, action: str = ''):
         if action:
             self.running_work["status"] = action
             return
@@ -112,8 +106,9 @@ class Spider:
     def get_done_work(self):
         return self.done_work
 
-    def fetchall(self, sql) -> list:
-        cur = self.db().cursor()
+    @staticmethod
+    def fetchall(sql) -> list:
+        cur = Spider.db().cursor()
         cur.execute(sql)
         rows = cur.fetchall()
         if not rows:
@@ -153,7 +148,7 @@ class Spider:
     def crawl_genre() -> list:
         genre_url = get_url('genre', '')
         print("get:{}".format(genre_url))
-        (status_code, html) = Spider().get_html_by_url(genre_url)
+        (status_code, html) = Spider.get_html_by_url(genre_url)
         insert_list = []
         h4 = html.xpath('/html/body/div[2]/h4/text()')
         div = html.xpath('/html/body/div[2]/div')
@@ -231,7 +226,7 @@ class Spider:
     # 根据linkid抓取一个movie页面
     def crawl_by_movie_linkid(self, movie_linkid: str) -> tuple:
         url = get_url('movie', movie_linkid)
-        (status_code, html) = self.get_html_by_url(url)
+        (status_code, html) = Spider.get_html_by_url(url)
         if status_code != 200:
             return status_code, None
         if html is None:
@@ -243,7 +238,7 @@ class Spider:
             print('movie_page_data error:', e)
             return status_code, None
 
-        if data is None or data["av_id"] == "" or data["title"] == "":
+        if data is None or data['av_id'] == '' or data["title"] == '':
             print("movie crawl fatal,linkid:{}".format(movie_linkid))
             return 500, None
         data['linkid'] = movie_linkid
@@ -254,7 +249,7 @@ class Spider:
 
     # 获取一个明星的信息
     def stars_one(self, linkid: str):
-        stars_res = self.fetchall("SELECT * FROM av_stars WHERE linkid='{}'".format(linkid))
+        stars_res = Spider.fetchall("SELECT * FROM av_stars WHERE linkid='{}'".format(linkid))
         if len(stars_res) == 1:
             return stars_res[0]
 
@@ -277,7 +272,7 @@ class Spider:
             'headimg': ''
         }
         print("get:{}".format(url))
-        (status_code, html) = self.get_html_by_url(url)
+        (status_code, html) = Spider.get_html_by_url(url)
         if html is None:
             data['birthday'] = 'error'
             self.stars_save(data)
@@ -295,28 +290,28 @@ class Spider:
         for item_p in html.xpath('//*[@id="waterfall"]/div[1]/div/div[2]/p'):
             if item_p.text is None:
                 continue
-            if common.list_in_str(('生日:', 'Birthday:', '生年月日:'), item_p.text):
+            if list_in_str(('生日:', 'Birthday:', '生年月日:'), item_p.text):
                 data['birthday'] = get_val(item_p.text)
                 continue
-            if common.list_in_str(('身高:', 'Height:', '身長:'), item_p.text):
+            if list_in_str(('身高:', 'Height:', '身長:'), item_p.text):
                 data['height'] = get_val(item_p.text)
                 continue
-            if common.list_in_str(('罩杯:', 'Cup:', 'ブラのサイズ:'), item_p.text):
+            if list_in_str(('罩杯:', 'Cup:', 'ブラのサイズ:'), item_p.text):
                 data['cup'] = get_val(item_p.text)
                 continue
-            if common.list_in_str(('胸围:', 'Bust:', 'バスト:'), item_p.text):
+            if list_in_str(('胸围:', 'Bust:', 'バスト:'), item_p.text):
                 data['bust'] = get_val(item_p.text)
                 continue
-            if common.list_in_str(('腰围:', 'Waist:', 'ウエスト:'), item_p.text):
+            if list_in_str(('腰围:', 'Waist:', 'ウエスト:'), item_p.text):
                 data['waist'] = get_val(item_p.text)
                 continue
-            if common.list_in_str(('臀围:', 'Hips:', 'ヒップ:'), item_p.text):
+            if list_in_str(('臀围:', 'Hips:', 'ヒップ:'), item_p.text):
                 data['hips'] = get_val(item_p.text)
                 continue
-            if common.list_in_str(('出生地:', 'Hometown:', '出身地:'), item_p.text):
+            if list_in_str(('出生地:', 'Hometown:', '出身地:'), item_p.text):
                 data['hometown'] = get_val(item_p.text)
                 continue
-            if common.list_in_str(('爱好:', 'Hobby:', '趣味:'), item_p.text):
+            if list_in_str(('爱好:', 'Hobby:', '趣味:'), item_p.text):
                 data['hobby'] = get_val(item_p.text)
                 continue
         # 讲括号中的名字记录为曾用名
@@ -337,7 +332,8 @@ class Spider:
         return data
 
     # 自动翻页返回movie_id
-    def linkid_general(self, work_param: dict) -> Iterator[str]:
+    @staticmethod
+    def linkid_general(work_param: dict) -> Iterator[str]:
         # 网站限制最多100页
         for page_no in range(work_param["page_start"], work_param["page_limit"] + 1):
             time.sleep(CONFIG.getfloat("spider", "sleep"))
@@ -345,7 +341,7 @@ class Spider:
             url = get_url(work_param["page_type"], work_param["keyword"], page_no)
             print("get:{}".format(url))
 
-            (status_code, html) = self.get_html_by_url(url)
+            (status_code, html) = Spider.get_html_by_url(url)
             if status_code in [403, 404, 500] or html is None:
                 break
 
@@ -362,10 +358,11 @@ class Spider:
             if not next_page:
                 break
 
-    def stars_save(self, data: dict) -> None:
-        insert_sql = replace_sql_build("av_stars", data)
-        self.db().execute(insert_sql, tuple(data.values()))
-        self.db().commit()
+    @staticmethod
+    def stars_save(data: dict) -> None:
+        insert_sql = replace_sql_build(AV_STARS, data)
+        Spider.db().execute(insert_sql, tuple(data.values()))
+        Spider.db().commit()
 
     # 插入数据库
     def movie_save(self, insert_list: list) -> None:
@@ -373,10 +370,10 @@ class Spider:
             return
         self.last_insert_list = insert_list
 
-        insert_sql = replace_sql_build("av_list", insert_list[0])
-        cur = self.db().cursor()
+        insert_sql = replace_sql_build(AV_LIST, insert_list[0])
+        cur = Spider.db().cursor()
         cur.executemany(insert_sql, [tuple(x.values()) for x in insert_list])
-        self.db().commit()
+        Spider.db().commit()
         print('INSERT:', len(insert_list))
 
     # 解析html数据
@@ -438,9 +435,31 @@ class Spider:
                 data['series'] = i.text.strip()
                 data['series_url'] = tmp_href[-16:]
 
+        genre_list = []
         # 获取类别列表genre 类别列表genre_url
-        data['genre'] = '|'.join(html.xpath(
-            '/html/body/div[2]/div[1]/div[2]/p/span/a/text()'))
+        for genre_tag in html.xpath('/html/body/div[2]/div[1]/div[2]/p/span/a'):
+            # 获取类目链接
+            link = genre_tag.attrib.get('href')
+            # 获取类目名
+            name = genre_tag.text.strip()
+            genre_list.append(name)
+
+            # 查看类目是否存在,不存在则添加
+            storage_ret = storage(AV_GENRE, {"linkid": [link[-16:]]}, "name")
+            if not storage_ret:
+                # 添加新类目
+                genre_data = {
+                    'linkid': link[-16:],
+                    'name': name,
+                    'title': '未知分类'
+                }
+                print('find new genre:', genre_data)
+                sql = replace_sql_build(AV_GENRE, genre_data)
+                Spider.db().execute(sql, tuple(genre_data.values()))
+                Spider.db().commit()
+                DATA_STORAGE[AV_GENRE].clear()
+
+        data['genre'] = '|'.join(genre_list)
         if data['genre'] != '':
             data['genre'] = '|' + data['genre'] + '|'
 
