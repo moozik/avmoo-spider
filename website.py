@@ -2,11 +2,9 @@
 # -*- coding:utf-8 -*-
 import collections
 import datetime
-import json
 import math
 import time
 
-import werkzeug
 from flask import Flask
 from flask import redirect
 from flask import render_template
@@ -76,18 +74,52 @@ def handle_exception(e):
     return redirect(url_for('install'))
 
 
+# 获取详情图列表
+# 大图(ssis00263pl.jpg)
+# 小图(ssis00263ps.jpg)
+# 详情小图(ssis00263-1.jpg)-(ssis00263-10.jpg)
+# 详情大图(ssis00263jp-1.jpg)-(ssis00263jp-10.jpg)
+def detail_image(big_image, img_count):
+    ret = []
+    big_image = big_image[:-6]
+    for k in range(img_count):
+        ret.append({
+            'small': '{}/digital/video{}-{}.jpg'.format(CONFIG.get('website', 'cdn'), big_image, k+1),
+            'big': '{}/digital/video{}jp-{}.jpg'.format(CONFIG.get('website', 'cdn'), big_image, k+1)
+        })
+    return ret
+
+
+# 列表小图
+def small_image(s):
+    return CONFIG.get('website', 'cdn') + '/digital/video' + s[:-6] + 'ps' + s[-4:]
+
+
+# 获取大图
+def big_image(s):
+    return CONFIG.get('website', 'cdn') + '/digital/video' + s
+
+
+# hover框
+def hover_desc(s):
+    s = s.strip()
+    if s == '':
+        return ''
+    return "(" + s.strip("|").replace("|", ") (") + ")"
+
+
+# 全局变量
 @app.context_processor
 def with_config():
     return {
         'config': CONFIG,
         'page_type_map': PAGE_TYPE_MAP,
         'country_map': COUNTRY_MAP,
+        'small_image': small_image,
+        'big_image': big_image,
+        'detail_image': detail_image,
+        'hover_desc': hover_desc
     }
-
-
-@app.template_filter("quote")
-def do_quote(val):
-    return quote(val, safe='')
 
 
 # 主页 搜索页
@@ -223,13 +255,8 @@ def group_data(page_type: str,page_num: int,where: str = '1'):
             page_limit,
             where
         )
+    return query_sql(sql_text)
 
-    result = query_sql(sql_text)
-    for i in range(len(result)):
-        # 图片地址
-        result[i]['smallimage'] = result[i]['bigimage'].replace(
-            'pl.jpg', 'ps.jpg')
-    return result
 
 # 标签页
 @app.route('/genre')
@@ -265,8 +292,8 @@ def genre():
         },
         frame_data={
             'title': PAGE_TYPE_MAP['genre']['name'],
-            'origin_link':get_url("genre"),
-            'page':{'count': len(av_genre_res)}
+            'origin_link': get_url("genre"),
+            'page': {'count': len(av_genre_res)}
         })
 
 
@@ -335,11 +362,11 @@ def search_other(keyword='', page_num=1):
     origin_link = CONFIG.get("base", "avmoo_site")
 
     if page_type == 'genre':
+        origin_link = get_url('genre', keyword)
         store_ret = storage(AV_GENRE, {'linkid': keyword})
         if store_ret:
             keyword = store_ret[0]['name']
         placeholder = keyword
-        origin_link = get_url('genre', keyword)
 
     if page_type == 'group':
         placeholder = keyword
@@ -370,7 +397,7 @@ def search_other(keyword='', page_num=1):
 
     # 是否收藏当前页面
     is_like = False
-    if PAGE_TYPE_MAP[page_type]["like_enable"] and storage(AV_EXTEND, {"extend_name": "like", "key":PAGE_TYPE_MAP[page_type]["key"], "val": keyword}):
+    if PAGE_TYPE_MAP[page_type]["like_enable"] and storage(AV_EXTEND, {"extend_name": "like", "key": PAGE_TYPE_MAP[page_type]["key"], "val": keyword}):
         is_like = True
 
     return render_template('index.html',
@@ -403,6 +430,7 @@ def movie(linkid=''):
             'title': movie_data['title'],
             'origin_link': get_url("movie", movie_list[0]['linkid'])
         })
+
 
 # 收藏页 影片
 @app.route('/like/movie')
@@ -443,7 +471,7 @@ def page_like(page_type='', page_num=1):
     if page_type in ['series', 'studio', 'label']:
         where = "{} IN ({})".format(PAGE_TYPE_MAP[page_type]['key'], extend_sql)
 
-    count = len(storage(AV_EXTEND, {"extend_name":'like','key': PAGE_TYPE_MAP[page_type]['key']}))
+    count = len(storage(AV_EXTEND, {"extend_name": 'like', 'key': PAGE_TYPE_MAP[page_type]['key']}))
     return render_template('group.html',
         data={
             "list": group_data(page_type, page_num, where),
@@ -490,6 +518,20 @@ def action_analyse_star(page_type='', keyword=''):
     if not data:
         return "没找到数据<br>{}".format(a_tag_build(get_url(page_type, keyword)))
 
+    # group 为默认
+    analyse_name = keyword
+    if page_type == 'star':
+        i = data[0]['stars_url'].strip('|').split('|').index(keyword)
+        analyse_name = data[0]['stars'].strip('|').split('|').index(keyword)[i]
+
+    if page_type == 'genre':
+        storage_ret = storage(AV_GENRE, {'linkid': [keyword]}, 'name')
+        if storage_ret:
+            analyse_name = storage_ret[0]
+
+    if page_type in ['director', 'studio', 'label', 'series']:
+        analyse_name = data[0][page_type]
+
     genre_all = []
     stars_all = []
     series_all = []
@@ -524,17 +566,6 @@ def action_analyse_star(page_type='', keyword=''):
     series_counter = [{'name': x, 'count': series_counter[x]} for x in series_counter if x != '']
     studio_counter = [{'name': x, 'count': studio_counter[x]} for x in studio_counter if x != '']
     label_counter = [{'name': x, 'count': label_counter[x]} for x in label_counter if x != '']
-
-    # group 为默认
-    analyse_name = keyword
-    if page_type == 'star':
-        analyse_name = stars_counter[0]['name']
-
-    if page_type == 'genre':
-        analyse_name = genre_counter[0]['name']
-
-    if page_type in ['director', 'studio', 'label', 'series']:
-        analyse_name = data[0][page_type]
 
     data = {
         "analyse_name": analyse_name,
@@ -608,6 +639,7 @@ def search_where_build(keyword: str) -> list:
         where.append(search_where(key_item))
     return where
 
+
 # page_type详情页
 def page_type_datail_where_build(page_type: str, keyword: str) -> str:
     keyword = keyword
@@ -678,17 +710,6 @@ def movie_build(movie_data):
                     'linkid': movie_data['stars_url'][i],
                     "name": movie_data['stars'][i]
                 })
-
-    # 图片
-    movie_data['imglist'] = []
-    if movie_data['image_len'] != '0':
-        count = int(movie_data['image_len'])
-        img_url = CONFIG.get("website", "cdn") + '/digital/video' + movie_data['bigimage'].replace('pl.jpg', '')
-        for i in range(1, count + 1):
-            movie_data['imglist'].append({
-                'small': '{}-{}.jpg'.format(img_url, i),
-                'big': '{}jp-{}.jpg'.format(img_url, i)
-            })
 
     # 影片资源
     movie_data['movie_resource_list'] = storage(AV_EXTEND, {"extend_name": "movie_res", "key": [movie_data['av_id']]},
@@ -806,6 +827,7 @@ def add_work(work: dict):
         "page_limit": PAGE_MAX,
         "skip_exist": True,
     }
+    # 补充可选参数
     for key in ["page_start", "page_limit", "skip_exist"]:
         if key in work:
             data[key] = work[key]
@@ -815,13 +837,12 @@ def add_work(work: dict):
 
 @app.route('/action/last/insert')
 def action_last_insert():
-    global SPIDER
-    return json.dumps({
+    return {
         "last_insert_list": SPIDER.get_last_insert_list(),
         "wait_work": list(QUEUE.queue),
         "running_work": SPIDER.get_running_work(),
         "done_work": SPIDER.get_done_work(),
-    })
+    }
 
 
 # 磁盘扫描工具
@@ -889,9 +910,6 @@ def page_scandisk():
         sql_text = "SELECT * FROM av_list WHERE av_id in ('{}')".format(
             "','".join(av_id_list))
         for row in fetchall(sql_text):
-            # 图片地址
-            row['smallimage'] = row['bigimage'].replace(
-                'pl.jpg', 'ps.jpg')
             av_data_map[row['av_id']] = row
 
     for i in range(len(file_res)):
@@ -1070,17 +1088,6 @@ def select_av_list(av_list_where: list, page_num: int):
         sql_text + ' ORDER BY {} LIMIT {},{}'.format(sql_order_by, (page_num - 1) * page_limit, page_limit))
 
     for i in range(len(result)):
-        # hover框类目信息
-        if result[i]["genre"].strip("|") != '':
-            result[i]["genre_desc"] = "(" + result[i]["genre"].strip("|").replace("|", ") (") + ")"
-        # hover框演员信息
-        if result[i]["stars"].strip("|") != '':
-            result[i]["stars_desc"] = "(" + result[i]["stars"].strip("|").replace("|", ") (") + ")"
-
-        # 图片地址
-        result[i]['smallimage'] = result[i]['bigimage'].replace(
-            'pl.jpg', 'ps.jpg')
-
         # 扩展信息
         extend_list = storage(AV_EXTEND, {"extend_name": "movie_res", "key": [result[i]['av_id']]}, "val")
         if not extend_list:

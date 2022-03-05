@@ -29,16 +29,21 @@ SQL_CACHE = {}
 QUEUE = Queue(maxsize=0)
 
 
-def init(argv):
+def init(argv=None):
     global CONFIG_FILE
     print("common.init")
-    if len(argv) > 1:
+    if argv is not None and len(argv) > 1:
         # 命令行指定配置文件
         CONFIG_FILE = argv[1]
     # 初始化配置
     config_check()
     config_init()
     db_init()
+
+
+def make_dicts(cursor, row):
+    return dict((cursor.description[idx][0], value)
+                for idx, value in enumerate(row))
 
 
 def db_init():
@@ -48,6 +53,7 @@ def db_init():
     db_file = CONFIG.get("base", "db_file")
     if os.path.exists(db_file):
         DB = sqlite3.connect(db_file, check_same_thread=False)
+        DB.row_factory = make_dicts
 
 
 def storage_init(table: str) -> None:
@@ -100,7 +106,6 @@ def config_init() -> None:
 
 def config_check():
     if not os.path.exists(CONFIG_FILE):
-        print("配置文件缺失")
         return
     config = configparser.ConfigParser()
     config.read(CONFIG_FILE)
@@ -166,22 +171,13 @@ def execute(sql):
 # 查询sql 没缓存
 def fetchall(sql) -> list:
     if DB is None:
+        # 触发安装程序
         raise IOError('db')
 
     cur = DB.cursor()
     print('SQL FETCH:{}'.format(sql))
     cur.execute(sql)
-    rows = cur.fetchall()
-    if not rows:
-        return []
-
-    result = []
-    for row in rows:
-        row_dict = {}
-        for i in range(len(cur.description)):
-            row_dict[cur.description[i][0]] = row[i]
-        result.append(row_dict)
-    return result
+    return cur.fetchall()
 
 
 # 查询sql 带缓存
@@ -296,34 +292,6 @@ def parse_url(url: str) -> tuple:
 
     print("wrong url:{}".format(url))
     return '', '', -1
-
-
-def get_exist_linkid(page_type: str, keyword: str) -> dict:
-    sql = ''
-    exist_linkid_dict = {}
-    # 必须有值
-    if not keyword:
-        return {}
-    # 查询已存在的
-    if page_type in ['director', 'studio', 'label', 'series']:
-        sql = "SELECT linkid FROM av_list WHERE {}_url='{}'".format(page_type, keyword)
-    if page_type == 'genre':
-        genre = fetchall("SELECT * FROM av_genre WHERE linkid='{}'".format(keyword))
-        if genre:
-            sql = "SELECT linkid FROM av_list WHERE genre LIKE '%|{}|%'".format(genre[0]['name'])
-    if page_type == 'star':
-        sql = "SELECT linkid FROM av_list WHERE stars_url LIKE '%{}%'".format(keyword)
-    if page_type == 'group':
-        sql = "SELECT linkid FROM av_list WHERE av_id LIKE '{}-%'".format(keyword)
-    if page_type == 'search':
-        where = []
-        for key_item in keyword.split(' '):
-            where.append(search_where(key_item))
-        sql = "SELECT linkid FROM av_list WHERE " + " AND ".join(where)
-    if sql != '':
-        ret = fetchall(sql)
-        exist_linkid_dict = {x["linkid"]: True for x in ret}
-    return exist_linkid_dict
 
 
 # 获取sql中的表名

@@ -10,7 +10,7 @@
                 <div class="item">
                     <a class="movie-box" href="/{{ data.page_type }}/{{ item.linkid }}">
                         <div class="photo-frame">
-                            <img class="photo-sm" src="{{config['website']['cdn']}}/digital/video{{ item.smallimage }}">
+                            <img class="photo-sm" src="{{ small_image(item.bigimage) }}">
                         </div>
                         <div class="photo-info">
                             <span><span>{{item.title}}<b style="color:red;">({{item.count}})</b></span>

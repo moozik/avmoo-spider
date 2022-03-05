@@ -60,7 +60,7 @@
 					<div class="item">
 						<a class="movie-box" href="/movie/{{ item.linkid }}">
 							<div class="photo-frame">
-								<img class="photo-sm" src="{{config['website']['cdn']}}/digital/video{{ item.smallimage }}">
+								<img class="photo-sm" src="{{small_image(item.bigimage) }}">
 							</div>
 							<div class="photo-info">
 								{% if item.file %}
@@ -79,9 +79,9 @@
 								</span>
 							</div>
 							<div class="movie-desc">
-								{{ item.genre_desc }}<br><br>
-								{% if item.stars_desc %}
-								{{ item.stars_desc }}<br><br>
+								{{ hover_desc(item.genre) }}<br><br>
+								{% if item.stars %}
+								{{ hover_desc(item.stars) }}<br><br>
 								{% endif %}
 								len:<b style="color:red;">{{item.len}}min</b> image:<b style="color:red;">{{item.image_len}}</b>
 							</div>

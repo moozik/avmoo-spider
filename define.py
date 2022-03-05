@@ -194,6 +194,7 @@ CREATE TABLE IF NOT EXISTS "av_extend" (
 
 AV_GENRE_DEMO_DATA = [
     ('like', 'group', 'SSIS'),
+    ('like', 'studio_url', '80be243ea6164094'),
     ('like', 'label_url', 'b0b3be30e6bf490f'),
     ('like', 'series_url', 'c343a1499f108277'),
     ('like', 'av_id', 'SSIS-318'),

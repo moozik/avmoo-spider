@@ -4,8 +4,8 @@
     <h3><button class="btn btn-success btn-sm" onclick="translateTitle('{{data.av_id}}')">翻译</button><span id="av_title">{{data.title}}</span></h3>
     <div class="row movie">
         <div class="col-md-9 screencap">
-            <a class="bigImage" href="{{config['website']['cdn']}}/digital/video{{data.bigimage}}" title="{{data.title}}">
-                <img src="{{config['website']['cdn']}}/digital/video{{data.bigimage}}">
+            <a class="bigImage" href="{{big_image(data.bigimage)}}" title="{{data.title}}">
+                <img src="{{big_image(data.bigimage)}}">
             </a>
         </div>
         <div class="col-md-3 info">
@@ -129,10 +129,10 @@
 
 
     <div class="clearfix"></div>
-    {% if data.imglist %}
+    {% if data.image_len > 0 %}
     <h4>样品图像</h4>
     <div id="sample-waterfall">
-         {% for item in data.imglist %}
+         {% for item in detail_image(data.bigimage, data.image_len) %}
             <a class="sample-box" href="{{item.big}}" title="{{data.title}}">
                 <div class="photo-frame">
                     <img src="{{item.small}}">

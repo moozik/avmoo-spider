@@ -13,6 +13,7 @@ pip install flask
 - `http://127.0.0.1:5000/search/已下载` 已下载
 - `http://127.0.0.1:5000/search/有资源` 有资源
 
+### 列表页
 - `http://127.0.0.1:5000/group` 番号列表
 - `http://127.0.0.1:5000/actresses` 演员列表
 - `http://127.0.0.1:5000/genre` 类别列表
@@ -20,6 +21,7 @@ pip install flask
 - `http://127.0.0.1:5000/label` 发行商列表
 - `http://127.0.0.1:5000/series` 系列列表
 
+### 明细页
 - `http://127.0.0.1:5000/movie/e3dedf889e44cee8` 影片明细
 - `http://127.0.0.1:5000/group/IPX` 番号明细
 - `http://127.0.0.1:5000/star/1971f1973cf8172f` 演员明细
@@ -29,12 +31,14 @@ pip install flask
 - `http://127.0.0.1:5000/series/c28ffa16eae1bf1e` 系列明细
 - `http://127.0.0.1:5000/director/bb914a54dc51b21b` 导演明细
 
+### 收藏页
 - `http://127.0.0.1:5000/like/group` 收藏番号
 - `http://127.0.0.1:5000/like/movie` 收藏影片
 - `http://127.0.0.1:5000/like/studio` 收藏制作商
 - `http://127.0.0.1:5000/like/label` 收藏发行商
 - `http://127.0.0.1:5000/like/series` 收藏系列
 
+### 分析页
 - `http://127.0.0.1:5000/analyse/group/IPX` 分析番号
 - `http://127.0.0.1:5000/analyse/star/1971f1973cf8172f` 分析演员
 - `http://127.0.0.1:5000/analyse/genre/dd21aefe7ae3228c` 分析类别
@@ -42,6 +46,7 @@ pip install flask
 - `http://127.0.0.1:5000/analyse/label/b0b3be30e6bf490f` 分析发行商
 - `http://127.0.0.1:5000/analyse/director/bb914a54dc51b21b` 分析导演
 
+### 功能页
 - `http://127.0.0.1:5000/spider` 爬虫,输入链接,抓取链接内所有影片
 - `http://127.0.0.1:5000/scandisk` 扫描硬盘,扫描本地硬盘,识别番号文件名
 - `http://127.0.0.1:5000/config` 修改配置

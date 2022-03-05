@@ -71,7 +71,7 @@ class Spider:
             work_param["exist_linkid"] = {}
             # 是否跳过 默认跳过
             if "skip_exist" not in work_param or work_param.get("skip_exist"):
-                work_param["exist_linkid"] = get_exist_linkid(work_param["page_type"], work_param["keyword"])
+                work_param["exist_linkid"] = Spider.get_exist_linkid(work_param["page_type"], work_param["keyword"])
 
             print("="*10, " crawl start ", "=" * 10)
             print("url:{0[url]} page_limit:{0[page_limit]}, exist_count:{1}".format(
@@ -130,7 +130,7 @@ class Spider:
             return False
         # 单个电影
         if page_type == "movie":
-            (status_code, data) = self.crawl_by_movie_linkid(work_param["keyword"])
+            (status_code, data) = Spider.crawl_by_movie_linkid(work_param["keyword"])
             if data is None or status_code != 200:
                 print("crawl_by_movie_linkid wrong,data:{},status_code:{}", data, status_code)
                 return False
@@ -169,14 +169,14 @@ class Spider:
     # 根据页面类型抓取所有影片
     def crawl_by_page_type(self, work_param: dict) -> None:
         if work_param["page_type"] == 'star':
-            self.stars_one(work_param["keyword"])
+            Spider.stars_one(work_param["keyword"])
         # 待插入
         insert_list = []
         insert_count = 0
         skip_count = 0
         banned_count = 0
         continued_skip_count = 0
-        for movie_linkid in self.linkid_general(work_param):
+        for movie_linkid in Spider.linkid_general(work_param):
             # 跳出
             if self.running_work["status"] != "ING":
                 # 任务结束
@@ -195,7 +195,7 @@ class Spider:
             continued_skip_count = 0
             time.sleep(CONFIG.getfloat("spider", "sleep"))
 
-            (status_code, data) = self.crawl_by_movie_linkid(movie_linkid)
+            (status_code, data) = Spider.crawl_by_movie_linkid(movie_linkid)
             if status_code == 403:
                 banned_count += 1
                 if banned_count == 10:
@@ -224,7 +224,8 @@ class Spider:
             len(work_param["exist_linkid"]), insert_count, skip_count))
 
     # 根据linkid抓取一个movie页面
-    def crawl_by_movie_linkid(self, movie_linkid: str) -> tuple:
+    @staticmethod
+    def crawl_by_movie_linkid(movie_linkid: str) -> tuple:
         url = get_url('movie', movie_linkid)
         (status_code, html) = Spider.get_html_by_url(url)
         if status_code != 200:
@@ -233,7 +234,7 @@ class Spider:
             return status_code, None
         # 解析页面内容
         try:
-            data = self.movie_page_data(html)
+            data = Spider.movie_page_data(html)
         except Exception as e:
             print('movie_page_data error:', e)
             return status_code, None
@@ -248,7 +249,8 @@ class Spider:
         return status_code, data
 
     # 获取一个明星的信息
-    def stars_one(self, linkid: str):
+    @staticmethod
+    def stars_one(linkid: str):
         stars_res = Spider.fetchall("SELECT * FROM av_stars WHERE linkid='{}'".format(linkid))
         if len(stars_res) == 1:
             return stars_res[0]
@@ -275,7 +277,7 @@ class Spider:
         (status_code, html) = Spider.get_html_by_url(url)
         if html is None:
             data['birthday'] = 'error'
-            self.stars_save(data)
+            Spider.stars_save(data)
             return False
 
         try:
@@ -328,7 +330,7 @@ class Spider:
             data['name'].ljust(15),
             data['hometown']
         )
-        self.stars_save(data)
+        Spider.stars_save(data)
         return data
 
     # 自动翻页返回movie_id
@@ -476,6 +478,35 @@ class Spider:
                                                 for x in stars_url_list])
 
         return data
+
+    # 查询已存在影片
+    @staticmethod
+    def get_exist_linkid(page_type: str, keyword: str) -> dict:
+        sql = ''
+        exist_linkid_dict = {}
+        # 必须有值
+        if not keyword:
+            return {}
+        # 查询已存在的
+        if page_type in ['director', 'studio', 'label', 'series']:
+            sql = "SELECT linkid FROM av_list WHERE {}_url='{}'".format(page_type, keyword)
+        if page_type == 'genre':
+            genre = Spider.fetchall("SELECT name FROM av_genre WHERE linkid='{}'".format(keyword))
+            if genre:
+                sql = "SELECT linkid FROM av_list WHERE genre LIKE '%|{}|%'".format(genre[0]['name'])
+        if page_type == 'star':
+            sql = "SELECT linkid FROM av_list WHERE stars_url LIKE '%{}%'".format(keyword)
+        if page_type == 'group':
+            sql = "SELECT linkid FROM av_list WHERE av_id LIKE '{}-%'".format(keyword)
+        if page_type == 'search':
+            where = []
+            for key_item in keyword.split(' '):
+                where.append(search_where(key_item))
+            sql = "SELECT linkid FROM av_list WHERE " + " AND ".join(where)
+        if sql != '':
+            ret = Spider.fetchall(sql)
+            exist_linkid_dict = {x["linkid"]: True for x in ret}
+        return exist_linkid_dict
 
     @staticmethod
     def get_html_by_url(url: str) -> tuple:

@@ -64,7 +64,7 @@
                                 {% endif %}
                                 <a class="movie-box" href="/movie/{{ av_data_map[resource.av_id].linkid }}">
                                     <div class="photo-frame">
-                                        <img src="{{config['website']['cdn']}}/digital/video{{ av_data_map[resource.av_id].smallimage }}" title="title:{{ av_data_map[resource.av_id].title }}
+                                        <img src="{{small_image(av_data_map[resource.av_id].bigimage) }}" title="title:{{ av_data_map[resource.av_id].title }}
 标签:{{ av_data_map[resource.av_id].genre }}
 女优:{{ av_data_map[resource.av_id].stars }}">
                                     </div>
