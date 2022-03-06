@@ -56,3 +56,6 @@ auto_open_link_when_crawl_done = True
 
 # fast run,less function
 efficiency_mode = False
+
+# search site url,av_id will be end of url
+search_url = https://btsow.rest/search/

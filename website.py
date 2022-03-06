@@ -108,6 +108,24 @@ def hover_desc(s):
     return "(" + s.strip("|").replace("|", ") (") + ")"
 
 
+# 构造search链接
+def search_url(av_id):
+    search_url_str = CONFIG.get('website', 'search_url')
+    search_url_list = search_url_str.strip().split(',')
+    if not search_url_list:
+        return []
+    ret = []
+    for url in search_url_list:
+        res = re.findall("^(https?://)?([^/]+)", url)
+        if not res:
+            continue
+        ret.append({
+            'url': url + av_id,
+            'name': res[0][1]
+        })
+    return ret
+
+
 # 全局变量
 @app.context_processor
 def with_config():
@@ -118,7 +136,8 @@ def with_config():
         'small_image': small_image,
         'big_image': big_image,
         'detail_image': detail_image,
-        'hover_desc': hover_desc
+        'hover_desc': hover_desc,
+        'search_url': search_url
     }
 
 
@@ -201,15 +220,15 @@ def page_group(page_num=1):
             "SELECT count(1) AS co FROM (SELECT DISTINCT substr(av_id, 0, instr(av_id, '-')) FROM av_list)")
     else:
         count_res = query_sql(
-            "SELECT count(1) AS co FROM av_list WHERE {} != ''".format(page_type + '_url'))
+            "SELECT count(DISTINCT {0}) AS co FROM av_list WHERE {0} != ''".format(page_type + '_url'))
     return render_template('group.html',
         data={
             "list": result,
             "page_type": page_type,
         },
         frame_data={
-            'title':PAGE_TYPE_MAP[page_type]['name'],
-            'page':pagination(page_num, count_res[0]['co'], '/' + page_type, CONFIG.getint('website', 'group_page_limit'))
+            'title': PAGE_TYPE_MAP[page_type]['name'],
+            'page': pagination(page_num, count_res[0]['co'], '/' + page_type, CONFIG.getint('website', 'group_page_limit'))
         })
 
 
@@ -503,7 +522,10 @@ def page_config():
     # 表单存在的配置项name
     for name in request.form:
         (section, option) = name.split(".")
-        CONFIG.set(section=section, option=option, value=request.form[name])
+        if name == 'website.search_url':
+            CONFIG.set(section=section, option=option, value=','.join([x.strip() for x in request.form[name].split("\n")]))
+            continue
+        CONFIG.set(section=section, option=option, value=request.form[name].strip())
     config_save(CONFIG)
     config_init()
     print("new config:", list(request.form))
@@ -783,13 +805,16 @@ def action_crawl_accurate():
     return crawl_accurate(request.form['page_type'], request.form['keyword'])
 
 
-# 爬虫任务统一入口 除了genre
+# 爬虫任务统一入口
 def crawl_accurate(page_type: str, keyword: str = '', page_start: int = 1, page_limit: int = PAGE_MAX,
                    skip_exist: bool = True):
     if page_type not in ['movie', 'star', 'genre', 'series', 'studio', 'label', 'director', 'search', 'popular',
-                         'group', 'all_star']:
+                         'group', 'all_star', 'all_genre']:
         return 'wrong'
-
+    if page_type == 'all_genre':
+        print('spider.genre.fetch')
+        insert(AV_GENRE, Spider.crawl_genre())
+        return '抓取完毕'
     if page_type == 'group':
         page_type = 'search'
         keyword = keyword + '-'
@@ -807,7 +832,7 @@ def crawl_accurate(page_type: str, keyword: str = '', page_start: int = 1, page_
 
     if page_type in ['movie', 'star', 'genre', 'series', 'studio', 'label', 'director']:
         if not is_linkid(keyword):
-            return
+            return 'keyword错误'
     add_work({
         "page_type": page_type,
         "keyword": keyword,

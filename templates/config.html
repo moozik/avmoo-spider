@@ -5,127 +5,148 @@
     <div class="row" style="margin-top: 20px;">
         <form action="/config" method="post">
         <div class="col-md-3 col-md-offset-1">
-            <div class="form-group">
-                <label>base.avmoo_site</label>
-                <input type="text" class="form-control" name="base.avmoo_site" value="{{config['base']['avmoo_site']}}" />
-            </div>
-            <div class="form-group">
-                <label>base.db_file</label>
-                <input type="text" class="form-control" name="base.db_file" value="{{config['base']['db_file']}}" />
-            </div>
-            <div class="form-group">
-                <label>base.readonly(只读模式,对db不做任何修改)</label>
-                <div class="form-group">
-                    <label class="radio-inline">
-                        <input type="radio" name="base.readonly" value="True" {% if config['base']['readonly'] == 'True' %}checked{% endif %}> True
-                    </label>
-                    <label class="radio-inline">
-                        <input type="radio" name="base.readonly" value="False" {% if config['base']['readonly'] == 'False' %}checked{% endif %}> False
-                    </label>
+            <div class="panel panel-primary">
+                <div class="panel-heading">base 基础配置</div>
+                <div class="panel-body">
+                    <div class="form-group">
+                        <label>base.avmoo_site</label>
+                        <input type="text" class="form-control" name="base.avmoo_site" value="{{config['base']['avmoo_site']}}" />
+                    </div>
+                    <div class="form-group">
+                        <label>base.db_file</label>
+                        <input type="text" class="form-control" name="base.db_file" value="{{config['base']['db_file']}}" />
+                    </div>
+                    <div class="form-group">
+                        <label>base.readonly(只读模式,对db不做任何修改)</label>
+                        <div class="form-group">
+                            <label class="radio-inline">
+                                <input type="radio" name="base.readonly" value="True" {% if config['base']['readonly'] == 'True' %}checked{% endif %}> True
+                            </label>
+                            <label class="radio-inline">
+                                <input type="radio" name="base.readonly" value="False" {% if config['base']['readonly'] == 'False' %}checked{% endif %}> False
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="form-group">
-                <label>spider.sleep(爬虫休眠时间,过小会导致403)</label>
-                <input type="text" class="form-control" name="spider.sleep" value="{{config['spider']['sleep']}}" />
-            </div>
-            <div class="form-group">
-                <label>spider.insert_threshold(批量插入最大值)</label>
-                <input type="text" class="form-control" name="spider.insert_threshold" value="{{config['spider']['insert_threshold']}}" />
-            </div>
-            <div class="form-group">
-                <label>spider.continued_skip_limit(连续*个存在则自动跳出爬取)</label>
-                <input type="text" class="form-control" name="spider.continued_skip_limit" value="{{config['spider']['continued_skip_limit']}}" />
-            </div>
-            <div class="form-group">
-                <label>spider.minimum_movie_duration(影片时长限制)</label>
-                <input type="text" class="form-control" name="spider.minimum_movie_duration" value="{{config['spider']['minimum_movie_duration']}}" />
-            </div>
 
-            <div class="form-group">
-                <label>requests.timeout(请求超时时间)</label>
-                <input type="text" class="form-control" name="requests.timeout" value="{{config['requests']['timeout']}}" />
-            </div>
-            <div class="form-group">
-                <label>requests.user_agent</label>
-                <input type="text" class="form-control" name="requests.user_agent" value="{{config['requests']['user_agent']}}" />
+            <div class="panel panel-primary">
+                <div class="panel-heading">spider 爬虫配置</div>
+                <div class="panel-body">
+                    <div class="form-group">
+                        <label>spider.sleep(爬虫休眠时间,过小会导致403)</label>
+                        <input type="text" class="form-control" name="spider.sleep" value="{{config['spider']['sleep']}}" />
+                    </div>
+                    <div class="form-group">
+                        <label>spider.insert_threshold(批量插入最大值)</label>
+                        <input type="text" class="form-control" name="spider.insert_threshold" value="{{config['spider']['insert_threshold']}}" />
+                    </div>
+                    <div class="form-group">
+                        <label>spider.continued_skip_limit(连续*个存在则自动跳出爬取)</label>
+                        <input type="text" class="form-control" name="spider.continued_skip_limit" value="{{config['spider']['continued_skip_limit']}}" />
+                    </div>
+                    <div class="form-group">
+                        <label>spider.minimum_movie_duration(影片时长限制,影片小于指定时长则忽略)</label>
+                        <input type="text" class="form-control" name="spider.minimum_movie_duration" value="{{config['spider']['minimum_movie_duration']}}" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>requests.timeout(请求超时时间)</label>
+                        <input type="text" class="form-control" name="requests.timeout" value="{{config['requests']['timeout']}}" />
+                    </div>
+                    <div class="form-group">
+                        <label>requests.user_agent</label>
+                        <input type="text" class="form-control" name="requests.user_agent" value="{{config['requests']['user_agent']}}" />
+                    </div>
+                </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="form-group">
-                <label>website.cdn(图片cdn源)</label>
-                <div class="form-group">
-                    <select name="website.cdn" class="form-control">
-                        <option {% if config['website']['cdn'] == '//jp.netcdn.space' %}selected{% endif %}>//jp.netcdn.space</option>
-                        <option {% if config['website']['cdn'] == '//pics.dmm.co.jp' %}selected{% endif %}>//pics.dmm.co.jp</option>
-                        <option {% if config['website']['cdn'] == '//pics.dmm.com' %}selected{% endif %}>//pics.dmm.com</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-group">
-                <label>website.page_limit</label>
-                <input type="text" class="form-control" name="website.page_limit" value="{{config['website']['page_limit']}}" />
-            </div>
-            <div class="form-group">
-                <label>website.actresses_page_limit</label>
-                <input type="text" class="form-control" name="website.actresses_page_limit" value="{{config['website']['actresses_page_limit']}}" />
-            </div>
-            <div class="form-group">
-                <label>website.spider_page_interval_timeout(spider页数据刷新时间)</label>
-                <input type="text" class="form-control" name="website.spider_page_interval_timeout" value="{{config['website']['spider_page_interval_timeout']}}" />
-            </div>
-            <div class="form-group">
-                <label>website.group_page_order_by(番号页排序方式)</label>
-                <div class="form-group">
-                    <label class="radio-inline">
-                        <input type="radio" name="website.group_page_order_by" value="release_date" {% if config['website']['group_page_order_by'] == 'release_date' %}checked{% endif %}> release_date
-                    </label>
-                    <label class="radio-inline">
-                        <input type="radio" name="website.group_page_order_by" value="count" {% if config['website']['group_page_order_by'] == 'count' %}checked{% endif %}> count
-                    </label>
-                </div>
-            </div>
-            <div class="form-group">
-                <label>website.use_cache(是否启用sql缓存)</label>
-                <div class="form-group">
-                    <label class="radio-inline">
-                        <input type="radio" name="website.use_cache" value="True" {% if config['website']['use_cache'] == 'True' %}checked{% endif %}> True
-                    </label>
-                    <label class="radio-inline">
-                        <input type="radio" name="website.use_cache" value="False" {% if config['website']['use_cache'] == 'False' %}checked{% endif %}> False
-                    </label>
-                </div>
-            </div>
-            <div class="form-group">
-                <label>website.auto_open_site_on_run(运行时自动打开主页)</label>
-                <div>
-                    <label class="radio-inline">
-                        <input type="radio" name="website.auto_open_site_on_run" value="True" {% if config['website']['auto_open_site_on_run'] == 'True' %}checked{% endif %}> True
-                    </label>
-                    <label class="radio-inline">
-                        <input type="radio" name="website.auto_open_site_on_run" value="False" {% if config['website']['auto_open_site_on_run'] == 'False' %}checked{% endif %}> False
-                    </label>
-                </div>
-            </div>
-            <div class="form-group">
-                <label>website.auto_open_link_when_crawl_done(任务完成时自动打开结果页)</label>
-                <div>
-                    <label class="radio-inline">
-                        <input type="radio" name="website.auto_open_link_when_crawl_done" value="True" {% if config['website']['auto_open_link_when_crawl_done'] == 'True' %}checked{% endif %}> True
-                    </label>
-                    <label class="radio-inline">
-                        <input type="radio" name="website.auto_open_link_when_crawl_done" value="False" {% if config['website']['auto_open_link_when_crawl_done'] == 'False' %}checked{% endif %}> False
-                    </label>
-                </div>
-            </div>
-            <div class="form-group">
-                <label>website.efficiency_mode(效率模式,降配运行,取消连表sql)</label>
-                <div>
-                    <label class="radio-inline">
-                        <input type="radio" name="website.efficiency_mode" value="True" {% if config['website']['efficiency_mode'] == 'True' %}checked{% endif %}> True
-                    </label>
-                    <label class="radio-inline">
-                        <input type="radio" name="website.efficiency_mode" value="False" {% if config['website']['efficiency_mode'] == 'False' %}checked{% endif %}> False
-                    </label>
+            <div class="panel panel-primary">
+                <div class="panel-heading">website 网站配置</div>
+                <div class="panel-body">
+                    <div class="form-group">
+                        <label>website.cdn(图片cdn源)</label>
+                        <div class="form-group">
+                            <select name="website.cdn" class="form-control">
+                                <option {% if config['website']['cdn'] == '//jp.netcdn.space' %}selected{% endif %}>//jp.netcdn.space</option>
+                                <option {% if config['website']['cdn'] == '//pics.dmm.co.jp' %}selected{% endif %}>//pics.dmm.co.jp</option>
+                                <option {% if config['website']['cdn'] == '//pics.dmm.com' %}selected{% endif %}>//pics.dmm.com</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>website.page_limit</label>
+                        <input type="text" class="form-control" name="website.page_limit" value="{{config['website']['page_limit']}}" />
+                    </div>
+                    <div class="form-group">
+                        <label>website.actresses_page_limit</label>
+                        <input type="text" class="form-control" name="website.actresses_page_limit" value="{{config['website']['actresses_page_limit']}}" />
+                    </div>
+                    <div class="form-group">
+                        <label>website.spider_page_interval_timeout(spider页数据刷新时间)</label>
+                        <input type="text" class="form-control" name="website.spider_page_interval_timeout" value="{{config['website']['spider_page_interval_timeout']}}" />
+                    </div>
+                    <div class="form-group">
+                        <label>website.search_url(磁力搜索,末尾添加番号id)</label>
+                        <textarea class="form-control" name="website.search_url" style="height: 200px;">{{'\n'.join(config['website']['search_url'].split(','))}}</textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>website.group_page_order_by(番号页排序方式)</label>
+                        <div class="form-group">
+                            <label class="radio-inline">
+                                <input type="radio" name="website.group_page_order_by" value="release_date" {% if config['website']['group_page_order_by'] == 'release_date' %}checked{% endif %}> release_date
+                            </label>
+                            <label class="radio-inline">
+                                <input type="radio" name="website.group_page_order_by" value="count" {% if config['website']['group_page_order_by'] == 'count' %}checked{% endif %}> count
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>website.use_cache(是否启用sql缓存)</label>
+                        <div class="form-group">
+                            <label class="radio-inline">
+                                <input type="radio" name="website.use_cache" value="True" {% if config['website']['use_cache'] == 'True' %}checked{% endif %}> True
+                            </label>
+                            <label class="radio-inline">
+                                <input type="radio" name="website.use_cache" value="False" {% if config['website']['use_cache'] == 'False' %}checked{% endif %}> False
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>website.auto_open_site_on_run(运行时自动打开主页)</label>
+                        <div>
+                            <label class="radio-inline">
+                                <input type="radio" name="website.auto_open_site_on_run" value="True" {% if config['website']['auto_open_site_on_run'] == 'True' %}checked{% endif %}> True
+                            </label>
+                            <label class="radio-inline">
+                                <input type="radio" name="website.auto_open_site_on_run" value="False" {% if config['website']['auto_open_site_on_run'] == 'False' %}checked{% endif %}> False
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>website.auto_open_link_when_crawl_done(任务完成时自动打开结果页)</label>
+                        <div>
+                            <label class="radio-inline">
+                                <input type="radio" name="website.auto_open_link_when_crawl_done" value="True" {% if config['website']['auto_open_link_when_crawl_done'] == 'True' %}checked{% endif %}> True
+                            </label>
+                            <label class="radio-inline">
+                                <input type="radio" name="website.auto_open_link_when_crawl_done" value="False" {% if config['website']['auto_open_link_when_crawl_done'] == 'False' %}checked{% endif %}> False
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>website.efficiency_mode(效率模式,降配运行,取消连表sql)</label>
+                        <div>
+                            <label class="radio-inline">
+                                <input type="radio" name="website.efficiency_mode" value="True" {% if config['website']['efficiency_mode'] == 'True' %}checked{% endif %}> True
+                            </label>
+                            <label class="radio-inline">
+                                <input type="radio" name="website.efficiency_mode" value="False" {% if config['website']['efficiency_mode'] == 'False' %}checked{% endif %}> False
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
 

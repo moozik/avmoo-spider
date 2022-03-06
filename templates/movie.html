@@ -1,7 +1,7 @@
 {% extends "main.html" %}
 {% block container %}
 <div class="container">
-    <h3><button class="btn btn-success btn-sm" onclick="translateTitle('{{data.av_id}}')">翻译</button><span id="av_title">{{data.title}}</span></h3>
+    <h3><span id="av_title">{{data.title}}</span><button class="btn btn-success btn-sm" onclick="translateTitle('{{data.av_id}}')">翻译</button></h3>
     <div class="row movie">
         <div class="col-md-9 screencap">
             <a class="bigImage" href="{{big_image(data.bigimage)}}" title="{{data.title}}">
@@ -73,15 +73,17 @@
         </div>
     </div>
 
+    {% if config['website']['search_url'] %}
     <h4 title="search tools">搜索资源</h4>
     <div>
-        <a class="btn btn btn-success btn-sm" href="https://btsow.rest/search/{{data.av_id}}" target="_blank">BTSO</a>
-        <a class="btn btn btn-success btn-sm" href="http://www.haociso.top/s/{{data.av_id}}" target="_blank">haociso</a>
+        {% for item in search_url(data.av_id) %}
+            <a class="btn btn btn-success btn-sm" href="{{item.url}}" target="_blank">{{item.name}}</a>
+        {% endfor %}
     </div>
+    {% endif %}
 
     <h4 title="resource">影片资源</h4>
     <div>
-        
         <form class="form-inline">
             <input id="movie_resource" type="text" class="form-control" style="width: 600px;" placeholder="磁力链接 magnet | 本地路径 D:\down | 在线地址 http://" title="magnet | local movie path | url"/>
             <button class="btn btn-success btn-sm insert-movie-local" type="submit" onclick="insertMovieExtend('movie_res', '{{data.av_id}}', document.querySelector('#movie_resource').value);location.reload();" title="save extend data">保存</button>

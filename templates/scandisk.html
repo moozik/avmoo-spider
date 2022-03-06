@@ -51,6 +51,7 @@
                             <td><span style="color: coral;">{{resource.file_path}}</span></td>
                             <td><button class="btn btn-default btn-sm" onclick="explorerLocal(this.getAttribute('data-val'))" data-val="{{resource.file_path}}" title="play">播放</button></td>
                             <td>
+                                <a href="/movie/{{ av_data_map[resource.av_id].linkid }}" target="_blank">{{resource.av_id}}</a>
                                 {% if resource.info.has_fetch_movie %}
                                     <span style="color: green;">[影片已抓取]</span>
                                 {% else %}
@@ -62,19 +63,19 @@
                                     <span style="color: red;">[未存储资源]</span>
                                     <button class="btn btn-default btn-sm insert_movie_res" data-val="{{resource.file_path}}" data-key="{{resource.av_id}}" title="add resource">添加到资源</button>
                                 {% endif %}
-                                <a class="movie-box" href="/movie/{{ av_data_map[resource.av_id].linkid }}">
-                                    <div class="photo-frame">
-                                        <img src="{{small_image(av_data_map[resource.av_id].bigimage) }}" title="title:{{ av_data_map[resource.av_id].title }}
-标签:{{ av_data_map[resource.av_id].genre }}
-女优:{{ av_data_map[resource.av_id].stars }}">
-                                    </div>
-                                    <div class="photo-info">
-                                        <span>
-                                            <date>{{ av_data_map[resource.av_id].av_id }}</date> /
-                                            <date>{{ av_data_map[resource.av_id].release_date }}</date>
-                                        </span>
-                                    </div>
-                                </a>
+{#                                <a class="movie-box" href="/movie/{{ av_data_map[resource.av_id].linkid }}">#}
+{#                                    <div class="photo-frame">#}
+{#                                        <img src="{{small_image(av_data_map[resource.av_id].bigimage) }}" title="title:{{ av_data_map[resource.av_id].title }}#}
+{#标签:{{ av_data_map[resource.av_id].genre }}#}
+{#女优:{{ av_data_map[resource.av_id].stars }}">#}
+{#                                    </div>#}
+{#                                    <div class="photo-info">#}
+{#                                        <span>#}
+{#                                            <date>{{ av_data_map[resource.av_id].av_id }}</date> /#}
+{#                                            <date>{{ av_data_map[resource.av_id].release_date }}</date>#}
+{#                                        </span>#}
+{#                                    </div>#}
+{#                                </a>#}
                             </td>
                         </tr>
                     {% endif %}

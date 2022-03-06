@@ -111,6 +111,7 @@ CONFIG_NAME_LIST = [
     "website.actresses_page_limit",
     "website.group_page_limit",
     "website.spider_page_interval_timeout",
+    "website.search_url",
 
     "website.group_page_order_by",
     "website.use_cache",
