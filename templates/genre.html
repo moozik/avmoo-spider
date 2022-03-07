@@ -6,7 +6,7 @@
     <h4>{{item.0.title}}</h4>
     <div class="row genre-box">
          {% for item2 in item %}
-        <a class="col-lg-2 col-md-2 col-sm-3 col-xs-6 text-center" href="/genre/{{item2.linkid}}">{{item2.name}}
+        <a class="col-lg-2 col-md-2 col-sm-3 col-xs-6 text-center" href="/genre/{{item2.linkid}}" title="{{item2.name}}">{{item2.name | rename}}
             {% if item2.genre_count %}(<b style="color:red;">{{item2.genre_count}}</b>){% endif %}
         </a>
          {% endfor %}

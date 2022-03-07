@@ -19,7 +19,7 @@ CONFIG = configparser.ConfigParser()
 
 DB: Connection = None
 
-# 存储 av_genre,av_extend数据，用户快速查找
+# 存储 av_genre,av_extend, rename数据，用于快速查找
 DATA_STORAGE = {}
 
 # 缓存
@@ -72,13 +72,13 @@ def storage(table: str, conditions: dict = None, col: str = None) -> list:
     for row in DATA_STORAGE[table]:
         hit = True
         # 每个条件
-        for col_item, val in conditions.items():
-            if isinstance(val, str):
-                if val != row[col_item]:
+        for cond_key, cond_val in conditions.items():
+            if isinstance(cond_val, str):
+                if cond_val != row[cond_key]:
                     hit = False
                     break
-            elif isinstance(val, list):
-                if row[col_item] not in val:
+            elif isinstance(cond_val, list):
+                if row[cond_key] not in cond_val:
                     hit = False
                     break
             else:
@@ -249,7 +249,7 @@ def search_where(key_item: str) -> str:
            "av_list.studio = '{0}' OR ".format(key_item) + \
            "av_list.label = '{0}' OR ".format(key_item) + \
            "av_list.series LIKE '%{0}%' OR ".format(key_item) + \
-           "av_list.genre LIKE '%|{0}|%' OR ".format(key_item) + \
+           "av_list.genre LIKE '%{0}%' OR ".format(key_item) + \
            "av_list.stars LIKE '%{0}%')".format(key_item)
 
 

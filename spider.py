@@ -384,7 +384,7 @@ class Spider:
         data = {
             'linkid': '',
             # 番号
-            'av_id': html.xpath('/html/body/div[2]/div[1]/div[2]/p[1]/span[2]/text()')[0].strip(),
+            'av_id': html.xpath('/html/body/div[2]/div[1]/div[2]/p[1]/span[2]/text()')[0].strip().upper(),
             'director': '',
             'director_url': '',
             'studio': '',
@@ -447,7 +447,7 @@ class Spider:
             genre_list.append(name)
 
             # 查看类目是否存在,不存在则添加
-            storage_ret = storage(AV_GENRE, {"linkid": [link[-16:]]}, "name")
+            storage_ret = storage(AV_GENRE, {"linkid": link[-16:]}, "name")
             if not storage_ret:
                 # 添加新类目
                 genre_data = {

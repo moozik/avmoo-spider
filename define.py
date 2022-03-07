@@ -19,6 +19,8 @@ PAGE_TYPE_MAP = {
         'name': '导演',
         # 是否允许收藏
         'like_enable': False,
+        # 是否允许改显示名称
+        'rename_enable': True,
         # db字段, like key
         'key': 'director_url',
         # av_list影片列表查询条件
@@ -27,48 +29,56 @@ PAGE_TYPE_MAP = {
     'movie': {
         'name': '影片',
         'like_enable': True,
+        'rename_enable': False,
         'key': 'av_id',
         'where': "linkid='{0}' OR av_id = '{0}'",
     },
     'studio': {
         'name': '制作商',
         'like_enable': True,
+        'rename_enable': True,
         'key': 'studio_url',
         'where': "studio_url='{}'",
     },
     'label': {
         'name': '发行商',
         'like_enable': True,
+        'rename_enable': True,
         'key': 'label_url',
         'where': "label_url='{}'",
     },
     'series': {
         'name': '系列',
         'like_enable': True,
+        'rename_enable': True,
         'key': 'series_url',
         'where': "series_url='{}'",
     },
     'star': {
         'name': '演员',
         'like_enable': False,
+        'rename_enable': True,
         'key': 'stars_url',
         'where': "stars_url GLOB '*|{}*'",
     },
     'genre': {
         'name': '分类',
         'like_enable': False,
+        'rename_enable': True,
         'key': 'genre_url',
         'where': "genre GLOB '*|{}|*'",
     },
     'group': {
         'name': '番号',
         'like_enable': True,
+        'rename_enable': False,
         'key': 'group',
         'where': "av_id LIKE '{}-%'",
     },
     'like': {
         'name': '收藏',
         'like_enable': False,
+        'rename_enable': False,
     },
 }
 

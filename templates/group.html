@@ -13,7 +13,7 @@
                             <img class="photo-sm" src="{{ small_image(item.bigimage) }}">
                         </div>
                         <div class="photo-info">
-                            <span><span>{{item.title}}<b style="color:red;">({{item.count}})</b></span>
+                            <span><span>{{item.title | rename}}<b style="color:red;">({{item.count}})</b></span>
                                 <br>
                                 <date>{{ item.av_id }}</date> /
                                 <date>{{ item.release_date }}</date>

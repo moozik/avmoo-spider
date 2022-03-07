@@ -30,25 +30,25 @@
             {% if data.director_url %}
                 <p>
                     <span class="header" title="director">导演:</span>
-                    <a href="/director/{{data.director_url}}">{{data.director}}</a>
+                    <a href="/director/{{data.director_url}}" title="{{ data.director }}">{{data.director | rename}}</a>
                 </p>
             {% endif %}
             {% if data.studio_url %}
                 <p class="header" title="studio">制作商: </p>
                 <p>
-                    <a href="/studio/{{data.studio_url}}">{{data.studio}}</a>
+                    <a href="/studio/{{data.studio_url}}" title="{{ data.studio }}">{{data.studio | rename}}</a>
                 </p>
             {% endif %}
             {% if data.label_url %}
                 <p class="header" title="label">发行商: </p>
                 <p>
-                    <a href="/label/{{data.label_url}}">{{data.label}}</a>
+                    <a href="/label/{{data.label_url}}" title="{{ data.label }}">{{data.label | rename}}</a>
                 </p>
             {% endif %}
             {% if data.series_url %}
                 <p class="header" title="series">系列:</p>
                 <p>
-                    <a href="/series/{{data.series_url}}">{{data.series}}</a>
+                    <a href="/series/{{data.series_url}}" title="{{ data.series }}">{{data.series | rename}}</a>
                 </p>
             {% endif %}
             {% if data.genre_data %}
@@ -56,7 +56,7 @@
             <p>
                  {% for item in data.genre_data %}
                     <span class="genre">
-                        <a href="/genre/{{item.linkid}}">{{item.name}}</a>
+                        <a href="/genre/{{item.linkid}}" title="{{ item.name }}">{{item.name | rename}}</a>
                     </span>
                  {% endfor %}
             </p>
@@ -111,7 +111,7 @@
                 <img src="{{config['website']['cdn']}}/mono/actjpgs/nowprinting.gif" title="">
                 {% endif %}
             </div>
-            <span>{{item.name}}</span>
+            <span title="{{item.name}}">{{item.name | rename}}</span>
         </a>
         {% endfor %}
     </div>

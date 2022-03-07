@@ -141,6 +141,20 @@ def with_config():
     }
 
 
+# 重命名过滤器
+@app.template_filter('rename')
+def do_rename(name):
+    storage_init(AV_EXTEND)
+    if 'rename' not in DATA_STORAGE:
+        DATA_STORAGE['rename'] = {}
+        for row in DATA_STORAGE[AV_EXTEND]:
+            if row['extend_name'] == 'rename':
+                DATA_STORAGE['rename'][row['key']] = row['val']
+    if name in DATA_STORAGE['rename']:
+        return DATA_STORAGE['rename'][name]
+    return name
+
+
 # 主页 搜索页
 @app.route('/')
 @app.route('/page/<int:page_num>')
@@ -232,8 +246,8 @@ def page_group(page_num=1):
         })
 
 
-# 构造group页面data todo 加参数给like用
-def group_data(page_type: str,page_num: int,where: str = '1'):
+# 构造group页面data
+def group_data(page_type: str, page_num: int, where: str = '1'):
     page_limit = CONFIG.getint('website', 'group_page_limit')
     order_by = CONFIG.get('website', 'group_page_order_by')
     if order_by not in ['release_date', 'count']:
@@ -357,7 +371,7 @@ def search_normal(linkid='', page_num=1):
             'is_like': is_like
         },
         frame_data={
-            'title': "{}:{}".format(PAGE_TYPE_MAP[page_type]['name'], placeholder),
+            'title': placeholder,
             'placeholder': placeholder,
             'origin_link': origin_link,
             'page': pagination(page_num, row_count, page_root)
@@ -428,7 +442,7 @@ def search_other(keyword='', page_num=1):
             'is_like': is_like
         },
         frame_data={
-            'title': "{}:{}".format(PAGE_TYPE_MAP[page_type]['name'], placeholder),
+            'title': placeholder,
             'placeholder': placeholder,
             'origin_link': origin_link,
             'page': pagination(page_num, row_count, page_root)
@@ -968,24 +982,35 @@ def action_explorer():
 @app.route('/action/extend/insert')
 def action_extend_insert():
     data = dict(request.values)
+    data["val"] = data["val"].strip()
+    val_list = storage(AV_EXTEND, {"extend_name": data["extend_name"], "key": [data["key"]]}, "val")
+
     biz_name = ''
     # 影片资源
     if data["extend_name"] == "movie_res":
-        # key目前只会存avid所以upper无碍
-        data["val"] = upper_path(data["val"])
-        biz_name = "资源"
+        if data["val"] in val_list:
+            return "已存在不能重复添加"
     # 收藏
     if data["extend_name"] == "like":
-        biz_name = "收藏"
+        if data["val"] in val_list:
+            return "已存在不能重复添加"
+    # 改名
+    if data["extend_name"] == "rename":
+        del DATA_STORAGE[AV_EXTEND]
+        del DATA_STORAGE['rename']
+        if data["val"] == '':
+            del data['val']
+            delete(AV_EXTEND, data)
+            return '已恢复原名称'
 
-    val_list = storage(AV_EXTEND, {"extend_name": data["extend_name"], "key": [data["key"]]}, "val")
-    
-    if data["val"] in val_list:
-        return "已存在不能重复添加"
-    else:
-        DATA_STORAGE[AV_EXTEND].append(data)
-        insert(AV_EXTEND, [data])
-        return biz_name + '已添加'
+        if val_list:
+            sql = "UPDATE av_extend SET val='{}' WHERE extend_name='{}' and key='{}'".format(
+                data["val"], data["extend_name"], data["key"])
+            execute(sql)
+            return '已添加'
+
+    insert(AV_EXTEND, [data])
+    return '已添加'
 
 
 # 删除扩展信息接口
