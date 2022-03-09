@@ -5,7 +5,7 @@
     <div class="row" style="margin-top: 20px;">
         <div class="col-md-10 col-md-offset-1">
 
-            <h3 style="font-weight: 700;margin-top:20px;">{{data.page_type}}: {{data.analyse_name}}</h3>
+            <h3 style="font-weight: 700;margin-top:20px;">{{data.page_type}}: {{data.analyse_name | rename}}</h3>
 
             <h3 style="font-weight: 700;margin-top:20px;">总时长</h3>
             <span class="tag-style">{{data.minute_sum}} min</span>

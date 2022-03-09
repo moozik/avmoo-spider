@@ -4,7 +4,7 @@
 <meta http-equiv="x-dns-prefetch-control" content="on">
 <meta name="renderer" content="webkit">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% if frame_data.title %}{{frame_data.title | rename}}  {% endif %}avmoo-spider</title>
+<title>{% if frame_data.title %}{{frame_data.title}}  {% endif %}avmoo-spider</title>
 <link rel="shortcut Icon" href="/static/icon.png">
 <link rel="bookmark" href="/static/icon.png">
 <link rel="dns-prefetch" href="http://jp.netcdn.space">
@@ -222,7 +222,16 @@
             showMessage(data,"");
         });
     }
-    function insertMovieExtend(extend_name, key, val){
+    function selectExtend(extend_name, key, val){
+        $.get("/action/extend/select", {
+            "extend_name": extend_name,
+            "key": key,
+            "val": val,
+        },function(data){
+            showMessage("扩展信息",data);
+        });
+    }
+    function insertExtend(extend_name, key, val){
         $.get("/action/extend/insert", {
             "extend_name": extend_name,
             "key": key,
@@ -231,7 +240,7 @@
             showMessage(data,"");
         });
     }
-    function deleteMovieExtend(extend_name, key, val){
+    function deleteExtend(extend_name, key, val){
         $.get("/action/extend/delete", {
             "extend_name": extend_name,
             "key": key,
@@ -248,6 +257,6 @@
         });
     }
 </script>
-{% block javascript %} {% endblock %}
+{% block tail %} {% endblock %}
 </body>
 </html>

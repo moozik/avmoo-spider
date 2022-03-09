@@ -120,10 +120,10 @@
 {% endblock %}
 
 
-{% block javascript %}
+{% block tail %}
 <script>
 $('.insert_movie_res').click(function(){
-    insertMovieExtend('movie_res', $(this).data('key'), $(this).data('val'));
+    insertExtend('movie_res', $(this).data('key'), $(this).data('val'));
     $(this)[0].style.display = "none";
 });
 </script>

@@ -67,7 +67,7 @@ https://avmoo.sbs/cn/director/63a8f4da6e22cc09" style="width: 600px;height: 300p
 </div>
 {% endblock %}
 
-{% block javascript %}
+{% block tail %}
 <script>
 function crawl_control(action){
     $.get("/action/crawl/control/" + action,function(data){

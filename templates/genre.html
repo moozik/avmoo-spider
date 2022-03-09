@@ -1,7 +1,7 @@
 {% extends "main.html" %}
 {% block container %}
 <div class="container-fluid pt-10">
-    <button class="btn btn-default genre-download-btn" onclick="crawlAccurate('all_genre', '')" title="update">更新类目</button>
+    <button class="btn btn-default genre-download-btn" onclick="crawlAccurate('all_genre', '')" title="update">更新类别</button>
     {% for item in data.av_genre %}
     <h4>{{item.0.title}}</h4>
     <div class="row genre-box">

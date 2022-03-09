@@ -59,3 +59,6 @@ efficiency_mode = False
 
 # search site url,av_id will be end of url
 search_url = https://btsow.rest/search/
+
+[log]
+ansi_color = False

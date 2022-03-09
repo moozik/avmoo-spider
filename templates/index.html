@@ -52,12 +52,12 @@
                                     <p>
                                     {% if data.is_like %}
                                         <button class="btn btn-danger" type="submit"
-                                                onclick="deleteMovieExtend('like', '{{ page_type_map[data.page_type].key }}', '{{ data.linkid }}');location.reload()"
+                                                onclick="deleteExtend('like', '{{ page_type_map[data.page_type].key }}', '{{ data.linkid }}');location.reload()"
                                                 title="cancel favorites">取消收藏
                                         </button>
                                     {% else %}
                                         <button class="btn btn-success" type="submit"
-                                                onclick="insertMovieExtend('like', '{{ page_type_map[data.page_type].key }}', '{{ data.linkid }}');location.reload()"
+                                                onclick="insertExtend('like', '{{ page_type_map[data.page_type].key }}', '{{ data.linkid }}');location.reload()"
                                                 title="add favorites">收藏
                                         </button>
                                     {% endif %}
@@ -82,7 +82,7 @@
                     <div class="item">
                         <a class="movie-box" href="/movie/{{ item.linkid }}">
                             <div class="photo-frame">
-                                <img class="photo-sm" src="{{ small_image(item.bigimage) }}">
+                                <img class="photo-sm" src="{{ item.bigimage | small_img }}">
                             </div>
                             <div class="photo-info">
                                 {% if item.file %}
@@ -101,9 +101,9 @@
                                 </span>
                             </div>
                             <div class="movie-desc">
-                                {{ hover_desc(item.genre) }}<br><br>
+                                {{ item.genre }}<br><br>
                                 {% if item.stars %}
-                                    {{ hover_desc(item.stars) }}<br><br>
+                                    {{ item.stars }}<br><br>
                                 {% endif %}
                                 len:<b style="color:red;">{{ item.len }}min</b> image:<b
                                     style="color:red;">{{ item.image_len }}</b>
@@ -124,7 +124,7 @@
                         &times;
                     </button>
                     <h4 class="modal-title">
-                        修改别称
+                        修改别称(提交空则取消改名)
                     </h4>
                 </div>
                 <div class="modal-body">
@@ -132,7 +132,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-primary"
-                            onclick="insertMovieExtend('rename', '{{ frame_data.placeholder }}', $('#target_name').val());$('#modal_rename').modal('hide');">
+                            onclick="insertExtend('rename', '{{ frame_data.placeholder }}', $('#target_name').val());location.reload();">
                         保存
                     </button>
                 </div>

@@ -1,3 +1,5 @@
+import logging
+import time
 from sqlite3 import Connection
 
 import requests
@@ -28,10 +30,13 @@ SQL_CACHE = {}
 # 任务队列
 QUEUE = Queue(maxsize=0)
 
+LOG_FORMAT = "%(asctime)s [%(filename)s:%(lineno)d] %(levelname)s: %(message)s"
+LOGGER = logging.getLogger(APP_NAME)
+
 
 def init(argv=None):
     global CONFIG_FILE
-    print("common.init")
+    LOGGER.info("common.init")
     if argv is not None and len(argv) > 1:
         # 命令行指定配置文件
         CONFIG_FILE = argv[1]
@@ -47,7 +52,7 @@ def make_dicts(cursor, row):
 
 
 def db_init():
-    print("common.init.db")
+    LOGGER.info("common.init.db")
     # 初始化db
     global DB
     db_file = CONFIG.get("base", "db_file")
@@ -57,7 +62,7 @@ def db_init():
 
 
 def storage_init(table: str) -> None:
-    if table in DATA_STORAGE and DATA_STORAGE[table]:
+    if table in DATA_STORAGE and non_empty(DATA_STORAGE[table]):
         return
     DATA_STORAGE[table] = fetchall("SELECT * FROM " + table)
 
@@ -73,6 +78,8 @@ def storage(table: str, conditions: dict = None, col: str = None) -> list:
         hit = True
         # 每个条件
         for cond_key, cond_val in conditions.items():
+            if not cond_val:
+                continue
             if isinstance(cond_val, str):
                 if cond_val != row[cond_key]:
                     hit = False
@@ -82,7 +89,7 @@ def storage(table: str, conditions: dict = None, col: str = None) -> list:
                     hit = False
                     break
             else:
-                print("wrong type")
+                LOGGER.fatal("wrong type")
         if not hit:
             continue
         if col:
@@ -100,10 +107,11 @@ def config_path() -> str:
 
 def config_init() -> None:
     # 初始化配置
-    print('CONFIG FILE:', config_path())
+    LOGGER.info('CONFIG FILE:%r', config_path())
     CONFIG.read(config_path())
 
 
+# 配置文件
 def config_check():
     if not os.path.exists(CONFIG_FILE):
         return
@@ -124,6 +132,31 @@ def config_save(config):
         config.write(fp)
 
 
+# 创建日志记录器
+def create_logger(app_name: str):
+    logger = logging.getLogger(app_name)
+    logger.setLevel(logging.INFO)  # Log等级总开关
+    # 第二步，创建一个handler，用于写入日志文件
+    if not os.path.exists('logs'):
+        os.mkdir('logs')
+    log_path = os.getcwd() + '/logs/'
+    logfile = log_path + app_name + '.' + time.strftime('%Y%m%d%H', time.localtime(time.time())) + '.log'
+
+    fh = logging.FileHandler(logfile, mode='a', encoding='utf-8')
+    fh.setLevel(logging.DEBUG)  # 输出到file的log等级的开关
+    # 第三步，定义handler的输出格式
+    fh.setFormatter(logging.Formatter(LOG_FORMAT))
+    # 第四步，将logger添加到handler里面
+    logger.addHandler(fh)
+
+    fh = logging.StreamHandler()
+    fh.setLevel(logging.DEBUG)  # 输出到file的log等级的开关
+    # 第三步，定义handler的输出格式
+    fh.setFormatter(logging.Formatter(LOG_FORMAT))
+    # 第四步，将logger添加到handler里面
+    logger.addHandler(fh)
+
+
 def replace_sql_build(table: str, data: dict) -> str:
     sql = "REPLACE INTO {} ({}) VALUES ({})".format(
         table, ','.join(list(data)), ("?," * len(data))[:-1]
@@ -139,7 +172,10 @@ def insert(table: str, data: list):
     if not data:
         return
     sql = replace_sql_build(table, data[0])
-    print("INSERT,table:{},count:{}".format(table, len(data)))
+    if len(sql) < 150:
+        LOGGER.info(color(36, sql))
+    else:
+        LOGGER.info(color(36, "INSERT,table:{},count:{}".format(table, len(data))))
     DB.cursor().executemany(sql, [tuple(x.values()) for x in data])
     DB.commit()
     if table in DATA_STORAGE:
@@ -163,7 +199,7 @@ def delete(table: str, data: dict):
 def execute(sql):
     if CONFIG.getboolean("base", "readonly"):
         return
-    print("SQL EXECUTE:{}".format(sql))
+    LOGGER.info(color(35, sql))
     DB.cursor().execute(sql)
     DB.commit()
 
@@ -175,7 +211,7 @@ def fetchall(sql) -> list:
         raise IOError('db')
 
     cur = DB.cursor()
-    print('SQL FETCH:{}'.format(sql))
+    LOGGER.info(color(36, sql))
     cur.execute(sql)
     return cur.fetchall()
 
@@ -185,7 +221,7 @@ def query_sql(sql) -> list:
     cache_key = gen_cache_key(sql)
     # 是否使用缓存
     if CONFIG.getboolean("website", "use_cache"):
-        print('CACHE[{}]'.format(cache_key))
+        LOGGER.info('CACHE[%s]', cache_key)
         # 是否有缓存
         if cache_key in SQL_CACHE.keys():
             return SQL_CACHE[cache_key][:]
@@ -256,7 +292,7 @@ def search_where(key_item: str) -> str:
 def open_browser_tab(url):
     if not url:
         return
-    print("open_browser_tab:", url)
+    LOGGER.info("open_browser_tab:%s", url)
 
     def _open_tab(url_param):
         webbrowser.open_new_tab(url_param)
@@ -290,7 +326,7 @@ def parse_url(url: str) -> tuple:
         page_start = int(res[0][3]) if res[0][3] else 1
         return res[0][0], res[0][1], page_start
 
-    print("wrong url:{}".format(url))
+    LOGGER.fatal("wrong url:{}".format(url))
     return '', '', -1
 
 
@@ -302,6 +338,92 @@ def get_table_name(sql):
 # 获取缓存key
 def gen_cache_key(sql):
     return '|'.join(get_table_name(sql)) + ':' + str(binascii.crc32(sql.encode()) & 0xffffffff)
+
+
+def empty(i: any) -> bool:
+    if i is None:
+        return True
+    if isinstance(i, str):
+        return i == ''
+    if isinstance(i, list) or isinstance(i, tuple):
+        return len(i) == 0
+    if isinstance(i, dict):
+        return i == {}
+    if isinstance(i, int) or isinstance(i, float):
+        return i == 0
+    return False
+
+
+def non_empty(i: any) -> bool:
+    return not empty(i)
+
+
+# 命令行颜色
+def color(c, s):
+    if not CONFIG.getboolean('log', 'ansi_color'):
+        return s
+    """
+    \033[30m黑\033[0m
+    \033[31m酱红\033[0m
+    \033[32m浅绿\033[0m
+    \033[33m黄褐\033[0m
+    \033[34m浅蓝\033[0m
+    \033[35m紫\033[0m
+    \033[36m天蓝\033[0m
+    \033[37m灰白\033[0m
+    """
+    return "\033[{}m{}\033[0m".format(c, s)
+
+
+def upper_path(path: str) -> str:
+    # 如果为windows环境路径，则路径首字母大写
+    if re.match("^[a-z]:\\\\", path):
+        return path[0].upper() + path[1:]
+    else:
+        return path
+
+
+def a_tag_build(link):
+    return '<a href="{}">{}</a>'.format(link, link)
+
+
+# 识别linkid
+def is_linkid(linkid: str = '') -> bool:
+    if empty(linkid):
+        return False
+    return re.match('^[a-z0-9]{16}$', linkid) is not None
+
+
+# 替换链接中命中rename的{rename}
+def url_rename(s: str) -> str:
+    res = re.findall("{(.+)}", s)
+    if res:
+        return s.replace('{'+res[0]+'}', rename(res[0]))
+    return s
+
+
+# 重命名
+def rename(name):
+    # 渲染前准备rename数据
+    storage_init(AV_EXTEND)
+    if 'rename' not in DATA_STORAGE:
+        DATA_STORAGE['rename'] = {}
+        for row in DATA_STORAGE[AV_EXTEND]:
+            if row['extend_name'] == 'rename':
+                DATA_STORAGE['rename'][row['key']] = row['val']
+    if name in DATA_STORAGE['rename']:
+        return DATA_STORAGE['rename'][name]
+    return name
+
+
+# 列表小头图
+def small_img(s):
+    return CONFIG.get('website', 'cdn') + '/digital/video' + s[:-6] + 'ps' + s[-4:]
+
+
+# 获取大头图
+def big_img(s):
+    return CONFIG.get('website', 'cdn') + '/digital/video' + s
 
 
 if __name__ == "__main__":

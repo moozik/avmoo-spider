@@ -3,7 +3,7 @@
 {% block container %}
 <div class="container-fluid">
     <div class="row" style="margin-top: 20px;">
-        <form action="/config" method="post">
+        <form action="/config" method="post" style="margin:0px;">
         <div class="col-md-3 col-md-offset-1">
             <div class="panel panel-primary">
                 <div class="panel-heading">base 基础配置</div>
@@ -155,6 +155,47 @@
             </div>
         </div>
         </form>
+
+        <div class="col-md-3">
+            <div class="panel panel-primary">
+                <div class="panel-heading">扩展信息操作</div>
+                <div class="panel-body">
+                    <div class="form-group">
+                        <label>av_extend.extend_name</label>
+                        <select class="form-control" id="extend_name">
+                            <option>movie_res</option>
+                            <option>like</option>
+                            <option>rename</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>av_extend.key</label>
+                        <input type="text" class="form-control" id="extend_key" value="" />
+                    </div>
+                    <div class="form-group">
+                        <label>av_extend.val</label>
+                        <input type="text" class="form-control" id="extend_val" value="" />
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-default" onclick="selectExtend(
+                            document.querySelector('#extend_name').value,
+                            document.querySelector('#extend_key').value,
+                            document.querySelector('#extend_val').value
+                        )">查找</button>
+                        <button type="submit" class="btn btn-default" onclick="insertExtend(
+                            document.querySelector('#extend_name').value,
+                            document.querySelector('#extend_key').value,
+                            document.querySelector('#extend_val').value
+                        )">添加或更新</button>
+                        <button type="submit" class="btn btn-default" onclick="deleteExtend(
+                            document.querySelector('#extend_name').value,
+                            document.querySelector('#extend_key').value,
+                            document.querySelector('#extend_val').value
+                        )">删除</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
 

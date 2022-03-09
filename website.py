@@ -2,8 +2,13 @@
 # -*- coding:utf-8 -*-
 import collections
 import datetime
+import json
+import logging
 import math
+import re
 import time
+from logging.config import dictConfig
+from logging.handlers import RotatingFileHandler
 
 from flask import Flask
 from flask import redirect
@@ -14,20 +19,29 @@ from flask import url_for
 from common import *
 from spider import Spider
 
-app = Flask(__name__)
+app = Flask(APP_NAME)
 app.jinja_env.auto_reload = True
+app.jinja_env.filters['rename'] = rename
+app.jinja_env.filters['url_rename'] = url_rename
+app.jinja_env.filters['small_img'] = small_img
+app.jinja_env.filters['big_img'] = big_img
 app.config['TEMPLATES_AUTO_RELOAD'] = True
-
+# 向网页暴露异常
+app.config['PROPAGATE_EXCEPTIONS'] = True
 SPIDER = Spider()
 
 
 def run():
-    print("website.run")
+    LOGGER.info("website.run")
     if CONFIG.getboolean("base", "debug_mode"):
         app.debug = True
     # 打开主页
     if CONFIG.getboolean("website", "auto_open_site_on_run"):
         open_browser_tab(get_local_url())
+    # 创建日志
+    create_logger(APP_NAME)
+    # 关闭 werkzeug 的日志
+    logging.getLogger('werkzeug').setLevel(logging.ERROR)
     app.run(port=CONFIG.getint("base", "port"), processes=1)
 
 
@@ -42,7 +56,7 @@ def install():
             })
     # 创建db
     db_file = CONFIG.get("base", "db_file")
-    print('create db,', db_file)
+    LOGGER.info('create db,', db_file)
     db = sqlite3.connect(db_file, check_same_thread=False)
     # 创建表
     sql_list = [
@@ -52,7 +66,7 @@ def install():
         CREATE_AV_EXTEND_SQL
     ]
     for sql in sql_list:
-        print('create table,sql:', sql)
+        LOGGER.info('create table,sql:', sql)
         db.cursor().execute(sql)
     db.close()
 
@@ -90,24 +104,6 @@ def detail_image(big_image, img_count):
     return ret
 
 
-# 列表小图
-def small_image(s):
-    return CONFIG.get('website', 'cdn') + '/digital/video' + s[:-6] + 'ps' + s[-4:]
-
-
-# 获取大图
-def big_image(s):
-    return CONFIG.get('website', 'cdn') + '/digital/video' + s
-
-
-# hover框
-def hover_desc(s):
-    s = s.strip()
-    if s == '':
-        return ''
-    return "(" + s.strip("|").replace("|", ") (") + ")"
-
-
 # 构造search链接
 def search_url(av_id):
     search_url_str = CONFIG.get('website', 'search_url')
@@ -128,31 +124,21 @@ def search_url(av_id):
 
 # 全局变量
 @app.context_processor
-def with_config():
+def app_context_processor():
     return {
         'config': CONFIG,
         'page_type_map': PAGE_TYPE_MAP,
         'country_map': COUNTRY_MAP,
-        'small_image': small_image,
-        'big_image': big_image,
         'detail_image': detail_image,
-        'hover_desc': hover_desc,
         'search_url': search_url
     }
 
 
-# 重命名过滤器
-@app.template_filter('rename')
-def do_rename(name):
-    storage_init(AV_EXTEND)
-    if 'rename' not in DATA_STORAGE:
-        DATA_STORAGE['rename'] = {}
-        for row in DATA_STORAGE[AV_EXTEND]:
-            if row['extend_name'] == 'rename':
-                DATA_STORAGE['rename'][row['key']] = row['val']
-    if name in DATA_STORAGE['rename']:
-        return DATA_STORAGE['rename'][name]
-    return name
+# http请求log
+@app.before_request
+def app_before_request():
+    if request.path[:8] != '/static/':
+        LOGGER.info('"{} {}"'.format(request.method, color(32, request.path)))
 
 
 # 主页 搜索页
@@ -164,7 +150,7 @@ def index(keyword='', page_num=1):
     where = search_where_build(keyword)
 
     (result, row_count) = select_av_list(av_list_where=where, page_num=page_num)
-    if keyword != '':
+    if non_empty(keyword):
         page_root = '/search/{}'.format(quote(keyword))
     else:
         page_root = ''
@@ -299,7 +285,7 @@ def genre():
 
     # 如果genre为空则抓取
     if not av_genre_res:
-        print('spider.genre.fetch')
+        LOGGER.info('spider.genre.fetch')
         insert(AV_GENRE, Spider.crawl_genre())
         return "请刷新"
 
@@ -371,7 +357,7 @@ def search_normal(linkid='', page_num=1):
             'is_like': is_like
         },
         frame_data={
-            'title': placeholder,
+            'title': rename(placeholder),
             'placeholder': placeholder,
             'origin_link': origin_link,
             'page': pagination(page_num, row_count, page_root)
@@ -397,7 +383,7 @@ def search_other(keyword='', page_num=1):
     if page_type == 'genre':
         origin_link = get_url('genre', keyword)
         store_ret = storage(AV_GENRE, {'linkid': keyword})
-        if store_ret:
+        if non_empty(store_ret):
             keyword = store_ret[0]['name']
         placeholder = keyword
 
@@ -415,14 +401,15 @@ def search_other(keyword='', page_num=1):
 
     star_data = None
     if page_type == 'star':
-        if len(result) > 0 and result[0]["stars"] != '':
+        if non_empty(result) and non_empty(result[0]["stars"]):
             placeholder = result[0]["stars"].split("|")[result[0]["stars_url"].split("|").index(keyword)]
 
         star_data = query_sql("SELECT * FROM av_stars WHERE linkid='{}'".format(keyword))
         if len(star_data) == 1:
             star_data = star_data[0]
             # 计算年龄
-            if star_data['birthday'] != '':
+            if non_empty(star_data['birthday']) and re.match(r"\d{4}-\d{2}-\d{2}", star_data['birthday']):
+                print(star_data['birthday'])
                 sp = star_data['birthday'].split('-')
                 birthday_data = datetime.date(int(sp[0]), int(sp[1]), int(sp[2]))
                 star_data['age'] = math.ceil(
@@ -442,7 +429,7 @@ def search_other(keyword='', page_num=1):
             'is_like': is_like
         },
         frame_data={
-            'title': placeholder,
+            'title': rename(placeholder),
             'placeholder': placeholder,
             'origin_link': origin_link,
             'page': pagination(page_num, row_count, page_root)
@@ -542,7 +529,7 @@ def page_config():
         CONFIG.set(section=section, option=option, value=request.form[name].strip())
     config_save(CONFIG)
     config_init()
-    print("new config:", list(request.form))
+    LOGGER.info("new config:%r", json.dumps(request.form, ensure_ascii = False))
     return redirect(request.referrer)
 
 
@@ -551,18 +538,18 @@ def page_config():
 def action_analyse_star(page_type='', keyword=''):
     sql = "SELECT * FROM av_list WHERE {};".format(page_type_datail_where_build(page_type, keyword))
     data = fetchall(sql)
-    if not data:
+    if empty(data):
         return "没找到数据<br>{}".format(a_tag_build(get_url(page_type, keyword)))
 
     # group 为默认
     analyse_name = keyword
     if page_type == 'star':
         i = data[0]['stars_url'].strip('|').split('|').index(keyword)
-        analyse_name = data[0]['stars'].strip('|').split('|').index(keyword)[i]
+        analyse_name = data[0]['stars'].strip('|').split('|')[i]
 
     if page_type == 'genre':
         storage_ret = storage(AV_GENRE, {'linkid': [keyword]}, 'name')
-        if storage_ret:
+        if non_empty(storage_ret):
             analyse_name = storage_ret[0]
 
     if page_type in ['director', 'studio', 'label', 'series']:
@@ -617,7 +604,7 @@ def action_analyse_star(page_type='', keyword=''):
     return render_template('analyse.html',
         data=data,
         frame_data={
-            'title': '[{}]分析结果'.format(data['analyse_name'])
+            'title': '[{}]分析结果'.format(rename(data['analyse_name']))
         })
 
 
@@ -626,7 +613,7 @@ def search_where_build(keyword: str) -> list:
     where = []
     keyword = keyword.strip()
 
-    if keyword == '':
+    if empty(keyword):
         return []
 
     # sql mode
@@ -642,13 +629,13 @@ def search_where_build(keyword: str) -> list:
     keyword = keyword.strip()
     # 通用搜索
     for key_item in keyword.strip().split(' '):
-        if key_item == '':
+        if empty(key_item):
             continue
 
         # 识别linkid
         if is_linkid(key_item):
             genre_data = storage(AV_GENRE, {'linkid': [keyword]})
-            if genre_data:
+            if non_empty(genre_data):
                 where.append("genre GLOB '*|{}|*'".format(genre_data[0]["name"]))
                 continue
 
@@ -716,18 +703,17 @@ def movie_build(movie_data):
         execute("update av_list set stars=(stars || '|')  where stars != '' and stars not like '%|'")
     # 系列
     movie_data['genre_data'] = []
-    if movie_data['genre'] != '':
+    if non_empty(movie_data['genre']):
         for item in movie_data['genre'].strip('|').split('|'):
             linkid = storage(AV_GENRE, {"name":item},'linkid')
-            if linkid:
+            if non_empty(linkid):
                 movie_data['genre_data'].append({
                     'linkid': linkid[0],
                     "name": item
                 })
 
     # 演员
-    if movie_data['stars_url'] is not None and movie_data['stars_url'] != '' and not isinstance(movie_data['stars_url'],
-                                                                                                list):
+    if non_empty(movie_data['stars_url']):
         movie_data['stars_url'] = movie_data['stars_url'].strip('|').split("|")
         movie_data['stars'] = movie_data['stars'].strip('|').split("|")
 
@@ -748,8 +734,8 @@ def movie_build(movie_data):
                 })
 
     # 影片资源
-    movie_data['movie_resource_list'] = storage(AV_EXTEND, {"extend_name": "movie_res", "key": [movie_data['av_id']]},
-                                                "val")
+    storage_res = storage(AV_EXTEND, {"extend_name": "movie_res", "key": [movie_data['av_id']]}, "val")
+    movie_data['res_list'] = storage_res
 
     movie_data['av_group'] = movie_data['av_id'].split('-', 1)[0]
 
@@ -786,7 +772,7 @@ def action_crawl():
         skip_exist = False
     link_list = [x.strip() for x in url_text.split("\n") if x.strip() != '']
 
-    if len(link_list) == 0:
+    if empty(link_list):
         return '请输入有效id'
     page_limit = PAGE_MAX
 
@@ -800,11 +786,11 @@ def action_crawl():
             link = get_url("search", quote(link))
 
         page_type, keyword, page_start = parse_url(link)
-        if page_type == '':
-            print("wrong link:", link)
+        if empty(page_type):
+            LOGGER.fatal("wrong link:", link)
             continue
         ret = crawl_accurate(page_type, keyword, page_start, page_limit, skip_exist)
-        print('crawl_accurate,', ret)
+        LOGGER.info('crawl_accurate,', ret)
     return redirect(url_for("page_spider"))
 
 
@@ -826,7 +812,7 @@ def crawl_accurate(page_type: str, keyword: str = '', page_start: int = 1, page_
                          'group', 'all_star', 'all_genre']:
         return 'wrong'
     if page_type == 'all_genre':
-        print('spider.genre.fetch')
+        LOGGER.info('spider.genre.fetch')
         insert(AV_GENRE, Spider.crawl_genre())
         return '抓取完毕'
     if page_type == 'group':
@@ -918,7 +904,7 @@ def page_scandisk():
 
         now_path = upper_path(os.path.join(root, file))
         av_check = re.search(AV_FILE_REG, file)
-        if file_target != "mp4" or not av_check:
+        if file_target != "mp4" or not re.search(AV_FILE_REG, file):
             file_res.append({
                 'file_path': now_path,
                 'file_target': file_target,
@@ -935,7 +921,6 @@ def page_scandisk():
             "has_fetch_movie": False,
         }
         if exist:
-            
             info["has_res_extend"] = True
 
         file_res.append({
@@ -973,9 +958,16 @@ def action_explorer():
     try:
         os.startfile(request.values["path"])
     except FileNotFoundError as e:
-        print('FileNotFoundError,error:', e)
+        LOGGER.warn('FileNotFoundError,error:%r', e)
         return '文件未找到'
     return 'ok'
+
+
+# 查询扩展信息接口
+@app.route('/action/extend/select')
+def action_extend_select():
+    storage_res = storage(AV_EXTEND, dict(request.values))
+    return json.dumps(storage_res, ensure_ascii=False)
 
 
 # 添加扩展信息接口
@@ -985,7 +977,6 @@ def action_extend_insert():
     data["val"] = data["val"].strip()
     val_list = storage(AV_EXTEND, {"extend_name": data["extend_name"], "key": [data["key"]]}, "val")
 
-    biz_name = ''
     # 影片资源
     if data["extend_name"] == "movie_res":
         if data["val"] in val_list:
@@ -996,14 +987,16 @@ def action_extend_insert():
             return "已存在不能重复添加"
     # 改名
     if data["extend_name"] == "rename":
-        del DATA_STORAGE[AV_EXTEND]
-        del DATA_STORAGE['rename']
-        if data["val"] == '':
+        if AV_EXTEND in DATA_STORAGE:
+            del DATA_STORAGE[AV_EXTEND]
+        if 'rename' in DATA_STORAGE:
+            del DATA_STORAGE['rename']
+        if empty(data["val"]):
             del data['val']
             delete(AV_EXTEND, data)
             return '已恢复原名称'
 
-        if val_list:
+        if non_empty(val_list):
             sql = "UPDATE av_extend SET val='{}' WHERE extend_name='{}' and key='{}'".format(
                 data["val"], data["extend_name"], data["key"])
             execute(sql)
@@ -1068,25 +1061,6 @@ def action_change_language():
     return 'ok'
 
 
-def upper_path(path: str) -> str:
-    # 如果为windows环境路径，则路径首字母大写
-    if re.match("^[a-z]:\\\\", path):
-        return path[0].upper() + path[1:]
-    else:
-        return path
-
-
-def a_tag_build(link):
-    return '<a href="{}">{}</a>'.format(link, link)
-
-
-# 识别linkid
-def is_linkid(linkid: str = '') -> bool:
-    if linkid is None:
-        return False
-    return re.match('^[a-z0-9]{16}$', linkid) is not None
-
-
 # 分页
 def pagination(pagenum, count, pageroot, pagelimit=None) -> dict:
     if not pagelimit:
@@ -1131,7 +1105,7 @@ def select_av_list(av_list_where: list, page_num: int):
 
     sql_order_by = "release_date DESC,av_id DESC"
     where_str = "1"
-    if av_list_where:
+    if non_empty(av_list_where):
         where_str = " AND ".join(av_list_where)
     sql_text = "SELECT * FROM av_list WHERE {} ".format(where_str)
     result = query_sql(
@@ -1143,13 +1117,15 @@ def select_av_list(av_list_where: list, page_num: int):
         if not extend_list:
             continue
         for extend in extend_list:
+            extend = url_rename(extend)
             if extend[:6] == "magnet" or extend[:3] == "115":
                 result[i]['magnet'] = 1
                 continue
             if extend[:4] == "http":
                 result[i]['http'] = 1
                 continue
-            result[i]['file'] = 1
+            if extend[1] == ":":
+                result[i]['file'] = 1
     return result, get_sql_count(sql_text)
 
 

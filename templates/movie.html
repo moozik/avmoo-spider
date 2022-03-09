@@ -1,11 +1,12 @@
 {% extends "main.html" %}
+
 {% block container %}
 <div class="container">
     <h3><span id="av_title">{{data.title}}</span><button class="btn btn-success btn-sm" onclick="translateTitle('{{data.av_id}}')">翻译</button></h3>
     <div class="row movie">
         <div class="col-md-9 screencap">
-            <a class="bigImage" href="{{big_image(data.bigimage)}}" title="{{data.title}}">
-                <img src="{{big_image(data.bigimage)}}">
+            <a class="bigImage" href="{{data.bigimage | big_img}}" title="{{data.title}}">
+                <img src="{{data.bigimage | big_img}}">
             </a>
         </div>
         <div class="col-md-3 info">
@@ -64,14 +65,16 @@
             <p class="header" title="action">操作:</p>
             <p>
                 {% if data.is_like %}
-                    <button class="btn btn-danger btn-sm" type="submit" onclick="deleteMovieExtend('like', 'av_id', '{{data.av_id}}');location.reload()" title="add Favorites">取消收藏</button>
+                    <button class="btn btn-danger btn-sm" type="submit" onclick="deleteExtend('like', 'av_id', '{{data.av_id}}');location.reload()" title="add Favorites">取消收藏</button>
                 {% else %}
-                    <button class="btn btn-success btn-sm" type="submit" onclick="insertMovieExtend('like', 'av_id', '{{data.av_id}}');location.reload()" title="add Favorites">收藏</button>
+                    <button class="btn btn-success btn-sm" type="submit" onclick="insertExtend('like', 'av_id', '{{data.av_id}}');location.reload()" title="add Favorites">收藏</button>
                 {% endif %}
                 <button class="btn btn-warning btn-sm" type="submit" onclick="crawlAccurate('movie', '{{data.linkid}}');setTimeout(function(){location.reload()}, 3000);" title="crawl again">更新影片</button>
             </p>
         </div>
     </div>
+
+    <div id="dplayer"></div>
 
     {% if config['website']['search_url'] %}
     <h4 title="search tools">搜索资源</h4>
@@ -81,19 +84,18 @@
         {% endfor %}
     </div>
     {% endif %}
-
     <h4 title="resource">影片资源</h4>
     <div>
         <form class="form-inline">
             <input id="movie_resource" type="text" class="form-control" style="width: 600px;" placeholder="磁力链接 magnet | 本地路径 D:\down | 在线地址 http://" title="magnet | local movie path | url"/>
-            <button class="btn btn-success btn-sm insert-movie-local" type="submit" onclick="insertMovieExtend('movie_res', '{{data.av_id}}', document.querySelector('#movie_resource').value);location.reload();" title="save extend data">保存</button>
+            <button class="btn btn-success btn-sm insert-movie-local" type="submit" onclick="insertExtend('movie_res', '{{data.av_id}}', document.querySelector('#movie_resource').value);location.reload();" title="save extend data">保存</button>
         </form>
         <ul class="list-unstyled info">
-        {% for movie_resource in data.movie_resource_list %}
+        {% for res in data.res_list %}
             <li>
-                <a class="tag-style" href="{{movie_resource}}" target="_blank">{{movie_resource}}</a>
-                <button class="btn btn-danger btn-sm" onclick="deleteMovieExtend('movie_res','{{data.av_id}}', this.getAttribute('data-val'));location.reload();" data-val="{{movie_resource}}" type="submit" title="delete">删除</button>
-                <button class="btn btn-success btn-sm" onclick="explorerLocal(this.getAttribute('data-val'))" data-val="{{movie_resource}}" type="submit" title="explorer local">本地打开</button>
+                <a class="tag-style" href="{{res | url_rename}}" title="{{res}}" target="_blank">{{res | url_rename}}</a>
+                <button class="btn btn-danger btn-sm" onclick="deleteExtend('movie_res','{{data.av_id}}', this.getAttribute('data-val'));location.reload();" data-val="{{res}}" type="submit" title="delete">删除</button>
+                <button class="btn btn-success btn-sm" onclick="explorerLocal(this.getAttribute('data-val'))" data-val="{{res | url_rename}}" type="submit" title="explorer local">本地打开</button>
             </li>
         {% endfor %}
         </ul>
@@ -148,20 +150,31 @@
 </div>
 {% endblock %}
 {% block pagination %}{% endblock %}
-{% block javascript %}
+{% block tail %}
+<script type="text/javascript" src="//cdn.jsdelivr.net/npm/hls.js/dist/hls.min.js"></script>
+<script type="text/javascript" src="//cdn.jsdelivr.net/npm/dplayer/dist/DPlayer.min.js"></script>
 <script>
-    function translateTitle(avid){
-        $.get("/action/translate",{
-            "words": document.querySelector("#av_title").innerText
-        } ,function(data){
-            document.querySelector("#av_title").innerText = avid + ' ' + data;
-        });
-    }
-    //删除影片
-    function del(){
-        $.get("/action/delete/movie/{{data.linkid}}", function(data){
-            alert(data)
-        });
-    }
+function translateTitle(avid){
+    $.get("/action/translate",{
+        "words": document.querySelector("#av_title").innerText
+    } ,function(data){
+        document.querySelector("#av_title").innerText = avid + ' ' + data;
+    });
+}
+//删除影片
+function del(){
+    $.get("/action/delete/movie/{{data.linkid}}", function(data){
+        alert(data)
+    });
+}
+function dplayer(url){
+    const dp = new DPlayer({
+        container: document.getElementById('dplayer'),
+        video: {
+            url: 'https://cdn.aqd-tv.com/video/9b60be1b/playlist/9b60be1b.m3u8',
+            type: 'auto',
+        },
+    });
+}
 </script>
 {% endblock %}

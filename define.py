@@ -1,3 +1,6 @@
+# flask应用名
+APP_NAME = 'website'
+
 # 表名
 AV_STARS = 'av_stars'
 AV_GENRE = 'av_genre'
@@ -62,7 +65,7 @@ PAGE_TYPE_MAP = {
         'where': "stars_url GLOB '*|{}*'",
     },
     'genre': {
-        'name': '分类',
+        'name': '类别',
         'like_enable': False,
         'rename_enable': True,
         'key': 'genre_url',
@@ -128,6 +131,8 @@ CONFIG_NAME_LIST = [
     "website.auto_open_site_on_run",
     "website.auto_open_link_when_crawl_done",
     "website.efficiency_mode",
+
+    "log.ansi_color",
 ]
 
 # /spider 文件类型与判定
