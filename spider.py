@@ -39,6 +39,7 @@ class Spider:
             Spider.log.info('spider.db.init')
             # 链接数据库
             Spider.db_ins = sqlite3.connect(CONFIG.get("base", "db_file"))
+            Spider.db_ins.row_factory = make_dicts
         return Spider.db_ins
 
     @staticmethod
@@ -109,17 +110,7 @@ class Spider:
     def fetchall(sql) -> list:
         cur = Spider.db().cursor()
         cur.execute(sql)
-        rows = cur.fetchall()
-        if not rows:
-            return []
-
-        result = []
-        for row in rows:
-            row_dict = {}
-            for i in range(len(cur.description)):
-                row_dict[cur.description[i][0]] = row[i]
-            result.append(row_dict)
-        return result
+        return cur.fetchall()
 
     # 根据链接参数抓取
     def crawl_accurate(self, work_param: dict) -> bool:

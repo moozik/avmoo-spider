@@ -34,7 +34,7 @@ PAGE_TYPE_MAP = {
         'like_enable': True,
         'rename_enable': False,
         'key': 'av_id',
-        'where': "linkid='{0}' OR av_id = '{0}'",
+        'where': "linkid='{0}' OR av_id='{0}'",
     },
     'studio': {
         'name': '制作商',

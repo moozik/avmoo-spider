@@ -25,6 +25,7 @@ app.jinja_env.filters['rename'] = rename
 app.jinja_env.filters['url_rename'] = url_rename
 app.jinja_env.filters['small_img'] = small_img
 app.jinja_env.filters['big_img'] = big_img
+app.jinja_env.filters['can_play_url'] = can_play_url
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 # 向网页暴露异常
 app.config['PROPAGATE_EXCEPTIONS'] = True
@@ -560,6 +561,7 @@ def action_analyse_star(page_type='', keyword=''):
     series_all = []
     studio_all = []
     label_all = []
+    director_all = []
     minute_sum = 0
     for row in data:
         genre_all.extend(row["genre"].strip('|').split("|"))
@@ -570,6 +572,8 @@ def action_analyse_star(page_type='', keyword=''):
             studio_all.append(row["studio"])
         if row["label"]:
             label_all.append(row["label"])
+        if row["director"]:
+            director_all.append(row["director"])
 
         minute_sum = minute_sum + int(row["len"])
 
@@ -583,12 +587,15 @@ def action_analyse_star(page_type='', keyword=''):
         sorted(collections.Counter(studio_all).items(), key=lambda x: x[1], reverse=True))
     label_counter = collections.OrderedDict(
         sorted(collections.Counter(label_all).items(), key=lambda x: x[1], reverse=True))
+    director_counter = collections.OrderedDict(
+        sorted(collections.Counter(director_all).items(), key=lambda x: x[1], reverse=True))
 
     genre_counter = [{'name': x, 'count': genre_counter[x]} for x in genre_counter]
     stars_counter = [{'name': x, 'count': stars_counter[x]} for x in stars_counter if x != '']
     series_counter = [{'name': x, 'count': series_counter[x]} for x in series_counter if x != '']
     studio_counter = [{'name': x, 'count': studio_counter[x]} for x in studio_counter if x != '']
     label_counter = [{'name': x, 'count': label_counter[x]} for x in label_counter if x != '']
+    director_counter = [{'name': x, 'count': director_counter[x]} for x in director_counter if x != '']
 
     data = {
         "analyse_name": analyse_name,
@@ -599,7 +606,8 @@ def action_analyse_star(page_type='', keyword=''):
         "stars_counter": stars_counter,
         "series_counter": series_counter,
         "studio_counter": studio_counter,
-        "label_counter": label_counter
+        "label_counter": label_counter,
+        "director_counter": director_counter,
     }
     return render_template('analyse.html',
         data=data,
@@ -856,7 +864,7 @@ def add_work(work: dict):
     for key in ["page_start", "page_limit", "skip_exist"]:
         if key in work:
             data[key] = work[key]
-    data["url"] = get_url(work["page_type"], work["keyword"], work["page_start"])
+    data["url"] = get_url(data["page_type"], data["keyword"], data["page_start"])
     QUEUE.put(data)
 
 
@@ -1104,10 +1112,13 @@ def select_av_list(av_list_where: list, page_num: int):
     page_limit = CONFIG.getint("website", "page_limit")
 
     sql_order_by = "release_date DESC,av_id DESC"
-    where_str = "1"
+    sql_text = ""
     if non_empty(av_list_where):
         where_str = " AND ".join(av_list_where)
-    sql_text = "SELECT * FROM av_list WHERE {} ".format(where_str)
+        sql_text = "SELECT * FROM av_list WHERE {}".format(where_str)
+    else:
+        sql_text = "SELECT * FROM av_list"
+
     result = query_sql(
         sql_text + ' ORDER BY {} LIMIT {},{}'.format(sql_order_by, (page_num - 1) * page_limit, page_limit))
 

@@ -14,6 +14,7 @@ import binascii
 from urllib.parse import quote
 from queue import Queue
 from define import *
+from urllib import parse
 
 CONFIG_FILE = "config.ini"
 CONFIG_FILE_DEFAULT = "config.ini.default"
@@ -424,6 +425,14 @@ def small_img(s):
 # 获取大头图
 def big_img(s):
     return CONFIG.get('website', 'cdn') + '/digital/video' + s
+
+
+# 是否为可播放的链接
+def can_play_url(s):
+    p = parse.urlparse(s)
+    if p.scheme not in ['http', 'https']:
+        return False
+    return list_in_str(('.m3u8', '.mp4', '.flv'), p.path)
 
 
 if __name__ == "__main__":

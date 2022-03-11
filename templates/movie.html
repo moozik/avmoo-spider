@@ -74,7 +74,7 @@
         </div>
     </div>
 
-    <div id="dplayer"></div>
+    <div id="dplayer" style="height: 700px;display:none;"></div>
 
     {% if config['website']['search_url'] %}
     <h4 title="search tools">搜索资源</h4>
@@ -95,7 +95,11 @@
             <li>
                 <a class="tag-style" href="{{res | url_rename}}" title="{{res}}" target="_blank">{{res | url_rename}}</a>
                 <button class="btn btn-danger btn-sm" onclick="deleteExtend('movie_res','{{data.av_id}}', this.getAttribute('data-val'));location.reload();" data-val="{{res}}" type="submit" title="delete">删除</button>
+                {% if res | can_play_url %}
+                <button class="btn btn-success btn-sm" onclick="dplayer(this.getAttribute('data-val'))" data-val="{{res | url_rename}}" type="submit" title="play">播放</button>
+                {% else %}
                 <button class="btn btn-success btn-sm" onclick="explorerLocal(this.getAttribute('data-val'))" data-val="{{res | url_rename}}" type="submit" title="explorer local">本地打开</button>
+                {% endif %}
             </li>
         {% endfor %}
         </ul>
@@ -151,8 +155,10 @@
 {% endblock %}
 {% block pagination %}{% endblock %}
 {% block tail %}
+{% if data.res_list %}
 <script type="text/javascript" src="//cdn.jsdelivr.net/npm/hls.js/dist/hls.min.js"></script>
 <script type="text/javascript" src="//cdn.jsdelivr.net/npm/dplayer/dist/DPlayer.min.js"></script>
+{% endif %}
 <script>
 function translateTitle(avid){
     $.get("/action/translate",{
@@ -167,11 +173,14 @@ function del(){
         alert(data)
     });
 }
+//播放视频
 function dplayer(url){
+    document.getElementById('dplayer').style.display="block";
     const dp = new DPlayer({
         container: document.getElementById('dplayer'),
+        autoplay: true,
         video: {
-            url: 'https://cdn.aqd-tv.com/video/9b60be1b/playlist/9b60be1b.m3u8',
+            url: url,
             type: 'auto',
         },
     });

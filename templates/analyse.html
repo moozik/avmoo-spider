@@ -34,6 +34,11 @@
             {% for item in data.label_counter %}
                 <a class="tag-style" href="/search/label[{{item.name}}]%20{{data.page_type}}[{{data.analyse_name}}]" target="_blank">{{item.name | rename}}<span style="color:red">({{item.count}})</span></a>
             {% endfor %}
+
+            <h3 style="font-weight: 700;margin-top:20px;">导演</h3>
+            {% for item in data.director_counter %}
+                <a class="tag-style" href="/search/director[{{item.name}}]%20{{data.page_type}}[{{data.analyse_name}}]" target="_blank">{{item.name | rename}}<span style="color:red">({{item.count}})</span></a>
+            {% endfor %}
         </div>
     </div>
 </div>
