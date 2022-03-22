@@ -45,9 +45,12 @@ class Spider:
     @staticmethod
     def requests():
         if Spider.requests_ins is None:
+            requests.packages.urllib3.disable_warnings()
             Spider.log.info('spider.requests.init')
             # 创建会话对象
             Spider.requests_ins = requests.Session()
+            # 忽略证书
+            Spider.requests_ins.verify = False
             Spider.requests_ins.headers = {
                 'User-Agent': CONFIG.get("requests", "user_agent"),
             }
@@ -226,7 +229,7 @@ class Spider:
         try:
             data = Spider.movie_page_data(html)
         except Exception as e:
-            Spider.log.error('movie_page_data error:%r', e)
+            Spider.log.error('movie_page_data error:%s', traceback.format_exc())
             return status_code, None
 
         if empty(data) or empty(data['av_id']) or empty(data["title"]):
@@ -418,6 +421,8 @@ class Spider:
         genre_list = []
         # 获取类别列表genre 类别列表genre_url
         for genre_tag in html.xpath('/html/body/div[2]/div[1]/div[2]/p/span/a'):
+            if genre_tag.text is None:
+                continue
             # 获取类目链接
             link = genre_tag.attrib.get('href')
             # 获取类目名

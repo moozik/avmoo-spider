@@ -11,6 +11,7 @@ from lxml import etree
 import webbrowser
 import threading
 import binascii
+import traceback
 from urllib.parse import quote
 from queue import Queue
 from define import *
@@ -35,12 +36,12 @@ LOG_FORMAT = "%(asctime)s [%(filename)s:%(lineno)d] %(levelname)s: %(message)s"
 LOGGER = logging.getLogger(APP_NAME)
 
 
-def init(argv=None):
+def init(file_name = None):
     global CONFIG_FILE
     LOGGER.info("common.init")
-    if argv is not None and len(argv) > 1:
+    if non_empty(file_name):
         # 命令行指定配置文件
-        CONFIG_FILE = argv[1]
+        CONFIG_FILE = file_name
     # 初始化配置
     config_check()
     config_init()

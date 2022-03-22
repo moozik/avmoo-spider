@@ -790,6 +790,12 @@ def action_crawl():
     for link in link_list:
         # 调用搜索查询
         if not re.match("https?://", link):
+            # 检查是否为已存在的影片
+            if re.match("[A-Za-z]+-\d+", link):
+                res = fetchall('SELECT * FROM av_list WHERE av_id="{}"'.format(link))
+                if non_empty(res):
+                    LOGGER.info("av_id:{},exist".format(link))
+                    continue
             # 构造search链接,编码搜索词
             link = get_url("search", quote(link))
 
@@ -798,7 +804,6 @@ def action_crawl():
             LOGGER.fatal("wrong link:", link)
             continue
         ret = crawl_accurate(page_type, keyword, page_start, page_limit, skip_exist)
-        LOGGER.info('crawl_accurate,', ret)
     return redirect(url_for("page_spider"))
 
 

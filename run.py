@@ -7,7 +7,10 @@ import sys
 # 1. 读取配置
 # 2. 初始化db
 # 3. 建表
-common.init(sys.argv)
+config_file = None
+if len(sys.argv) > 1:
+    config_file = sys.argv[1]
+common.init(config_file)
 
 # 爬虫类初始化
 # 1. 初始化db
