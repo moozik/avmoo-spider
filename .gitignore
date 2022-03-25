@@ -1,5 +1,6 @@
 *.db
 *.ini
+*.txt
 .vscode/
 .idea/
 __pycache__/
