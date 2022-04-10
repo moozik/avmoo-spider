@@ -704,10 +704,10 @@ def page_type_group_where_build(page_type: str) -> str:
 # 构造电影页
 def movie_build(movie_data):
     # 修复数据
-    if movie_data["genre"] and movie_data["genre"][0] != '|':
+    if movie_data["genre"] and isinstance(movie_data["genre"], str) and movie_data["genre"][0] != '|':
         execute("update av_list set genre=('|' || genre || '|')  where genre != '' and genre not like '|%'")
     # 修复数据 20200212
-    if movie_data["stars"] and movie_data["stars"][-1] != '|':
+    if movie_data["stars"] and isinstance(movie_data["stars"], str) and movie_data["stars"][-1] != '|':
         execute("update av_list set stars=(stars || '|')  where stars != '' and stars not like '%|'")
     # 系列
     movie_data['genre_data'] = []
@@ -721,7 +721,7 @@ def movie_build(movie_data):
                 })
 
     # 演员
-    if non_empty(movie_data['stars_url']):
+    if non_empty(movie_data['stars_url']) and isinstance(movie_data['stars_url'], str):
         movie_data['stars_url'] = movie_data['stars_url'].strip('|').split("|")
         movie_data['stars'] = movie_data['stars'].strip('|').split("|")
 
