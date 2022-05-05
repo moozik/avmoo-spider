@@ -182,8 +182,13 @@ class Aqd:
     @staticmethod
     def insert_data():
         with open(Aqd.save_file, "r", encoding="utf-8") as f:
-            for line in f.readlines():
-                row = json.loads(line.strip())
+            file_data = f.read()
+            file_data = file_data.split("\n")
+            for i in range(len(file_data))[::-1]:
+                line = file_data[i].strip()
+                if len(line) < 20:
+                    continue
+                row = json.loads(line)
                 if empty(row['av_id']):
                     continue
                 # 查询库里有没有当前id
@@ -194,7 +199,8 @@ class Aqd:
                 # 查询数据是不是已存在
                 res = fetchall("select * from av_extend where extend_name='movie_res' and key='{}' and val='{}'".format(row['av_id'], m3u8_url))
                 if non_empty(res):
-                    continue
+                    print("{} exist,break".format(row['av_id']))
+                    break
                 insert("av_extend", [{
                     "extend_name": "movie_res",
                     "key": row['av_id'],
@@ -204,7 +210,7 @@ if __name__ == '__main__':
     init(sys.argv[1])
     create_logger('aqd')
     aqd = Aqd()
-    if len(sys.argv) < 2 or sys.argv[2] == 'fetch':
+    if len(sys.argv) == 2 or (len(sys.argv) == 3 and sys.argv[2] == 'fetch'):
         aqd.fetch_data()
     elif sys.argv[2] == 'insert':
         aqd.insert_data()

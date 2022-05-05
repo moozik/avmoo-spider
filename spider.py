@@ -98,6 +98,10 @@ class Spider:
             self.running_work = None
 
     def get_last_insert_list(self):
+        max_count = CONFIG.getint("spider", "insert_threshold")
+        if len(self.last_insert_list) > max_count:
+            # 取最后几个
+            self.last_insert_list = self.last_insert_list[-max_count:]
         return self.last_insert_list
 
     def get_running_work(self, action: str = ''):
@@ -179,7 +183,7 @@ class Spider:
             if movie_linkid in work_param["exist_linkid"]:
                 skip_count += 1
                 continued_skip_count += 1
-                Spider.log.info("SKIP EXIST,URL:%s", get_local_url("movie", movie_linkid))
+                # Spider.log.info("SKIP EXIST,URL:%s", get_local_url("movie", movie_linkid))
                 # 连续跳过到指定数量，则跳出抓取
                 if continued_skip_count >= CONFIG.getint("spider", "continued_skip_limit"):
                     break
@@ -351,7 +355,7 @@ class Spider:
     def movie_save(self, insert_list: list) -> None:
         if empty(insert_list):
             return
-        self.last_insert_list = insert_list
+        self.last_insert_list.extend(insert_list)
 
         insert_sql = replace_sql_build(AV_LIST, insert_list[0])
         cur = Spider.db().cursor()
