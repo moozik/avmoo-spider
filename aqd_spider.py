@@ -45,14 +45,31 @@ class Aqd:
         cur.execute(sql)
         return cur.fetchall()
 
+    @staticmethod
+    def aqd_site_url() -> str:
+        res = fetchall("select * from av_extend where extend_name='rename' and key='aqd'")
+        if empty(res):
+            return ""
+        site_url = res[0]["val"].strip("/")
+        r = Aqd.requests().get(site_url, timeout=CONFIG.getint("requests", "timeout"))
+        p = parse.urlparse(r.url)
+
+        new_site_url = "https://" + p.hostname
+        if site_url != new_site_url:
+            # 存储新的链接
+            res[0]["val"] = new_site_url
+            insert(AV_EXTEND, res)
+
+        return new_site_url
+    
     # 自动翻页返回影片url
     @staticmethod
     def url_general() -> Iterator[str]:
-        res = fetchall("select * from av_extend where extend_name='rename' and key='aqd'")
-        if empty(res):
-            print("需要aqd配置")
+        site_url = Aqd.aqd_site_url()
+        if empty(site_url):
+            site_url = "https://www.aqd99.com"
             return
-        site_url = res[0]["val"].strip("/")
+        
         for page_no in range(1, 500):
             time.sleep(1)
             # 有PART关键字的影片都是AV影片
@@ -194,12 +211,15 @@ class Aqd:
                 # 查询库里有没有当前id
                 res = fetchall("select * from av_list where av_id ='{}'".format(row['av_id']))
                 if empty(res):
-                    print("av_id:{},none".format(row["av_id"]))
+                    Aqd.log.warning("av_id:{},none,{}".format(row["av_id"], get_url("search", row["av_id"])))
+                else:
+                    Aqd.log.info("av_id:{},complete".format(row["av_id"], get_local_url("movie", row["av_id"])))
+
                 m3u8_url = "{}#{}".format(row["video"], row["id"])
                 # 查询数据是不是已存在
                 res = fetchall("select * from av_extend where extend_name='movie_res' and key='{}' and val='{}'".format(row['av_id'], m3u8_url))
                 if non_empty(res):
-                    print("{} exist,break".format(row['av_id']))
+                    Aqd.log.info("{} exist,break".format(row['av_id']))
                     break
                 insert("av_extend", [{
                     "extend_name": "movie_res",
@@ -207,15 +227,20 @@ class Aqd:
                     "val": m3u8_url
                 }])
 if __name__ == '__main__':
-    init(sys.argv[1])
+    # python aqd_spider.py ./config.ini.default
+    if len(sys.argv) == 2:
+        conf_file = sys.argv[1]
+    else:
+        print("wrong config file.")
+        exit()
+    
+    init(conf_file)
     create_logger('aqd')
     aqd = Aqd()
-    if len(sys.argv) == 2 or (len(sys.argv) == 3 and sys.argv[2] == 'fetch'):
-        aqd.fetch_data()
-    elif sys.argv[2] == 'insert':
-        aqd.insert_data()
-    else:
-        print('wrong param')
+    Aqd.log.info("[fetch_data start]")
+    aqd.fetch_data()
+    Aqd.log.info("[insert_data start]")
+    aqd.insert_data()
     
     # print(aqd.get_max_id())
     # status_code,html = Aqd.get_html_by_url("/videos/play/6988")
