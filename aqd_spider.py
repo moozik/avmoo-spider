@@ -211,9 +211,9 @@ class Aqd:
                 # 查询库里有没有当前id
                 res = fetchall("select * from av_list where av_id ='{}'".format(row['av_id']))
                 if empty(res):
-                    Aqd.log.warning("av_id:{},none,{}".format(row["av_id"], get_url("search", row["av_id"])))
+                    Aqd.log.warning("av_id:{} none {}".format(row["av_id"], get_url("search", row["av_id"])))
                 else:
-                    Aqd.log.info("av_id:{},complete".format(row["av_id"], get_local_url("movie", row["av_id"])))
+                    Aqd.log.info("av_id:{} complete {}".format(row["av_id"], get_local_url("movie", row["av_id"])))
 
                 m3u8_url = "{}#{}".format(row["video"], row["id"])
                 # 查询数据是不是已存在
