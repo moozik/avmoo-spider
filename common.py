@@ -38,7 +38,12 @@ LOGGER = logging.getLogger(APP_NAME)
 
 def init(file_name = None):
     global CONFIG_FILE
+    # 创建日志
+    create_logger(APP_NAME)
+    # 关闭 werkzeug 的日志
+    logging.getLogger('werkzeug').setLevel(logging.ERROR)
     LOGGER.info("common.init")
+    
     if non_empty(file_name):
         # 命令行指定配置文件
         CONFIG_FILE = file_name

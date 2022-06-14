@@ -39,10 +39,6 @@ def run():
     # 打开主页
     if CONFIG.getboolean("website", "auto_open_site_on_run"):
         open_browser_tab(get_local_url())
-    # 创建日志
-    create_logger(APP_NAME)
-    # 关闭 werkzeug 的日志
-    logging.getLogger('werkzeug').setLevel(logging.ERROR)
     app.run(port=CONFIG.getint("base", "port"), processes=1)
 
 
@@ -174,15 +170,18 @@ def index(keyword='', page_num=1):
 def page_actresses(page_num=1):
     page_limit = CONFIG.getint("website", "actresses_page_limit")
     sql_text = '''
-    SELECT av_stars.*,COUNT(av_list.release_date) AS movie_count,av_list.release_date
-    FROM av_stars
-    LEFT JOIN (
-        SELECT release_date,stars_url
+    SELECT * FROM (
+    SELECT av_stars.*,COUNT(*) AS movie_count,av_list.release_date
+    FROM (
+        SELECT max(release_date) as release_date,stars_url
         FROM av_list
-        ORDER BY release_date desc
-    )av_list ON INSTR(av_list.stars_url, av_stars.linkid) > 0
-    GROUP BY av_stars.linkid
-    ORDER BY av_list.release_date DESC
+		WHERE stars_url != ''
+        GROUP BY stars_url
+		ORDER BY release_date DESC
+    )av_list
+    JOIN av_stars ON INSTR(av_list.stars_url, av_stars.linkid) > 0
+    GROUP BY av_stars.linkid)
+    ORDER BY release_date DESC
     '''
     # 性能模式简化sql
     if CONFIG.getboolean("website", "efficiency_mode"):

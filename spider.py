@@ -18,6 +18,7 @@ class Spider:
         self.last_insert_list = []
         self.running_work = None
         self.done_work = []
+        Spider.log.info("spider.init")
 
     def __new__(cls, *args, **kwargs):
         if not cls.instance:
