@@ -47,18 +47,15 @@ class Aqd:
 
     @staticmethod
     def aqd_site_url() -> str:
-        res = fetchall("select * from av_extend where extend_name='rename' and key='aqd'")
-        if empty(res):
-            return ""
-        site_url = res[0]["val"].strip("/")
+        site_url = CONFIG.get('aqd', 'aqd_site').strip("/")
         r = Aqd.requests().get(site_url, timeout=CONFIG.getint("requests", "timeout"))
         p = parse.urlparse(r.url)
 
         new_site_url = "https://" + p.hostname
         if site_url != new_site_url:
             # 存储新的链接
-            res[0]["val"] = new_site_url
-            insert(AV_EXTEND, res)
+            CONFIG.set(section='aqd', option='aqd_site', value=new_site_url)
+            config_save(CONFIG)
 
         return new_site_url
     

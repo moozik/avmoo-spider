@@ -330,7 +330,7 @@ class Spider:
             Spider.log.info("get:{}".format(url))
 
             (status_code, html) = Spider.get_html_by_url(url)
-            if status_code in [403, 404, 500] or html is None:
+            if status_code in [304, 403, 404, 500] or html is None:
                 break
 
             movie_id_list = html.xpath('//*[@id="waterfall"]/div/a/@href')
@@ -338,7 +338,8 @@ class Spider:
                 Spider.log.warning("page empty break")
                 break
             for item in movie_id_list:
-                yield item[-16:]
+                if re.search("movie/[a-z0-9]{16}$", item):
+                    yield item[-16:]
 
             # 检查是否有下一页
             next_page = html.xpath(
